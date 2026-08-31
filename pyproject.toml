@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crystalfig"
+version = "0.1.0"
+description = "Publication-grade crystal structure visualization toolkit for materials science and equivariant geometric deep learning."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "AI4Materials Group"}
+]
+keywords = ["crystallography", "materials-science", "visualization", "tikz", "matplotlib", "geometric-deep-learning"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "matplotlib>=3.7.0",
+    "pymatgen>=2024.0.0",
+    "spglib>=2.0.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+ase = ["ase>=3.22.0"]
+reciprocal = ["seekpath>=2.0.0"]
+pyvista = ["pyvista>=0.43.0", "vtk"]
+raytrace = ["fresnel>=0.13.0"]
+latex = ["pdf2image>=1.16.0"]
+dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.1.0", "build>=1.0.0"]
+docs = ["sphinx", "sphinx-rtd-theme"]
+all = ["ase>=3.22.0", "seekpath>=2.0.0", "pyvista>=0.43.0", "vtk", "fresnel>=0.13.0"]
+
+[project.scripts]
+crystalfig = "crystalfig.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/ai4materials/crystalfig"
+Documentation = "https://crystalfig.readthedocs.io"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["crystalfig*"]
+exclude = ["tests*", "examples*", "docs*", "gallery*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--strict-markers -v"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "latex: requires a LaTeX distribution",
+    "optional: requires optional dependency",
+]
