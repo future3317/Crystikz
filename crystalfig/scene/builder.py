@@ -209,19 +209,27 @@ class SceneBuilder:
                     if any(offset):
                         images[(meta["site_index"], offset)] = None
         else:  # cell_complete (default)
-            # Boundary completion is the base set; also include atoms referenced by
-            # visible bonds/polyhedra so cross-cell bonds do not end in empty space.
+            # Strictly display the closure of the canonical cell.  Cross-cell
+            # bonds are routed to boundary replicas inside [0,1]^3 by _bonds(),
+            # so we do not pull extra image atoms from neighbouring cells here.
             images = self._cell_complete_images(structure)
-            for bond in bonds:
-                if any(bond.jimage):
-                    images[(bond.j, bond.jimage)] = None
-            for poly in polyhedra:
-                for meta in getattr(poly, "vertex_metadata", []):
-                    offset = tuple(meta.get("image_offset", (0, 0, 0)))
-                    if any(offset):
-                        images[(meta["site_index"], offset)] = None
 
         return [self._make_sphere(structure, idx, offset) for (idx, offset) in images]
+
+    def _fold_to_unit_cell(
+        self,
+        frac: np.ndarray,
+    ) -> tuple[np.ndarray, tuple[int, int, int]]:
+        """Fold fractional coordinates into the half-open unit cell [0,1)^3.
+
+        Returns the folded coordinate and the integer image offset that was
+        subtracted to bring it there.  Boundary coordinates at 1.0 are folded
+        back to 0.0 so they map to the canonical atom; the scene builder's
+        boundary replication then creates the needed replica atoms.
+        """
+        image = np.floor(frac).astype(int)
+        folded = frac - image
+        return folded, tuple(image.tolist())
 
     def _cell_complete_images(
         self,
@@ -231,7 +239,8 @@ class SceneBuilder:
 
         A site at a face/edge/corner of the canonical cell is visually replicated
         so the displayed unit cell looks complete (e.g. one Ba at (0,0,0) appears
-        at all 8 corners).  Interior atoms are not duplicated.
+        at all 8 corners).  Interior atoms are not duplicated and the canonical
+        (0,0,0) atom is *not* included here; it is rendered by ``_atoms()``.
         """
         images: dict[tuple[int, tuple[int, int, int]], None] = {}
         tol = 1e-6
@@ -240,15 +249,21 @@ class SceneBuilder:
             ranges = []
             for f in frac:
                 f = float(f) % 1.0
-                opts = [0]
+                opts = []
                 if f < tol:
-                    opts.append(1)
+                    # Atom lies on the 0-face; also show its 1-face replica.
+                    opts.extend([0, 1])
                 elif f > 1.0 - tol:
-                    opts.append(-1)
+                    # Atom lies on the 1-face; also show its 0-face replica.
+                    opts.extend([0, -1])
+                else:
+                    opts.append(0)
                 ranges.append(opts)
             for di in ranges[0]:
                 for dj in ranges[1]:
                     for dk in ranges[2]:
+                        if di == 0 and dj == 0 and dk == 0:
+                            continue
                         images[(i, (di, dj, dk))] = None
         return images
 
@@ -258,7 +273,18 @@ class SceneBuilder:
             site_i = structure.sites[bond.i]
             site_j = structure.sites[bond.j]
             start = site_i.cart_coords(structure.lattice)
-            end = site_j.cart_coords(structure.lattice) + structure.lattice.frac_to_cart(np.array(bond.jimage))
+
+            # In cell_complete mode, route every cross-cell bond to the partner
+            # replica that lies inside the displayed [0,1]^3 cell.  This avoids
+            # dangling bonds pointing at atoms we are not drawing.
+            if self.options.display_boundary == "cell_complete":
+                partner_frac = site_j.frac_coords + np.array(bond.jimage, dtype=float)
+                _, image_offset = self._fold_to_unit_cell(partner_frac)
+                end = site_j.cart_coords(structure.lattice) + structure.lattice.frac_to_cart(np.array(image_offset, dtype=float))
+            else:
+                end = site_j.cart_coords(structure.lattice) + structure.lattice.frac_to_cart(np.array(bond.jimage))
+                image_offset = bond.jimage
+
             color = self.theme.bond_color
             cylinders.append(Bond(
                 start=start,
@@ -268,7 +294,7 @@ class SceneBuilder:
                 opacity=0.85,
                 site_i=bond.i,
                 site_j=bond.j,
-                jimage=bond.jimage,
+                jimage=image_offset,
                 distance=bond.distance,
             ))
         return cylinders

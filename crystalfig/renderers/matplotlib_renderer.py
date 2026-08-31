@@ -382,8 +382,10 @@ class MatplotlibRenderer:
             for _, face, nz in face_data:
                 pts = np.array([p.vertices[i] for i in face])
                 uv = self.camera.project(pts)
-                # Back faces are slightly more transparent so the cage interior reads cleanly.
-                alpha = p.opacity * (0.55 if nz < 0 else 1.0)
+                # Keep polyhedra visually light: back faces are very faint,
+                # front faces are only modestly opaque so overlapping faces do
+                # not accumulate into a solid block (e.g. Rutile, BaTiO3).
+                alpha = p.opacity * (0.18 if nz < 0 else 0.55)
                 fill = self._to_rgba(p.fill_color or p.color, alpha)
                 poly = Polygon(uv, closed=True, facecolor=fill, edgecolor="none")
                 ax.add_patch(poly)

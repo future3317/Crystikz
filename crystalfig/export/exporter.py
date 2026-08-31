@@ -10,6 +10,7 @@ from crystalfig.export.latex import LatexCompiler
 from crystalfig.renderers.base import RenderOptions
 from crystalfig.renderers.matplotlib_3d_renderer import Matplotlib3DRenderer
 from crystalfig.renderers.matplotlib_renderer import MatplotlibRenderer
+from crystalfig.renderers.svg_renderer import SvgRenderer
 from crystalfig.renderers.tikz_renderer import TikzRenderer
 from crystalfig.scene.camera import Camera
 from crystalfig.scene.scene import Scene
@@ -54,10 +55,15 @@ class Exporter:
             renderer.export(self.scene, str(path), theme, options, standalone=True)
             return ExportResult(str(path), fmt, "pure", {"engine": "tikz"})
 
-        if fmt in ("pdf", "svg", "png", "tif", "tiff", "eps", "pgf"):
+        if fmt == "svg":
+            renderer = SvgRenderer(camera=self.camera)
+            renderer.export(self.scene, str(path), theme, options)
+            return ExportResult(str(path), "svg", "pure", {"renderer": "svg"})
+
+        if fmt in ("pdf", "png", "tif", "tiff", "eps", "pgf"):
             renderer = MatplotlibRenderer(camera=self.camera)
             renderer.export(self.scene, str(path), theme, options, fmt=fmt)
-            vector_status = "pure" if fmt in ("pdf", "svg", "eps", "pgf") else "raster"
+            vector_status = "pure" if fmt in ("pdf", "eps", "pgf") else "raster"
             return ExportResult(str(path), fmt, vector_status, {"dpi": options.dpi})
 
         raise ExportError(f"Unsupported export format: {fmt}")

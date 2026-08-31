@@ -108,27 +108,37 @@ def rutile_structure(a: float = 4.59, c: float = 2.96) -> CrystalStructure:
     return CrystalStructure(lattice=lattice, sites=sites)
 
 
-def wurtzite_structure(a: float = 3.82, c: float = 6.26) -> CrystalStructure:
-    """ZnO wurtzite structure (primitive hexagonal cell, 4 atoms)."""
+def wurtzite_structure(a: float = 3.25, c: float = 5.21) -> CrystalStructure:
+    """ZnO wurtzite structure (primitive hexagonal cell, 4 atoms).
+
+    Lattice parameters follow the common experimental/computational values
+    (a ~ 3.25 Å, c ~ 5.21 Å; internal parameter u ~ 0.382).
+    """
     lattice = Lattice.from_parameters(a, a, c, 90.0, 90.0, 120.0)
+    u = 0.382
     sites = [
         Site(frac_coords=[0.0, 0.0, 0.0], species="Zn"),
         Site(frac_coords=[1 / 3, 2 / 3, 0.5], species="Zn"),
-        Site(frac_coords=[0.0, 0.0, 0.375], species="O"),
-        Site(frac_coords=[1 / 3, 2 / 3, 0.875], species="O"),
+        Site(frac_coords=[0.0, 0.0, u], species="O"),
+        Site(frac_coords=[1 / 3, 2 / 3, 0.5 + u], species="O"),
     ]
     return CrystalStructure(lattice=lattice, sites=sites)
 
 
 def mos2_structure(a: float = 3.19, c: float = 12.3) -> CrystalStructure:
-    """MoS2 layered structure (primitive hexagonal cell, 6 atoms)."""
+    """2H-MoS2 layered structure (primitive hexagonal cell, 6 atoms).
+
+    Space group P6_3/mmc (No. 194): Mo at 2d (1/3, 2/3, 1/4), S at 4f
+    (1/3, 2/3, z) with z ~ 0.621.
+    """
     lattice = Lattice.from_parameters(a, a, c, 90.0, 90.0, 120.0)
+    z = 0.621
     sites = [
-        Site(frac_coords=[1 / 3, 2 / 3, 0.25], species="Mo"),
-        Site(frac_coords=[2 / 3, 1 / 3, 0.75], species="Mo"),
-        Site(frac_coords=[1 / 3, 2 / 3, 0.37], species="S"),
-        Site(frac_coords=[2 / 3, 1 / 3, 0.63], species="S"),
-        Site(frac_coords=[1 / 3, 2 / 3, 0.13], species="S"),
-        Site(frac_coords=[2 / 3, 1 / 3, 0.87], species="S"),
+        Site(frac_coords=[1 / 3, 2 / 3, 1 / 4], species="Mo"),
+        Site(frac_coords=[2 / 3, 1 / 3, 3 / 4], species="Mo"),
+        Site(frac_coords=[1 / 3, 2 / 3, z], species="S"),
+        Site(frac_coords=[2 / 3, 1 / 3, z + 1 / 2], species="S"),
+        Site(frac_coords=[2 / 3, 1 / 3, 1 - z], species="S"),
+        Site(frac_coords=[1 / 3, 2 / 3, 1 / 2 - z], species="S"),
     ]
     return CrystalStructure(lattice=lattice, sites=sites)
