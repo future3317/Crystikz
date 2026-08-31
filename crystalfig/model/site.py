@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
 
 from crystalfig.model.properties import SiteProperties
+
+_ELEMENT_RE = re.compile(r"^([A-Z][a-z]?)")
+
+
+def element_symbol(species: str) -> str:
+    """Extract element symbol from a species string (e.g. 'Fe2+' -> 'Fe')."""
+    match = _ELEMENT_RE.match(species.strip())
+    return match.group(1) if match else species
 
 
 @dataclass
@@ -16,7 +25,8 @@ class Site:
 
     Attributes:
         frac_coords: Fractional coordinates within the lattice cell.
-        species: Element symbol or ordered dict of species:occupancy.
+        species: Element symbol (optionally with oxidation state, e.g. 'O2-')
+            or an ordered dict of species:occupancy.
         properties: Arbitrary site properties (magmom, force, etc.).
         source_index: Index of the original site in the source structure.
         image_offset: Integer periodic image offset (i, j, k).
@@ -34,21 +44,26 @@ class Site:
 
     def __post_init__(self):
         self.frac_coords = np.asarray(self.frac_coords, dtype=float)
+        # Occupancy is scientific data: do NOT silently normalize it.
         if isinstance(self.species, dict):
-            # Normalize occupancy sum
             total = sum(self.species.values())
-            if abs(total - 1.0) > 1e-3 and total > 0:
-                self.species = {k: v / total for k, v in self.species.items()}
+            if total <= 0:
+                raise ValueError("Site occupancy sum must be positive.")
 
     # ------------------------------------------------------------------
     # Species helpers
     # ------------------------------------------------------------------
     @property
     def dominant_species(self) -> str:
-        """Return the species with highest occupancy."""
+        """Return the species with highest occupancy (includes oxidation state)."""
         if isinstance(self.species, str):
             return self.species
         return max(self.species, key=lambda k: self.species[k])
+
+    @property
+    def dominant_element(self) -> str:
+        """Return the element symbol of the dominant species."""
+        return element_symbol(self.dominant_species)
 
     @property
     def occupancy(self) -> dict[str, float]:

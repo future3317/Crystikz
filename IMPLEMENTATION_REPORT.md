@@ -70,7 +70,7 @@ The high-level `CrystalFigure` fluent API lives in `crystalfig.figure.builder`. 
 
 ### Figure builder
 
-- Fluent API: `.view()`, `.supercell()`, `.add_bonds()`, `.add_polyhedra()`, `.add_vector()`, `.add_miller_plane()`, `.style()`, `.export()`, `.save_recipe()`
+- Fluent API: `.view()`, `.supercell()`, `.add_bonds()`, `.add_polyhedra()`, `.add_vector()`, `.add_miller_plane()`, `.style()`, `.export()`
 - One-line helper `plot_structure(...)`
 
 ### CLI
@@ -83,7 +83,7 @@ The high-level `CrystalFigure` fluent API lives in `crystalfig.figure.builder`. 
 
 ### Compatibility
 
-- Legacy `crystal_tikz` names exposed via `crystalfig.compat` with `FutureWarning`
+- Legacy `crystal_tikz` compatibility shim (`crystalfig.compat`) has been removed; see `MIGRATION.md`.
 
 ## 4. Tests
 
@@ -148,14 +148,9 @@ Result: **All checks passed!**
 
 ## 8. Compatibility
 
-Old `crystal_tikz` APIs are available as deprecated aliases in `crystalfig.compat`:
-
-- `LatticeBasis` → `Lattice`
-- `Camera3D` → `Camera`
-- `CrystalVisualizer` → `CrystalFigure`
-- `build_perovskite`, `build_rutile`, `build_wurtzite`
-- `EquivariantArchitectureVisualizer` → `EquivariantGNNDiagram`
-- `compile_tikz_to_pdf`
+The legacy `crystal_tikz` compatibility layer has been removed in this
+stabilization pass.  Users should migrate to the new APIs; see `MIGRATION.md`
+for the mapping.
 
 ## 9. Known Limitations
 

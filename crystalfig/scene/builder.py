@@ -9,6 +9,7 @@ import numpy as np
 
 from crystalfig.geometry.planes import MillerPlane
 from crystalfig.geometry.polyhedra import build_polyhedron
+from crystalfig.model.site import element_symbol
 from crystalfig.model.structure import CrystalStructure
 from crystalfig.neighbors.base import NeighborBond
 from crystalfig.scene.camera import Camera
@@ -41,6 +42,7 @@ class SceneOptions:
     atom_style: str = "shaded"
     supercell: tuple[int, int, int] | None = None
     bonds: list[NeighborBond] | None = None
+    bond_strategy: Callable | None = None
     polyhedra_centers: list[int] | str | None = None
     polyhedra_strategy: Callable | None = None
     vectors: list[tuple[int, np.ndarray, str]] | None = None
@@ -71,16 +73,21 @@ class SceneBuilder:
         else:
             structure = self.structure
 
+        # Bonds must be computed on the final (possibly supercell) structure.
+        bonds = self.options.bonds
+        if self.options.show_bonds and bonds is None and self.options.bond_strategy is not None:
+            bonds = self.options.bond_strategy.get_bonds(structure)
+
         scene = Scene(metadata={"formula": structure.formula, "num_sites": structure.num_sites})
 
         if self.options.show_unit_cell:
             scene.extend(self._cell_edges(structure), group="cell")
 
         if self.options.show_polyhedra:
-            scene.extend(self._polyhedra(structure), group="polyhedra")
+            scene.extend(self._polyhedra(structure, bonds), group="polyhedra")
 
-        if self.options.show_bonds and self.options.bonds:
-            scene.extend(self._bonds(structure, self.options.bonds), group="bonds")
+        if self.options.show_bonds and bonds:
+            scene.extend(self._bonds(structure, bonds), group="bonds")
 
         if self.options.show_atoms:
             scene.extend(self._atoms(structure), group="atoms")
@@ -109,17 +116,17 @@ class SceneBuilder:
         spheres = []
         for i, site in enumerate(structure.sites):
             pos = site.cart_coords(structure.lattice)
-            element = site.dominant_species
+            element = site.dominant_element
             color = self.palette.hex(element)
             radius = get_radius(element, "covalent", default=0.2) * 0.4  # scale for visual balance
-            label = site.label or element
+            label = site.label or site.dominant_species
             spheres.append(Sphere(
                 position=pos,
                 radius=radius,
                 color=color,
                 opacity=1.0,
                 label=label,
-                metadata={"site_index": i, "species": element},
+                metadata={"site_index": i, "species": site.dominant_species, "element": element},
                 render_style=self.theme.atom_style,
             ))
         return spheres
@@ -145,7 +152,7 @@ class SceneBuilder:
             ))
         return cylinders
 
-    def _polyhedra(self, structure: CrystalStructure) -> list[Polyhedron]:
+    def _polyhedra(self, structure: CrystalStructure, bonds: list[NeighborBond] | None) -> list[Polyhedron]:
         polyhedra = []
         centers = self.options.polyhedra_centers
         if centers is None:
@@ -153,23 +160,25 @@ class SceneBuilder:
         if isinstance(centers, str):
             centers = structure.indices_of_species(centers)
 
-        bonds = self.options.bonds or []
-        adjacency: dict[int, list[int]] = {i: [] for i in range(len(structure))}
+        bonds = bonds or []
+        # Store (neighbor_index, image_offset) so periodic images are not folded back.
+        adjacency: dict[int, list[tuple[int, tuple[int, int, int]]]] = {i: [] for i in range(len(structure))}
         for bond in bonds:
-            adjacency[bond.i].append(bond.j)
-            adjacency[bond.j].append(bond.i)
+            adjacency[bond.i].append((bond.j, bond.jimage))
+            adjacency[bond.j].append((bond.i, tuple(-x for x in bond.jimage)))
 
         for center_idx in centers:
             center_site = structure.sites[center_idx]
             center_pos = center_site.cart_coords(structure.lattice)
-            # Gather neighbor positions from bonds; if no bonds, use nearest atoms within radius
             nbrs = adjacency.get(center_idx, [])
             if not nbrs:
                 continue
             vertex_positions = []
             vertex_indices = []
-            for j in nbrs:
-                vertex_positions.append(structure.sites[j].cart_coords(structure.lattice))
+            for j, jimage in nbrs:
+                offset = np.array(jimage, dtype=float)
+                vertex_frac = structure.sites[j].frac_coords + offset
+                vertex_positions.append(structure.lattice.frac_to_cart(vertex_frac))
                 vertex_indices.append(j)
             if len(vertex_positions) < 4:
                 continue
@@ -273,7 +282,7 @@ class SceneBuilder:
             site = structure.sites[i]
             spheres.append(Sphere(
                 position=site.cart_coords(structure.lattice),
-                radius=get_radius(site.dominant_species, "covalent", 0.2) * 0.5,
+                radius=get_radius(site.dominant_element, "covalent", 0.2) * 0.5,
                 color=self.palette.hex("amber"),
                 opacity=0.4,
                 render_style="wireframe",
@@ -286,7 +295,7 @@ class SceneBuilder:
             site = structure.sites[i]
             spheres.append(Sphere(
                 position=site.cart_coords(structure.lattice),
-                radius=get_radius(site.dominant_species, "covalent", 0.2) * 0.4,
+                radius=get_radius(site.dominant_element, "covalent", 0.2) * 0.4,
                 color=self.palette.hex("secondary"),
                 opacity=0.5,
                 render_style="wireframe",
@@ -299,6 +308,6 @@ class SceneBuilder:
             items.append(LegendItem(
                 symbol="sphere",
                 text=species,
-                color=self.palette.hex(species),
+                color=self.palette.hex(element_symbol(species)),
             ))
         return items

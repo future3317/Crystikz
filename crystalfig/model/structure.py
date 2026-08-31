@@ -32,10 +32,11 @@ class CrystalStructure:
 
     @property
     def formula(self) -> str:
+        """Reduced formula counting the dominant element of each site."""
         counts: dict[str, int] = {}
         for site in self.sites:
-            sp = site.dominant_species
-            counts[sp] = counts.get(sp, 0) + 1
+            el = site.dominant_element
+            counts[el] = counts.get(el, 0) + 1
         parts = sorted(counts.items(), key=lambda x: (-x[1], x[0]))
         return "".join(f"{k}{v if v > 1 else ''}" for k, v in parts)
 
@@ -60,6 +61,7 @@ class CrystalStructure:
     # Site queries
     # ------------------------------------------------------------------
     def unique_species(self) -> list[str]:
+        """Return unique dominant species strings (including oxidation states)."""
         seen = set()
         for site in self.sites:
             seen.add(site.dominant_species)
@@ -67,6 +69,9 @@ class CrystalStructure:
 
     def indices_of_species(self, species: str) -> list[int]:
         return [i for i, site in enumerate(self.sites) if site.dominant_species == species]
+
+    def indices_of_element(self, element: str) -> list[int]:
+        return [i for i, site in enumerate(self.sites) if site.dominant_element == element]
 
     def add_site(self, site: Site) -> int:
         self.sites.append(site)

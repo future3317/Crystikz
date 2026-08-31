@@ -56,7 +56,6 @@ fig = (
 
 fig.export("BaTiO3.pdf")
 fig.export("BaTiO3.svg")
-fig.save_recipe("BaTiO3.figure.yaml")
 ```
 
 ### CLI
@@ -141,7 +140,6 @@ crystalfig/
     export/         # compiler, preflight, unified exporter
     diagrams/       # equivariant GNN architecture diagrams
     cli/            # command-line interface
-    compat.py       # legacy crystal_tikz compatibility aliases
 ```
 
 ## Development

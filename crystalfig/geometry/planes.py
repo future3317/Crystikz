@@ -16,7 +16,7 @@ class MillerPlane:
 
     hkl: np.ndarray
     lattice: Lattice
-    offset: float = 0.0
+    offset: float | None = None
     fill_color: str | None = None
     edge_color: str | None = None
     opacity: float = 0.3
@@ -32,9 +32,26 @@ class MillerPlane:
         return self.lattice.reciprocal_vector(self.hkl)
 
     def cartesian_equation(self) -> tuple:
-        """Return plane as (normal, d) such that normal·x = d."""
+        """Return plane as (normal, d) such that normal·x = d.
+
+        ``offset`` is the Cartesian distance from the origin along the unit
+        normal.  If ``None``, the offset is chosen so the plane passes through
+        the centre of the unit cell.
+        """
         n = self.normal
-        d = self.offset * np.linalg.norm(n)
+        n_norm = np.linalg.norm(n)
+        if n_norm < 1e-12:
+            raise GeometryError("Plane normal has zero length.")
+        n_unit = n / n_norm
+
+        sc = np.eye(3, dtype=int) if self.offset is not None else None
+        corners_frac = np.array([
+            [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
+            [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1],
+        ], dtype=float)
+        corners = self.lattice.frac_to_cart(corners_frac @ (sc.T if sc is not None else np.eye(3)))
+        values = corners @ n_unit
+        d = float((values.min() + values.max()) / 2.0) if self.offset is None else self.offset
         return n, d
 
     def intersection_polygon(self, supercell: np.ndarray | None = None) -> np.ndarray | None:

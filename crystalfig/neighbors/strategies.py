@@ -2,16 +2,26 @@
 
 from __future__ import annotations
 
-import numpy as np
-
 from crystalfig.exceptions import OptionalDependencyError
 from crystalfig.model.structure import CrystalStructure
 from crystalfig.neighbors.base import NeighborBond
 from crystalfig.styles.radii import get_radius
 
 
+def _pmg_neighbor_list(structure: CrystalStructure, max_cutoff: float):
+    """Return pymatgen neighbors with (site, distance, index, image) tuples."""
+    from crystalfig.io.pymatgen_adapter import to_pymatgen
+
+    pmg = to_pymatgen(structure)
+    return pmg.get_all_neighbors(max_cutoff, include_index=True, include_image=True)
+
+
 class CutoffStrategy:
-    """Bond detection by global or element-pair distance cutoff."""
+    """Bond detection by global or element-pair distance cutoff.
+
+    Uses pymatgen's periodic neighbor search so bonds across periodic
+    boundaries are returned with the correct image offset.
+    """
 
     def __init__(self, cutoff: float = 2.5, pair_cutoffs: dict[str, float] | None = None):
         self.cutoff = cutoff
@@ -28,50 +38,52 @@ class CutoffStrategy:
 
     def get_bonds(self, structure: CrystalStructure) -> list[NeighborBond]:
         bonds = []
-        lattice = structure.lattice
-        n = len(structure)
-        for i in range(n):
-            for j in range(i + 1, n):
+        max_cutoff = max(self.cutoff, *(self.pair_cutoffs.values() or [0.0]))
+        all_neighbors = _pmg_neighbor_list(structure, max_cutoff)
+        for i, nbrs in enumerate(all_neighbors):
+            for _site, dist, j, image in nbrs:
+                if j <= i:
+                    continue
                 cutoff = self._cutoff_for(
-                    structure.sites[i].dominant_species,
-                    structure.sites[j].dominant_species,
+                    structure.sites[i].dominant_element,
+                    structure.sites[j].dominant_element,
                 )
-                # Try nearest image
-                frac_i = structure.sites[i].frac_coords
-                frac_j = structure.sites[j].frac_coords
-                delta = frac_j - frac_i
-                delta -= np.round(delta)
-                image_frac = frac_i + delta
-                dist = np.linalg.norm(lattice.frac_to_cart(delta))
-                if dist <= cutoff and dist > 0.1:
-                    jimage = tuple(int(round(frac_j[k] - image_frac[k])) for k in range(3))
-                    bonds.append(NeighborBond(i=i, j=j, jimage=jimage, distance=dist))
+                if dist > cutoff or dist < 0.1:
+                    continue
+                bonds.append(NeighborBond(
+                    i=i,
+                    j=j,
+                    jimage=tuple(int(round(x)) for x in image),
+                    distance=float(dist),
+                ))
         return bonds
 
 
 class CovalentRadiiStrategy:
     """Bond detection using covalent radii with a tolerance factor."""
 
-    def __init__(self, tolerance: float = 0.4):
+    def __init__(self, tolerance: float = 0.4, max_cutoff: float = 6.0):
         self.tolerance = tolerance
+        self.max_cutoff = max_cutoff
 
     def get_bonds(self, structure: CrystalStructure) -> list[NeighborBond]:
         bonds = []
-        lattice = structure.lattice
-        n = len(structure)
-        for i in range(n):
-            for j in range(i + 1, n):
-                sp1 = structure.sites[i].dominant_species
-                sp2 = structure.sites[j].dominant_species
+        all_neighbors = _pmg_neighbor_list(structure, self.max_cutoff)
+        for i, nbrs in enumerate(all_neighbors):
+            for _site, dist, j, image in nbrs:
+                if j <= i:
+                    continue
+                sp1 = structure.sites[i].dominant_element
+                sp2 = structure.sites[j].dominant_element
                 cutoff = get_radius(sp1, "covalent", 0.2) + get_radius(sp2, "covalent", 0.2) + self.tolerance
-                frac_i = structure.sites[i].frac_coords
-                frac_j = structure.sites[j].frac_coords
-                delta = frac_j - frac_i
-                delta -= np.round(delta)
-                dist = np.linalg.norm(lattice.frac_to_cart(delta))
-                if dist <= cutoff and dist > 0.1:
-                    jimage = tuple(int(round(frac_j[k] - (frac_i[k] + delta[k]))) for k in range(3))
-                    bonds.append(NeighborBond(i=i, j=j, jimage=jimage, distance=dist))
+                if dist > cutoff or dist < 0.1:
+                    continue
+                bonds.append(NeighborBond(
+                    i=i,
+                    j=j,
+                    jimage=tuple(int(round(x)) for x in image),
+                    distance=float(dist),
+                ))
         return bonds
 
 

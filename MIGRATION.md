@@ -24,13 +24,8 @@ The old `crystal_tikz` module mixed TikZ string generation with crystallographic
 
 ## Compatibility layer
 
-Old names are still importable from `crystalfig.compat` and emit a `FutureWarning`:
-
-```python
-from crystalfig.compat import CrystalVisualizer, build_perovskite
-```
-
-These are thin facades; new code should use `CrystalFigure` directly.
+The `crystalfig.compat` shim has been removed in this stabilization pass.
+Old names are no longer importable; migrate to the new APIs listed above.
 
 ## Example migration
 

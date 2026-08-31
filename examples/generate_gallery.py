@@ -42,7 +42,7 @@ def main():
         .show_axes()
         .add_bonds("covalent")
         .add_polyhedra("Ti", opacity=0.25)
-        .add_vector(8, [0, 0, 0.4], color="amber", scale=1.0)
+        .add_vector(1, [0, 0, 0.4], color="amber", scale=1.0)
     )
     fig.export(GALLERY_DIR / "03_perovskite_octahedron.pdf")
     fig.export_tikz_pdf(GALLERY_DIR / "03_perovskite_octahedron_tikz.pdf")

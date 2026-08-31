@@ -44,8 +44,9 @@ class MatplotlibRenderer:
     def render(self, scene: Scene, theme: FigureTheme, options: RenderOptions) -> str:
         """Render to SVG string."""
         import io
-        self.export(scene, io.BytesIO(), theme, options, fmt="svg")
-        return io.BytesIO().getvalue().decode("utf-8")
+        buf = io.BytesIO()
+        self.export(scene, buf, theme, options, fmt="svg")
+        return buf.getvalue().decode("utf-8")
 
     def export(
         self,
@@ -104,15 +105,15 @@ class MatplotlibRenderer:
         if isinstance(path, str):
             if fmt in ("png", "tiff", "tif"):
                 transparent = options.transparent or bg == "transparent"
-                fig.savefig(path, dpi=options.dpi, transparent=transparent, bbox_inches="tight")
+                fig.savefig(path, dpi=options.dpi, transparent=transparent)
             elif fmt in ("pdf", "svg", "eps", "pgf"):
                 matplotlib.rcParams["pdf.fonttype"] = 42
                 matplotlib.rcParams["ps.fonttype"] = 42
-                fig.savefig(path, format=fmt, bbox_inches="tight")
+                fig.savefig(path, format=fmt)
             else:
-                fig.savefig(path, bbox_inches="tight")
+                fig.savefig(path)
         else:
-            fig.savefig(path, format=fmt, bbox_inches="tight")
+            fig.savefig(path, format=fmt)
         plt.close(fig)
 
     def _guess_format(self, path) -> str:
@@ -152,10 +153,11 @@ class MatplotlibRenderer:
         if isinstance(p, Sphere):
             uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
             color = self._to_rgba(p.color, p.opacity)
+            r = p.radius * self.camera.scale
             if p.render_style == "wireframe":
-                circle = Circle(uv, p.radius, fill=False, edgecolor=color, linewidth=1.5, linestyle="--")
+                circle = Circle(uv, r, fill=False, edgecolor=color, linewidth=1.5, linestyle="--")
             else:
-                circle = Circle(uv, p.radius, color=color, ec="black", linewidth=0.3)
+                circle = Circle(uv, r, color=color, ec="black", linewidth=0.3)
             ax.add_patch(circle)
         elif isinstance(p, (Line, Bond, CellEdge, Cylinder)):
             uv1 = np.asarray(self.camera.project(p.start)).flatten()[:2]

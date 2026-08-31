@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 
@@ -13,7 +12,6 @@ from crystalfig.geometry.planes import MillerPlane
 from crystalfig.io.loader import load_structure
 from crystalfig.io.pymatgen_adapter import from_pymatgen
 from crystalfig.model.structure import CrystalStructure
-from crystalfig.neighbors.base import NeighborBond
 from crystalfig.neighbors.strategies import CovalentRadiiStrategy, CrystalNNStrategy, CutoffStrategy
 from crystalfig.scene.builder import SceneBuilder, SceneOptions
 from crystalfig.scene.camera import Camera
@@ -36,8 +34,6 @@ class CrystalFigure:
         self.palette = get_palette(self.theme.palette.name)
         self.camera = camera or Camera(elevation=25.0, azimuth=45.0)
         self._scene_options = SceneOptions()
-        self._bonds: list[NeighborBond] | None = None
-        self._recipe: dict[str, Any] = {"input": "CrystalStructure", "operations": []}
 
     # ------------------------------------------------------------------
     # Constructors
@@ -80,7 +76,6 @@ class CrystalFigure:
             self.structure = from_pymatgen(conv)
         except Exception as exc:
             raise StructureParseError(f"Could not get conventional cell: {exc}") from exc
-        self._recipe["operations"].append("conventional_cell")
         return self
 
     def primitive_cell(self) -> CrystalFigure:
@@ -91,24 +86,25 @@ class CrystalFigure:
             self.structure = from_pymatgen(prim)
         except Exception as exc:
             raise StructureParseError(f"Could not get primitive cell: {exc}") from exc
-        self._recipe["operations"].append("primitive_cell")
         return self
 
     def supercell(self, scaling: int | tuple[int, int, int]) -> CrystalFigure:
         self._scene_options.supercell = scaling if isinstance(scaling, tuple) else (scaling, scaling, scaling)
-        self._recipe["operations"].append({"supercell": self._scene_options.supercell})
         return self
 
     # ------------------------------------------------------------------
     # View / camera
     # ------------------------------------------------------------------
     def view(self, direction: str | list[int] | np.ndarray) -> CrystalFigure:
-        """Set camera to look along a direction."""
+        """Set camera to look along a crystallographic direction."""
         if isinstance(direction, str):
             mapping = {"a": [1, 0, 0], "b": [0, 1, 0], "c": [0, 0, 1]}
             direction = mapping.get(direction, [1, 1, 0])
-        self.camera = Camera.along_direction(np.array(direction), target=self._centroid())
-        self._recipe["operations"].append({"view": direction})
+        direction = np.asarray(direction, dtype=float)
+        # Convert fractional [uvw] to Cartesian unless already given in Cartesian.
+        if direction.shape == (3,):
+            direction = self.structure.lattice.frac_to_cart(direction)
+        self.camera = Camera.along_direction(direction, target=self._centroid())
         return self
 
     def view_along_lattice(self, axis: int) -> CrystalFigure:
@@ -151,9 +147,9 @@ class CrystalFigure:
             strat = _try_ase_strategy()
         else:
             raise ValueError(f"Unknown bond strategy: {strategy}")
-        self._bonds = strat.get_bonds(self.structure)
-        self._scene_options.bonds = self._bonds
-        self._recipe["operations"].append({"add_bonds": strategy})
+        # Defer bond computation until build_scene so supercell is applied first.
+        self._scene_options.bond_strategy = strat
+        self._scene_options.bonds = None
         return self
 
     def add_polyhedra(
@@ -165,12 +161,11 @@ class CrystalFigure:
     ) -> CrystalFigure:
         self._scene_options.show_polyhedra = True
         self._scene_options.polyhedra_centers = centers
-        if self._bonds is None:
+        if self._scene_options.bond_strategy is None:
             self.add_bonds(strategy=strategy)
         self._scene_options.polyhedra_strategy = {"fill_color": fill_color} if fill_color else {}
         if opacity is not None:
             self.theme.polyhedron_opacity = opacity
-        self._recipe["operations"].append({"add_polyhedra": {"centers": centers, "strategy": strategy}})
         return self
 
     def add_vector(
@@ -221,34 +216,6 @@ class CrystalFigure:
         return self
 
     # ------------------------------------------------------------------
-    # Site property mapping
-    # ------------------------------------------------------------------
-    def map_site_property(
-        self,
-        property_name: str,
-        to: str,
-        cmap: str = "coolwarm",
-        colorbar: bool = False,
-    ) -> CrystalFigure:
-        """Map a site property to atom color or radius."""
-        values = [site.properties.get(property_name) for site in self.structure.sites]
-        numeric = [float(v) for v in values if isinstance(v, (int, float, np.number))]
-        if not numeric:
-            return self
-        vmin, vmax = min(numeric), max(numeric)
-        import matplotlib as mpl
-        cmap_obj = mpl.colormaps[cmap]
-        for _i, site in enumerate(self.structure.sites):
-            val = site.properties.get(property_name)
-            if val is None:
-                continue
-            norm = (float(val) - vmin) / (vmax - vmin) if vmax > vmin else 0.5
-            color = cmap_obj(norm)
-            # Store in site properties for renderer to pick up
-            site.properties.set("_mapped_color", color)
-        return self
-
-    # ------------------------------------------------------------------
     # Build & export
     # ------------------------------------------------------------------
     def build_scene(self) -> Scene:
@@ -278,22 +245,6 @@ class CrystalFigure:
         scene = self.build_scene()
         exporter = Exporter(scene, self.theme, camera=self.camera)
         return exporter.export_pdf_with_latex(path)
-
-    def save_recipe(self, path: str) -> None:
-        import yaml
-        recipe = {
-            "structure": self.structure.as_dict(),
-            "theme": self.theme.as_dict(),
-            "operations": self._recipe["operations"],
-            "camera": {
-                "elevation": self.camera.elevation,
-                "azimuth": self.camera.azimuth,
-                "projection": self.camera.projection,
-            },
-            "version": "0.1.0",
-        }
-        with open(path, "w", encoding="utf-8") as f:
-            yaml.dump(recipe, f, default_flow_style=False)
 
     # ------------------------------------------------------------------
     # Helpers

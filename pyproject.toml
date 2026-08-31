@@ -47,8 +47,8 @@ all = ["ase>=3.22.0", "seekpath>=2.0.0", "pyvista>=0.43.0", "vtk", "fresnel>=0.1
 crystalfig = "crystalfig.cli.main:main"
 
 [project.urls]
-Homepage = "https://github.com/ai4materials/crystalfig"
-Documentation = "https://crystalfig.readthedocs.io"
+Homepage = "https://github.com/future3317/Crystikz"
+Documentation = "https://github.com/future3317/Crystikz#readme"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -69,6 +69,23 @@ def preflight_pdf(path: str) -> PreflightReport:
         except Exception as exc:
             report.warnings.append(f"pdffonts failed: {exc}")
 
+    # Detect embedded raster images using pdfimages if available.
+    report.raster_objects = False
+    if shutil.which("pdfimages"):
+        try:
+            result = subprocess.run(
+                ["pdfimages", "-list", str(path_obj)],
+                capture_output=True,
+                text=True,
+                shell=False,
+            )
+            report.raw["pdfimages"] = result.stdout
+            lines = result.stdout.strip().splitlines()
+            if len(lines) > 2:
+                report.raster_objects = True
+        except Exception as exc:
+            report.warnings.append(f"pdfimages failed: {exc}")
+
     return report
 
 

@@ -47,7 +47,7 @@ def to_ase(structure: CrystalStructure):
     _require_ase()
     from ase import Atoms
 
-    symbols = [site.dominant_species for site in structure.sites]
+    symbols = [site.dominant_element for site in structure.sites]
     positions = [site.cart_coords(structure.lattice).tolist() for site in structure.sites]
     cell = structure.lattice.matrix.tolist()
     magmoms = [site.properties.magnetic_moment for site in structure.sites]

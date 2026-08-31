@@ -59,3 +59,14 @@ Thumbs.db
 
 # Project specific
 *.pyc
+
+# Generated gallery outputs
+gallery/*.pdf
+gallery/*.png
+gallery/*.svg
+gallery/*.tex
+gallery/*.aux
+gallery/*.log
+gallery/*.out
+gallery/*.fdb_latexmk
+gallery/*.fls

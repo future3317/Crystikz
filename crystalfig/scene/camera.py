@@ -32,9 +32,12 @@ class Camera:
     scale: float = 1.0
     auto_fit: bool = True
     padding: float = 0.1
+    _rotation: np.ndarray | None = field(default=None, repr=False)
 
     def __post_init__(self):
         self.target = np.asarray(self.target, dtype=float)
+        if self._rotation is not None:
+            self._rotation = np.asarray(self._rotation, dtype=float)
 
     @classmethod
     def along_direction(
@@ -45,18 +48,26 @@ class Camera:
     ) -> Camera:
         """Create a camera looking along a direct-space direction [uvw]."""
         direction = np.asarray(direction, dtype=float)
-        if np.linalg.norm(direction) < 1e-12:
+        norm = np.linalg.norm(direction)
+        if norm < 1e-12:
             raise ValueError("Direction vector must be non-zero.")
-        direction = direction / np.linalg.norm(direction)
+        direction = direction / norm
 
-        # Compute elevation and azimuth from direction
-        azimuth = np.degrees(np.arctan2(direction[1], direction[0]))
-        elevation = np.degrees(np.arcsin(np.clip(direction[2], -1.0, 1.0)))
+        # Camera looks along negative z; build orthonormal basis via Gram-Schmidt.
+        z_axis = -direction
+        world_up = np.array([0.0, 0.0, 1.0])
+        if abs(np.dot(z_axis, world_up)) > 0.99:
+            world_up = np.array([0.0, 1.0, 0.0])
+        x_axis = np.cross(world_up, z_axis)
+        x_axis /= np.linalg.norm(x_axis)
+        y_axis = np.cross(z_axis, x_axis)
+        y_axis /= np.linalg.norm(y_axis)
+        rotation = np.vstack([x_axis, y_axis, z_axis])
+
         return cls(
             target=target if target is None else np.asarray(target, dtype=float),
-            elevation=elevation,
-            azimuth=azimuth,
             projection=projection,
+            _rotation=rotation,
         )
 
     @classmethod
@@ -76,6 +87,9 @@ class Camera:
     # ------------------------------------------------------------------
     def rotation_matrix(self) -> np.ndarray:
         """Return the world-to-camera rotation matrix."""
+        if self._rotation is not None:
+            return self._rotation
+
         elev = np.radians(self.elevation)
         azim = np.radians(self.azimuth)
         roll = np.radians(self.roll)

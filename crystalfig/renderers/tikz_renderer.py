@@ -145,7 +145,7 @@ class TikzRenderer:
         if isinstance(p, Sphere):
             uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
             color = self._color_name(p.color)
-            r = p.radius
+            r = p.radius * self.camera.scale
             if p.render_style == "wireframe":
                 lines.append(f"  \\draw[dashed, {color}, thin] ({uv[0]:.4f}, {uv[1]:.4f}) circle ({r:.4f});")
             else:
@@ -241,12 +241,13 @@ class TikzRenderer:
         """Escape special LaTeX characters in plain text."""
         if not isinstance(text, str):
             text = str(text)
-        # Escape characters that are special in LaTeX
+        # One-pass escape so replacements already emitted are not re-processed.
         chars = {
             "&": r"\&", "%": r"\%", "$": r"\$", "#": r"\#",
             "_": r"\_", "{": r"\{", "}": r"\}", "~": r"\textasciitilde{}",
             "^": r"\textasciicircum{}", "\\": r"\textbackslash{}",
         }
-        for ch, repl in chars.items():
-            text = text.replace(ch, repl)
-        return text
+        out = []
+        for ch in text:
+            out.append(chars.get(ch, ch))
+        return "".join(out)

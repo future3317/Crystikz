@@ -15,9 +15,9 @@ def from_pymatgen(structure) -> CrystalStructure:
     lattice = Lattice(np.array(structure.lattice.matrix))
     sites = []
     for i, site in enumerate(structure):
-        # Species can be string or dict
+        # Preserve oxidation state (e.g. "Fe2+", "O2-") and disordered compositions.
         if len(site.species) == 1:
-            species = str(site.specie.symbol)
+            species = str(site.species.elements[0])
         else:
             species = {str(sp): float(occ) for sp, occ in site.species.items()}
 
@@ -41,14 +41,32 @@ def from_pymatgen(structure) -> CrystalStructure:
 
 def to_pymatgen(structure: CrystalStructure):
     """Convert a CrystalStructure to pymatgen Structure."""
+    from pymatgen.core import Composition, Element, Species, Structure
     from pymatgen.core import Lattice as PmgLattice
-    from pymatgen.core import Structure
 
     species = []
     coords = []
     props: dict[str, list] = {}
     for i, site in enumerate(structure.sites):
-        species.append(site.species)
+        occ = site.occupancy
+        if len(occ) == 1:
+            sp_str = next(iter(occ))
+            try:
+                # Use plain Element if no oxidation state is specified; otherwise Species.
+                if any(c in sp_str for c in "+-1234567890"):
+                    sp = Species(sp_str)
+                else:
+                    sp = Element(sp_str)
+            except Exception:
+                # Fallback: element symbol if oxidation state parsing fails.
+                from crystalfig.model.site import element_symbol
+                sp = Element(element_symbol(sp_str))
+            species.append(sp)
+        else:
+            species.append(Composition({
+                (Species(sp) if any(c in sp for c in "+-1234567890") else Element(sp)): occ
+                for sp, occ in occ.items()
+            }))
         coords.append(site.frac_coords.tolist())
         for key, value in site.properties.as_dict().items():
             if key not in props:

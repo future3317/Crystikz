@@ -44,6 +44,8 @@ class BrillouinZone:
             region.remove(-1)
 
         vertices = vor.vertices[region]
+        # Map Voronoi global vertex indices to local indices in ``vertices``.
+        global_to_local = {global_idx: local_idx for local_idx, global_idx in enumerate(region)}
         # Build edge list from ridge vertices
         edges = []
         for ridge in vor.ridge_vertices:
@@ -51,7 +53,7 @@ class BrillouinZone:
                 for i in range(len(ridge)):
                     a, b = ridge[i], ridge[(i + 1) % len(ridge)]
                     if a != -1 and b != -1:
-                        edges.append((int(a), int(b)))
+                        edges.append((global_to_local[int(a)], global_to_local[int(b)]))
 
         return cls(
             lattice=lattice,
