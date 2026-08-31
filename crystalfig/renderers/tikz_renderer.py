@@ -6,6 +6,7 @@ import re
 
 import numpy as np
 
+from crystalfig.exceptions import RenderError
 from crystalfig.renderers.base import RenderOptions
 from crystalfig.scene.primitives import (
     Arrow,
@@ -16,8 +17,10 @@ from crystalfig.scene.primitives import (
     LegendItem,
     Line,
     Polyhedron,
+    Polyline,
     Sphere,
     Text,
+    layer_priority,
 )
 from crystalfig.scene.primitives import (
     Polygon as Poly,
@@ -101,6 +104,11 @@ class TikzRenderer:
         if options.show_legend and theme.show_legend:
             self._draw_legend(lines, scene, theme)
 
+        bounds = self._projected_bounds(scene) or (-1.0, 1.0, -1.0, 1.0)
+        for p in scene.all_primitives():
+            if isinstance(p, Text) and getattr(p, "layer", "geometry") == "annotation":
+                self._draw_annotation(lines, p, bounds)
+
         lines.append(r"\end{tikzpicture}")
         if standalone:
             lines.append(r"\end{document}")
@@ -115,20 +123,24 @@ class TikzRenderer:
     def _sort_by_depth(self, scene: Scene) -> list:
         scored = []
         for p in scene.all_primitives():
+            if getattr(p, "layer", "geometry") == "annotation" or getattr(p, "coordinate_space", "world") == "screen":
+                continue
             pts = self._primitive_points(p)
             if len(pts) == 0:
                 depth = 1e9
             else:
                 depth = float(np.mean(self.camera.depth(np.array(pts))))
-            scored.append((depth, p))
-        scored.sort(key=lambda x: x[0])
-        return [p for _, p in scored]
+            scored.append((layer_priority(p), depth, p))
+        scored.sort(key=lambda x: (x[0], x[1]))
+        return [p for _, _, p in scored]
 
     def _primitive_points(self, p) -> list[np.ndarray]:
         if isinstance(p, Sphere):
             return [p.position]
         if isinstance(p, (Line, Bond, CellEdge, Cylinder)):
             return [p.start, p.end]
+        if isinstance(p, Polyline):
+            return p.points
         if isinstance(p, Polyhedron):
             return p.vertices
         if isinstance(p, Poly):
@@ -156,6 +168,16 @@ class TikzRenderer:
             alpha = p.opacity
             dash = "dashed" if getattr(p, "dashed", False) or getattr(p, "is_back", False) else "solid"
             lines.append(f"  \\draw[{color}, line width={lw:.2f}pt, opacity={alpha:.2f}, {dash}] ({uv1[0]:.4f}, {uv1[1]:.4f}) -- ({uv2[0]:.4f}, {uv2[1]:.4f});")
+        elif isinstance(p, Polyline):
+            if len(p.points) < 2:
+                return
+            points = list(p.points)
+            if p.closed:
+                points.append(points[0])
+            uv = self.camera.project(np.array(points))
+            pts_str = " -- ".join(f"({u:.4f}, {v:.4f})" for u, v in uv)
+            color = self._color_name(p.color)
+            lines.append(f"  \\draw[{color}, line width={p.linewidth:.2f}pt] {pts_str};")
         elif isinstance(p, Polyhedron):
             for face in p.faces:
                 pts = np.array([p.vertices[i] for i in face])
@@ -186,9 +208,54 @@ class TikzRenderer:
                 f"  \\draw[very thick, ->, {color}] ({uv1[0]:.4f}, {uv1[1]:.4f}) -- ({uv2[0]:.4f}, {uv2[1]:.4f});"
             )
         elif isinstance(p, Text):
+            if getattr(p, "layer", "geometry") == "annotation":
+                return
             uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
             text = p.text if p.raw_latex else self._escape(p.text)
-            lines.append(f"  \\node[{p.halign}, font=\\sffamily\\scriptsize] at ({uv[0]:.4f}, {uv[1]:.4f}) {{{text}}};")
+            weight = "\\bfseries" if p.fontweight == "bold" else ""
+            lines.append(f"  \\node[{p.halign}, font=\\sffamily {weight}] at ({uv[0]:.4f}, {uv[1]:.4f}) {{{text}}};")
+        elif isinstance(p, LegendItem):
+            return
+        else:
+            raise RenderError(f"TikzRenderer does not support primitive {type(p).__name__}.")
+
+    def _projected_bounds(self, scene: Scene) -> tuple[float, float, float, float] | None:
+        points = []
+        for p in scene.all_primitives():
+            if getattr(p, "layer", "geometry") == "annotation" or getattr(p, "coordinate_space", "world") == "screen":
+                continue
+            points.extend(self._primitive_points(p))
+        if not points:
+            return None
+        uv = self.camera.project(np.array(points))
+        xmin, ymin = uv.min(axis=0)
+        xmax, ymax = uv.max(axis=0)
+        return float(xmin), float(xmax), float(ymin), float(ymax)
+
+    def _draw_annotation(
+        self,
+        lines: list[str],
+        p: Text,
+        bounds: tuple[float, float, float, float],
+    ) -> None:
+        xmin, xmax, ymin, ymax = bounds
+        text = p.text if p.raw_latex else self._escape(p.text)
+        weight = "\\bfseries" if p.fontweight == "bold" else ""
+        font = f"\\sffamily {weight}"
+        if p.metadata.get("kind") == "site_label":
+            uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
+            offset = p.metadata.get("offset", (6, 2))
+            lines.append(
+                f"  \\node[{p.halign}, font={font}, xshift={offset[0]}pt, yshift={offset[1]}pt] "
+                f"at ({uv[0]:.4f}, {uv[1]:.4f}) {{{text}}};"
+            )
+            return
+        pos = np.asarray(p.position).flatten()
+        if len(pos) < 2:
+            return
+        x = xmin + pos[0] * (xmax - xmin)
+        y = ymin + pos[1] * (ymax - ymin)
+        lines.append(f"  \\node[{p.halign}, font={font}] at ({x:.4f}, {y:.4f}) {{{text}}};")
 
     def _draw_legend(self, lines: list[str], scene: Scene, theme: FigureTheme):
         items = [p for p in scene.all_primitives() if isinstance(p, LegendItem)]

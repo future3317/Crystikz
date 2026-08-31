@@ -5,7 +5,7 @@ Publication-grade crystal structure visualization toolkit for materials science 
 `crystalfig` converts crystallographic data (CIF, POSCAR, pymatgen `Structure`, ASE `Atoms`) into publication-ready figures via multiple backends:
 
 - **MatplotlibRenderer** — vector PDF/SVG/EPS/PGF and high-DPI PNG/TIFF.
-- **SvgRenderer** — pure SVG with radial-gradient atoms, gradient bonds, and translucent polyhedra.
+- **SvgRenderer** — pure SVG with vector glossy shading, gradient bonds, and translucent polyhedra.
 - **TikzRenderer** — pure LaTeX TikZ for font-uniform papers.
 
 The core pipeline is:

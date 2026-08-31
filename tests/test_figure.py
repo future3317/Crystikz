@@ -8,6 +8,7 @@ import pytest
 
 from crystalfig.examples.presets import perovskite_structure, rocksalt_structure
 from crystalfig.figure.builder import CrystalFigure
+from crystalfig.geometry.planes import MillerPlane
 
 
 class TestCrystalFigure:
@@ -86,6 +87,23 @@ class TestCrystalFigure:
         assert len(canonical) == 4
         # Periodic-image partner atoms are now also emitted for visible bonds.
         assert len(atoms) >= len(canonical)
+
+    def test_supercell_accepts_general_matrix(self):
+        matrix = np.array([[1, 1, 0], [-1, 1, 0], [0, 0, 1]])
+        scene = CrystalFigure(rocksalt_structure()).supercell(matrix).build_scene()
+        assert scene.metadata["num_sites"] == 4
+
+    def test_miller_plane_uses_final_supercell_lattice(self):
+        fig = CrystalFigure(rocksalt_structure()).supercell((2, 1, 1))
+        fig.add_miller_plane((1, 0, 0))
+        scene = fig.build_scene()
+        polygons = [p for p in scene.all_primitives() if p.__class__.__name__ == "Polygon"]
+        assert len(polygons) == 1
+
+        final_structure = fig.structure.make_supercell((2, 1, 1))
+        expected = MillerPlane((1, 0, 0), final_structure.lattice).intersection_polygon()
+        assert expected is not None
+        assert np.allclose(np.sort(polygons[0].points, axis=0), np.sort(expected, axis=0))
 
     def test_supercell_bonds_and_polyhedra(self):
         """Bonds and polyhedra must be computed on the supercell structure."""
@@ -230,3 +248,25 @@ class TestCrystalFigure:
         ]
         assert len(annotations) == 1
         assert annotations[0].text == "Na"
+
+    @pytest.mark.parametrize("kind", ["site", "formula", "panel"])
+    @pytest.mark.parametrize("fmt", ["pdf", "svg"])
+    def test_annotations_export_end_to_end(self, kind, fmt):
+        fig = CrystalFigure(rocksalt_structure())
+        if kind == "site":
+            fig.add_label(0, "Na", offset=(4, 4))
+        elif kind == "formula":
+            fig.add_formula_label("NaCl", position="top_left")
+        else:
+            fig.add_panel_label("(a)", position="top_right")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / f"annotation.{fmt}"
+            result = fig.export(str(output))
+            assert Path(result.path).exists()
+            if fmt == "svg":
+                svg = output.read_text(encoding="utf-8")
+                expected_text = {"site": "Na", "formula": "NaCl", "panel": "(a)"}[kind]
+                assert svg.count(f">{expected_text}</text>") == 1
+                if kind == "panel":
+                    assert 'font-weight="bold"' in svg

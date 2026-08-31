@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=77.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -39,13 +39,11 @@ dependencies = [
 [project.optional-dependencies]
 ase = ["ase>=3.22.0"]
 reciprocal = ["seekpath>=2.0.0"]
-pyvista = ["pyvista>=0.43.0", "vtk"]
-raytrace = ["fresnel>=0.13.0"]
 latex = ["pdf2image>=1.16.0"]
 dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.1.0", "build>=1.0.0"]
 test = ["pytest>=7.0", "pytest-cov"]
 docs = ["sphinx", "sphinx-rtd-theme"]
-all = ["ase>=3.22.0", "seekpath>=2.0.0", "pyvista>=0.43.0", "vtk", "fresnel>=0.13.0"]
+all = ["ase>=3.22.0", "seekpath>=2.0.0", "pdf2image>=1.16.0"]
 
 [project.scripts]
 crystalfig = "crystalfig.cli.main:main"

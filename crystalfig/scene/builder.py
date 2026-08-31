@@ -123,7 +123,7 @@ class SceneOptions:
     show_polyhedra: bool = False
     show_legend: bool = False
     atom_style: str = "shaded"
-    supercell: tuple[int, int, int] | None = None
+    supercell: int | tuple[int, int, int] | np.ndarray | None = None
     display_boundary: str = "cell_complete"  # cell_complete, connected, polyhedra_complete
     bonds: list[NeighborBond] | None = None
     bond_strategy: Callable | None = None
@@ -601,16 +601,24 @@ class SceneBuilder:
     def _miller_planes(self, structure: CrystalStructure) -> list[Polygon]:
         polygons = []
         for plane in (self.options.miller_planes or []):
-            pts = plane.intersection_polygon()
+            final_plane = MillerPlane(
+                hkl=plane.hkl,
+                lattice=structure.lattice,
+                offset=plane.offset,
+                fill_color=plane.fill_color,
+                edge_color=plane.edge_color,
+                opacity=plane.opacity,
+            )
+            pts = final_plane.intersection_polygon()
             if pts is None:
                 continue
-            fill = plane.fill_color or self.palette.hex("purple")
-            edge = plane.edge_color or self.palette.hex("dark")
+            fill = final_plane.fill_color or self.palette.hex("purple")
+            edge = final_plane.edge_color or self.palette.hex("dark")
             polygons.append(Polygon(
                 points=pts.tolist(),
                 fill_color=fill,
                 edge_color=edge,
-                opacity=plane.opacity,
+                opacity=final_plane.opacity,
                 linewidth=0.5,
             ))
         return polygons
@@ -669,6 +677,8 @@ class SceneBuilder:
                     halign="left",
                     valign="bottom",
                     layer="annotation",
+                    fontweight=ann.fontweight,
+                    coordinate_space="world",
                     metadata={"offset": ann.offset, "kind": "site_label"},
                 ))
             elif ann.kind == "formula_label":
@@ -680,6 +690,7 @@ class SceneBuilder:
                     halign="left",
                     valign="top",
                     layer="annotation",
+                    coordinate_space="screen",
                     metadata={"position": ann.position, "kind": "formula_label"},
                 ))
             elif ann.kind == "panel_label":
@@ -692,6 +703,7 @@ class SceneBuilder:
                     halign="left",
                     valign="top",
                     layer="annotation",
+                    coordinate_space="screen",
                     metadata={"position": ann.position, "kind": "panel_label"},
                 ))
         return texts

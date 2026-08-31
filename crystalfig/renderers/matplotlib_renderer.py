@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Circle, FancyArrowPatch, Polygon
 
+from crystalfig.exceptions import RenderError
 from crystalfig.renderers.base import RenderOptions
 from crystalfig.scene.primitives import (
     Arrow,
@@ -19,8 +20,10 @@ from crystalfig.scene.primitives import (
     LegendItem,
     Line,
     Polyhedron,
+    Polyline,
     Sphere,
     Text,
+    layer_priority,
 )
 from crystalfig.scene.primitives import (
     Polygon as Poly,
@@ -121,7 +124,17 @@ class MatplotlibRenderer:
         for p in primitives:
             if getattr(p, "layer", "default") == "annotation":
                 continue
+            patches_before = len(ax.patches)
+            lines_before = len(ax.lines)
+            texts_before = len(ax.texts)
             self._draw_primitive(ax, p, theme)
+            zorder = 10 + layer_priority(p)
+            for artist in ax.patches[patches_before:]:
+                artist.set_zorder(zorder)
+            for artist in ax.lines[lines_before:]:
+                artist.set_zorder(zorder)
+            for artist in ax.texts[texts_before:]:
+                artist.set_zorder(zorder)
 
         ax.set_xlim(xmin, xmax)
         ax.set_ylim(ymin, ymax)
@@ -160,6 +173,8 @@ class MatplotlibRenderer:
         """Return (xmin, xmax, ymin, ymax) covering all projected primitives."""
         pts = []
         for p in scene.all_primitives():
+            if getattr(p, "layer", "geometry") == "annotation" or getattr(p, "coordinate_space", "world") == "screen":
+                continue
             if isinstance(p, Sphere):
                 uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
                 r = p.radius * self.camera.scale
@@ -172,6 +187,8 @@ class MatplotlibRenderer:
             elif isinstance(p, (Line, Bond, CellEdge, Cylinder)):
                 pts.append(np.asarray(self.camera.project(p.start)).flatten()[:2])
                 pts.append(np.asarray(self.camera.project(p.end)).flatten()[:2])
+            elif isinstance(p, Polyline):
+                pts.extend(self.camera.project(np.array(p.points)))
             elif isinstance(p, Polyhedron):
                 pts.extend(self.camera.project(np.array(p.vertices)))
             elif isinstance(p, Poly):
@@ -232,20 +249,24 @@ class MatplotlibRenderer:
         """Sort primitives by average camera depth (painter's algorithm)."""
         scored = []
         for p in scene.all_primitives():
+            if getattr(p, "layer", "geometry") == "annotation" or getattr(p, "coordinate_space", "world") == "screen":
+                continue
             pts = self._primitive_points(p)
             if len(pts) == 0:
                 depth = 1e9
             else:
                 depth = float(np.mean(self.camera.depth(np.array(pts))))
-            scored.append((depth, p))
-        scored.sort(key=lambda x: x[0])
-        return [p for _, p in scored]
+            scored.append((layer_priority(p), depth, p))
+        scored.sort(key=lambda x: (x[0], x[1]))
+        return [p for _, _, p in scored]
 
     def _primitive_points(self, p) -> list[np.ndarray]:
         if isinstance(p, Sphere):
             return [p.position]
         if isinstance(p, (Line, Bond, CellEdge, Cylinder)):
             return [p.start, p.end]
+        if isinstance(p, Polyline):
+            return p.points
         if isinstance(p, Polyhedron):
             return p.vertices
         if isinstance(p, Poly):
@@ -464,6 +485,20 @@ class MatplotlibRenderer:
             edge = self._to_rgba(p.edge_color or p.color, 0.8)
             poly = Polygon(uv, closed=True, facecolor=fill, edgecolor=edge, linewidth=p.linewidth)
             ax.add_patch(poly)
+        elif isinstance(p, Polyline):
+            if len(p.points) < 2:
+                return
+            points = list(p.points)
+            if p.closed:
+                points.append(points[0])
+            uv = self.camera.project(np.array(points))
+            ax.plot(
+                uv[:, 0],
+                uv[:, 1],
+                color=self._to_rgba(p.color, p.opacity),
+                linewidth=p.linewidth,
+                solid_capstyle="round",
+            )
         elif isinstance(p, (Arrow, Axis)):
             uv1 = np.asarray(self.camera.project(p.start)).flatten()[:2]
             uv2 = np.asarray(self.camera.project(p.start + p.direction)).flatten()[:2]
@@ -479,7 +514,14 @@ class MatplotlibRenderer:
         elif isinstance(p, Text) and getattr(p, "layer", "default") != "annotation":
             # Non-annotation text is drawn in data coordinates.
             uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
-            ax.text(uv[0], uv[1], p.text, fontsize=p.fontsize, color=p.color, ha=p.halign, va=p.valign)
+            ax.text(
+                uv[0], uv[1], p.text, fontsize=p.fontsize, color=p.color,
+                fontweight=p.fontweight, ha=p.halign, va=p.valign,
+            )
+        elif isinstance(p, LegendItem):
+            return
+        else:
+            raise RenderError(f"MatplotlibRenderer does not support primitive {type(p).__name__}.")
 
     def _draw_annotation(self, ax, p: Text) -> None:
         """Draw a screen-space annotation on top of the scene."""
@@ -491,9 +533,10 @@ class MatplotlibRenderer:
 
         if kind == "site_label":
             offset = meta.get("offset", (6, 2))
+            anchor = np.asarray(self.camera.project(p.position)).flatten()[:2]
             ax.annotate(
                 p.text,
-                xy=p.position,
+                xy=anchor,
                 xycoords="data",
                 xytext=offset,
                 textcoords="offset points",
@@ -502,6 +545,7 @@ class MatplotlibRenderer:
                 fontweight=fontweight,
                 ha=p.halign,
                 va=p.valign,
+                zorder=100,
             )
         else:
             pos = np.asarray(p.position).flatten()
@@ -517,6 +561,7 @@ class MatplotlibRenderer:
                 fontweight=fontweight,
                 ha=p.halign,
                 va=p.valign,
+                zorder=100,
             )
 
     def _draw_legend(self, ax, scene: Scene, theme: FigureTheme):

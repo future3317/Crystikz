@@ -12,5 +12,4 @@ DEFAULT_BOND_RADIUS = 0.08
 DEFAULT_LINE_WIDTH = 1.0
 
 # Coordinate conventions
-# Lattice matrix stores column vectors: cart = lattice_matrix @ frac
-# This matches pymatgen convention (Lattice.matrix rows are a, b, c cartesian).
+# Lattice matrix stores a, b, c as rows; cart = frac @ lattice_matrix.

@@ -208,6 +208,8 @@ class Camera:
                 pts.append((ux, uy))
 
         for p in scene.all_primitives():
+            if getattr(p, "layer", "geometry") == "annotation" or getattr(p, "coordinate_space", "world") == "screen":
+                continue
             if hasattr(p, "position"):  # Sphere, Text
                 r = getattr(p, "radius", 0.0)
                 add_point(p.position, r)

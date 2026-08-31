@@ -3,9 +3,29 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
+
+from crystalfig.exceptions import RenderError
+
+LAYER_ORDER = {
+    "background": 0,
+    "geometry": 1,
+    "foreground": 2,
+    "annotation": 3,
+}
+
+
+def layer_priority(primitive: Any) -> int:
+    """Return the painter-order priority for a scene primitive."""
+    layer = getattr(primitive, "layer", "geometry")
+    try:
+        return LAYER_ORDER[layer]
+    except KeyError as exc:
+        raise RenderError(
+            f"Unsupported scene layer {layer!r}; use background, geometry, foreground, or annotation."
+        ) from exc
 
 
 @dataclass
@@ -17,7 +37,7 @@ class Primitive:
     visible: bool = True
     label: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
-    layer: str = "default"
+    layer: str = "geometry"
 
 
 @dataclass
@@ -129,7 +149,7 @@ class Arrow(Primitive):
 
 @dataclass
 class Text(Primitive):
-    """Text label at a 3D position."""
+    """Text label at a world or normalized screen position."""
 
     position: np.ndarray = field(default_factory=lambda: np.zeros(3))
     text: str = ""
@@ -138,6 +158,8 @@ class Text(Primitive):
     halign: str = "center"
     valign: str = "center"
     raw_latex: bool = False
+    fontweight: str = "normal"
+    coordinate_space: Literal["world", "screen"] = "world"
 
     def __post_init__(self):
         self.position = np.asarray(self.position, dtype=float)

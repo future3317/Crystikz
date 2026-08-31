@@ -7,18 +7,22 @@ from xml.sax.saxutils import escape
 
 import numpy as np
 
+from crystalfig.exceptions import RenderError
 from crystalfig.renderers.base import RenderOptions
 from crystalfig.scene.primitives import (
     Arrow,
     Axis,
     Bond,
     CellEdge,
+    Cylinder,
     LegendItem,
     Line,
     Polygon,
     Polyhedron,
+    Polyline,
     Sphere,
     Text,
+    layer_priority,
 )
 from crystalfig.scene.scene import Scene
 from crystalfig.styles.theme import FigureTheme
@@ -30,7 +34,7 @@ class SvgRenderer:
     This renderer is intentionally lightweight: it projects 3D primitives with
     the same orthographic camera used by the Matplotlib backend, sorts them by
     camera depth, and emits plain SVG.  It targets the Nature-style crystal
-    illustrations the user asked for: soft radial-gradient atoms, smooth
+    illustrations the user asked for: vector glossy-shaded atoms, smooth
     split-colour bonds, translucent polyhedra, and thin cell edges.
     """
 
@@ -71,6 +75,10 @@ class SvgRenderer:
             aspect = max(0.35, min(aspect, 2.8))
             height_mm = width_mm * aspect
 
+        self._user_units_per_mm = dx / width_mm
+        self._user_units_per_point = self._user_units_per_mm * 25.4 / 72.0
+        self._svg_y_sum = ymin + ymax
+
         # SVG viewBox uses camera units; physical size is in mm.
         svg_attrs = (
             f'xmlns="http://www.w3.org/2000/svg" '
@@ -98,8 +106,8 @@ class SvgRenderer:
 
         if options.title:
             lines.append(
-                f'  <text x="{(xmin + xmax) / 2:.4f}" y="{ymax:.4f}" '
-                f'text-anchor="middle" font-size="{theme.title_size * 0.35:.2f}" '
+                f'  <text x="{(xmin + xmax) / 2:.4f}" y="{ymin:.4f}" '
+                f'text-anchor="middle" font-size="{self._pt_to_user(theme.title_size):.4f}" '
                 f'fill="black">{escape(options.title)}</text>'
             )
 
@@ -134,6 +142,8 @@ class SvgRenderer:
     def _projected_bounds(self, scene: Scene) -> tuple[float, float, float, float] | None:
         pts = []
         for p in scene.all_primitives():
+            if getattr(p, "layer", "geometry") == "annotation" or getattr(p, "coordinate_space", "world") == "screen":
+                continue
             if isinstance(p, Sphere):
                 uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
                 r = p.radius * self.camera.scale
@@ -143,9 +153,11 @@ class SvgRenderer:
                     uv + np.array([0.0, r]),
                     uv - np.array([0.0, r]),
                 ])
-            elif isinstance(p, (Line, Bond, CellEdge)):
+            elif isinstance(p, (Line, Bond, CellEdge, Cylinder)):
                 pts.append(np.asarray(self.camera.project(p.start)).flatten()[:2])
                 pts.append(np.asarray(self.camera.project(p.end)).flatten()[:2])
+            elif isinstance(p, Polyline):
+                pts.extend(self.camera.project(np.array(p.points)))
             elif isinstance(p, Polyhedron):
                 pts.extend(self.camera.project(np.array(p.vertices)))
             elif isinstance(p, Polygon):
@@ -178,20 +190,24 @@ class SvgRenderer:
     def _sort_by_depth(self, scene: Scene) -> list:
         scored = []
         for p in scene.all_primitives():
+            if getattr(p, "layer", "geometry") == "annotation" or getattr(p, "coordinate_space", "world") == "screen":
+                continue
             pts = self._primitive_points(p)
             if len(pts) == 0:
                 depth = 1e9
             else:
                 depth = float(np.mean(self.camera.depth(np.array(pts))))
-            scored.append((depth, p))
-        scored.sort(key=lambda x: x[0])
-        return [p for _, p in scored]
+            scored.append((layer_priority(p), depth, p))
+        scored.sort(key=lambda x: (x[0], x[1]))
+        return [p for _, _, p in scored]
 
     def _primitive_points(self, p) -> list[np.ndarray]:
         if isinstance(p, Sphere):
             return [p.position]
-        if isinstance(p, (Line, Bond, CellEdge)):
+        if isinstance(p, (Line, Bond, CellEdge, Cylinder)):
             return [p.start, p.end]
+        if isinstance(p, Polyline):
+            return p.points
         if isinstance(p, Polyhedron):
             return p.vertices
         if isinstance(p, Polygon):
@@ -231,13 +247,13 @@ class SvgRenderer:
         return f"gsphere_{base}_{id(p) & 0xFFFFFF}"
 
     def _sphere_gradient_def(self, p: Sphere, grad_id: str) -> list[str]:
-        """Radial gradient clipped to the atom disk for soft shading."""
+        """Define the clip path used by glossy atom shading."""
         r = p.radius * self.camera.scale
         # We do not emit a true radialGradient because the crescent/highlight
         # are offset circles; instead we use the gradient id as a marker and
         # draw the shading with explicit clipPath below.
         cid = f"cp_{grad_id}"
-        uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
+        uv = self._project_uv(p.position)
         return [
             f'    <clipPath id="{cid}">',
             f'      <circle cx="{uv[0]:.4f}" cy="{uv[1]:.4f}" r="{r:.4f}"/>',
@@ -253,8 +269,8 @@ class SvgRenderer:
         c1 = self._color_to_hex(color_i)
         c2 = self._color_to_hex(color_j)
         start, end = self._clip_bond(p)
-        uv1 = np.asarray(self.camera.project(start)).flatten()[:2]
-        uv2 = np.asarray(self.camera.project(end)).flatten()[:2]
+        uv1 = self._project_uv(start)
+        uv2 = self._project_uv(end)
         if mode == "split":
             mid = (uv1 + uv2) / 2.0
             return [
@@ -292,6 +308,10 @@ class SvgRenderer:
             return self._draw_bond(p)
         if isinstance(p, (Line, CellEdge)):
             return self._draw_line(p)
+        if isinstance(p, Cylinder):
+            return self._draw_line(p)
+        if isinstance(p, Polyline):
+            return self._draw_polyline(p)
         if isinstance(p, Polyhedron):
             return self._draw_polyhedron(p)
         if isinstance(p, Polygon):
@@ -299,11 +319,15 @@ class SvgRenderer:
         if isinstance(p, (Arrow, Axis)):
             return self._draw_arrow(p)
         if isinstance(p, Text):
+            if getattr(p, "layer", "geometry") == "annotation":
+                return []
             return self._draw_text(p)
-        return []
+        if isinstance(p, LegendItem):
+            return []
+        raise RenderError(f"SvgRenderer does not support primitive {type(p).__name__}.")
 
     def _draw_sphere(self, p: Sphere) -> list[str]:
-        uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
+        uv = self._project_uv(p.position)
         r = p.radius * self.camera.scale
         cx, cy = uv
         base_hex = self._color_to_hex(p.color)
@@ -312,8 +336,8 @@ class SvgRenderer:
         if p.render_style == "wireframe":
             elements.append(
                 f'  <circle cx="{cx:.4f}" cy="{cy:.4f}" r="{r:.4f}" '
-                f'fill="none" stroke="{base_hex}" stroke-width="{0.5 * r:.3f}" '
-                f'stroke-dasharray="{0.3 * r:.3f},{0.3 * r:.3f}"/>'
+                f'fill="none" stroke="{base_hex}" stroke-width="{self._pt_to_user(1.5):.4f}" '
+                f'stroke-dasharray="{self._pt_to_user(1.5):.4f},{self._pt_to_user(1.5):.4f}"/>'
             )
             return elements
 
@@ -338,7 +362,7 @@ class SvgRenderer:
         elements.append(
             f'  <circle cx="{cx:.4f}" cy="{cy:.4f}" r="{r:.4f}" '
             f'fill="none" stroke="{self._color_to_hex(rim)}" '
-            f'stroke-width="{0.03 * r:.4f}" stroke-opacity="{0.35 * p.opacity:.3f}"/>'
+                f'stroke-width="{self._pt_to_user(0.6):.4f}" stroke-opacity="{0.35 * p.opacity:.3f}"/>'
         )
 
         # Soft lower-right crescent (diffuse shadow).
@@ -366,9 +390,10 @@ class SvgRenderer:
 
     def _draw_bond(self, p: Bond) -> list[str]:
         start, end = self._clip_bond(p)
-        uv1 = np.asarray(self.camera.project(start)).flatten()[:2]
-        uv2 = np.asarray(self.camera.project(end)).flatten()[:2]
-        lw = max(0.5, self.theme.bond_width * self.camera.scale * 18)
+        uv1 = self._project_uv(start)
+        uv2 = self._project_uv(end)
+        lw_pt = max(1.2, self.theme.bond_width * self.camera.scale * 18)
+        lw = self._pt_to_user(lw_pt)
         mode = getattr(self.theme, "bond_color_mode", "uniform")
 
         if mode in ("split", "split_soft"):
@@ -420,10 +445,10 @@ class SvgRenderer:
         return start, end
 
     def _draw_line(self, p: Line | CellEdge) -> list[str]:
-        uv1 = np.asarray(self.camera.project(p.start)).flatten()[:2]
-        uv2 = np.asarray(self.camera.project(p.end)).flatten()[:2]
+        uv1 = self._project_uv(p.start)
+        uv2 = self._project_uv(p.end)
         color = self._color_to_hex(p.color)
-        lw = getattr(p, "linewidth", 0.5)
+        lw = self._pt_to_user(getattr(p, "linewidth", 0.5))
         alpha = p.opacity
         if isinstance(p, CellEdge) and p.is_back:
             alpha *= 0.5
@@ -457,7 +482,7 @@ class SvgRenderer:
         fill_hex = self._color_to_hex(p.fill_color or p.color)
         for _, face, nz in face_data:
             pts = np.array([p.vertices[i] for i in face])
-            uv = self.camera.project(pts)
+            uv = self._project_uv(pts)
             alpha = p.opacity * (0.18 if nz < 0 else 0.55)
             points_str = " ".join(f"{x:.4f},{y:.4f}" for x, y in uv)
             elements.append(
@@ -495,11 +520,11 @@ class SvgRenderer:
 
         edge_hex = self._color_to_hex(p.edge_color or p.color)
         for a, b in visible_edges:
-            uv = self.camera.project(np.array([p.vertices[a], p.vertices[b]]))
+            uv = self._project_uv(np.array([p.vertices[a], p.vertices[b]]))
             mid_cam_z = float(np.mean([cam_vertices[a][2], cam_vertices[b][2]]))
             is_front = mid_cam_z >= 0
             alpha = 0.45 if is_front else 0.22
-            lw = max(0.35, p.edge_width * (0.9 if is_front else 0.55))
+            lw = self._pt_to_user(max(0.35, p.edge_width * (0.9 if is_front else 0.55)))
             elements.append(
                 f'  <line x1="{uv[0,0]:.4f}" y1="{uv[0,1]:.4f}" x2="{uv[1,0]:.4f}" y2="{uv[1,1]:.4f}" '
                 f'stroke="{edge_hex}" stroke-width="{lw:.3f}" stroke-opacity="{alpha:.3f}" '
@@ -511,20 +536,20 @@ class SvgRenderer:
     def _draw_polygon(self, p: Polygon) -> list[str]:
         if len(p.points) < 3:
             return []
-        uv = self.camera.project(np.array(p.points))
+        uv = self._project_uv(np.array(p.points))
         points_str = " ".join(f"{x:.4f},{y:.4f}" for x, y in uv)
         fill = self._color_to_hex(p.fill_color or p.color)
         edge = self._color_to_hex(p.edge_color or p.color)
         return [
             f'  <polygon points="{points_str}" fill="{fill}" fill-opacity="{p.opacity:.3f}" '
-            f'stroke="{edge}" stroke-width="{p.linewidth:.3f}" stroke-opacity="0.8"/>'
+                f'stroke="{edge}" stroke-width="{self._pt_to_user(p.linewidth):.4f}" stroke-opacity="0.8"/>'
         ]
 
     def _draw_arrow(self, p: Arrow | Axis) -> list[str]:
-        uv1 = np.asarray(self.camera.project(p.start)).flatten()[:2]
-        uv2 = np.asarray(self.camera.project(p.start + p.direction)).flatten()[:2]
+        uv1 = self._project_uv(p.start)
+        uv2 = self._project_uv(p.start + p.direction)
         color = self._color_to_hex(p.color)
-        shaft_w = p.shaft_radius * self.camera.scale * 18
+        shaft_w = self._pt_to_user(p.shaft_radius * self.camera.scale * 18)
         head_len = np.linalg.norm(p.direction) * self.camera.scale * 0.25
         head_w = head_len * 0.6
         elements = [
@@ -551,19 +576,19 @@ class SvgRenderer:
             label_pos = uv2 + (uv2 - uv1) * 0.12
             elements.append(
                 f'  <text x="{label_pos[0]:.4f}" y="{label_pos[1]:.4f}" '
-                f'font-size="{self.theme.label_size * 0.35:.2f}" fill="{color}">'
+                f'font-size="{self._pt_to_user(self.theme.label_size):.4f}" fill="{color}">'
                 f'{escape(p.label)}</text>'
             )
         return elements
 
     def _draw_text(self, p: Text) -> list[str]:
-        uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
+        uv = self._project_uv(p.position)
         color = self._color_to_hex(p.color)
         anchor = {"left": "start", "center": "middle", "right": "end"}.get(p.halign, "middle")
         baseline = {"top": "auto", "center": "middle", "bottom": "auto"}.get(p.valign, "middle")
         return [
             f'  <text x="{uv[0]:.4f}" y="{uv[1]:.4f}" text-anchor="{anchor}" '
-            f'dominant-baseline="{baseline}" font-size="{p.fontsize * 0.35:.2f}" '
+            f'dominant-baseline="{baseline}" font-size="{self._pt_to_user(p.fontsize):.4f}" '
             f'fill="{color}">{escape(p.text)}</text>'
         ]
 
@@ -581,21 +606,18 @@ class SvgRenderer:
         color = self._color_to_hex(p.color)
         anchor = {"left": "start", "center": "middle", "right": "end"}.get(p.halign, "middle")
         baseline = {"top": "auto", "center": "middle", "bottom": "auto"}.get(p.valign, "middle")
-        font_size = p.fontsize * 0.35
+        font_size = self._pt_to_user(p.fontsize)
         weight = getattr(p, "fontweight", "normal")
         weight_attr = f' font-weight="{weight}"' if weight != "normal" else ""
 
         if kind == "site_label":
-            uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
+            uv = self._project_uv(p.position)
             offset = meta.get("offset", (6, 2))
-            # Approximate point-to-viewBox scaling using a typical 72 dpi point.
-            dx = xmax - xmin
-            scale = dx / 200.0
-            x = uv[0] + offset[0] * scale
-            y = uv[1] - offset[1] * scale
+            x = uv[0] + self._pt_to_user(offset[0])
+            y = uv[1] - self._pt_to_user(offset[1])
             return [
                 f'  <text x="{x:.4f}" y="{y:.4f}" text-anchor="{anchor}" '
-                f'dominant-baseline="{baseline}" font-size="{font_size:.2f}" '
+                f'dominant-baseline="{baseline}" font-size="{font_size:.4f}" '
                 f'fill="{color}"{weight_attr}>{escape(p.text)}</text>'
             ]
 
@@ -606,7 +628,7 @@ class SvgRenderer:
         y = ymin + (1.0 - pos[1]) * (ymax - ymin)
         return [
             f'  <text x="{x:.4f}" y="{y:.4f}" text-anchor="{anchor}" '
-            f'dominant-baseline="{baseline}" font-size="{font_size:.2f}" '
+                f'dominant-baseline="{baseline}" font-size="{font_size:.4f}" '
             f'fill="{color}"{weight_attr}>{escape(p.text)}</text>'
         ]
 
@@ -634,7 +656,7 @@ class SvgRenderer:
             )
             elements.append(
                 f'  <text x="{x0 + step * 0.4:.4f}" y="{y:.4f}" '
-                f'font-size="{self.theme.label_size * 0.35:.2f}" fill="black">'
+                f'font-size="{self._pt_to_user(self.theme.label_size):.4f}" fill="black">'
                 f'{escape(item.text)}</text>'
             )
         return elements
@@ -642,6 +664,36 @@ class SvgRenderer:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _pt_to_user(self, points: float) -> float:
+        """Convert a physical point value to the current SVG viewBox units."""
+        return float(points) * self._user_units_per_point
+
+    def _project_uv(self, points: np.ndarray) -> np.ndarray:
+        """Project world points and flip y to match SVG's downward axis."""
+        points = np.asarray(points, dtype=float)
+        single = points.ndim == 1
+        uv = np.asarray(self.camera.project(points), dtype=float)
+        if single:
+            uv = uv[0]
+        uv = uv.copy()
+        uv[..., 1] = self._svg_y_sum - uv[..., 1]
+        return uv
+
+    def _draw_polyline(self, p: Polyline) -> list[str]:
+        if len(p.points) < 2:
+            return []
+        points = list(p.points)
+        if p.closed:
+            points.append(points[0])
+        uv = self._project_uv(np.array(points))
+        points_str = " ".join(f"{x:.4f},{y:.4f}" for x, y in uv)
+        color = self._color_to_hex(p.color)
+        return [
+            f'  <polyline points="{points_str}" fill="none" stroke="{color}" '
+            f'stroke-width="{self._pt_to_user(p.linewidth):.4f}" '
+            f'stroke-opacity="{p.opacity:.3f}" stroke-linecap="round"/>'
+        ]
 
     def _atom_color_at(self, site_index: int, image_offset: tuple[int, int, int]) -> str | tuple:
         key = (site_index, tuple(image_offset))

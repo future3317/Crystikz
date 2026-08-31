@@ -96,8 +96,9 @@ class CrystalFigure:
             raise StructureParseError(f"Could not get primitive cell: {exc}") from exc
         return self
 
-    def supercell(self, scaling: int | tuple[int, int, int]) -> CrystalFigure:
-        self._scene_options.supercell = scaling if isinstance(scaling, tuple) else (scaling, scaling, scaling)
+    def supercell(self, scaling: int | tuple[int, int, int] | np.ndarray) -> CrystalFigure:
+        """Apply a scalar, diagonal tuple, or arbitrary 3x3 supercell matrix."""
+        self._scene_options.supercell = scaling
         return self
 
     # ------------------------------------------------------------------

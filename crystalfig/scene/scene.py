@@ -59,6 +59,8 @@ class Scene:
         """Return axis-aligned bounding box as [[xmin,ymin,zmin], [xmax,ymax,zmax]]."""
         positions = []
         for p in self.all_primitives():
+            if getattr(p, "layer", "geometry") == "annotation" or getattr(p, "coordinate_space", "world") == "screen":
+                continue
             if hasattr(p, "position"):
                 positions.append(p.position)
             elif hasattr(p, "start"):

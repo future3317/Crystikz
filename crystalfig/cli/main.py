@@ -82,7 +82,7 @@ def cmd_doctor(_args):
             print(f"  {dep}: {getattr(mod, '__version__', 'installed')}")
         except ImportError:
             print(f"  {dep}: NOT INSTALLED")
-    optional = [("ase", "ase"), ("seekpath", "reciprocal"), ("pyvista", "pyvista"), ("vtk", "pyvista")]
+    optional = [("ase", "ase"), ("seekpath", "reciprocal")]
     for dep, extra in optional:
         try:
             __import__(dep)
