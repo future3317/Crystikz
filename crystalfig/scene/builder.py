@@ -60,11 +60,13 @@ class SceneBuilder:
         theme: FigureTheme,
         palette: ColorPalette,
         options: SceneOptions,
+        camera: Camera | None = None,
     ):
         self.structure = structure
         self.theme = theme
         self.palette = palette
         self.options = options
+        self.camera = camera
 
     def build(self) -> Scene:
         """Build and return the complete Scene."""
@@ -205,8 +207,8 @@ class SceneBuilder:
             (4, 5), (5, 6), (6, 7), (7, 4),
             (0, 4), (1, 5), (2, 6), (3, 7),
         ]
-        # Use a default camera to classify front/back edges
-        camera = Camera(elevation=25.0, azimuth=45.0)
+        # Use the actual rendering camera (or a default) to classify front/back edges
+        camera = self.camera if self.camera is not None else Camera(elevation=25.0, azimuth=45.0)
         depths = camera.depth(corners)
         center_depth = float(np.mean(depths))
         lines = []

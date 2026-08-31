@@ -43,6 +43,24 @@ class TestPeriodic:
         # The nearest image should be within a single cell dimension.
         assert dist < max(lat.lengths) + 1e-6
 
+    def test_nearest_image_is_global_minimum(self):
+        """The returned image must match the minimum distance over a 3x3x3 image grid."""
+        lat = Lattice.from_parameters(3.0, 4.0, 5.0, 70.0, 80.0, 85.0)
+        fi = np.array([0.9, 0.1, 0.1])
+        fj = np.array([0.1, 0.9, 0.9])
+        image_cart, _jimage = nearest_image(fi, fj, lattice=lat)
+        ref_cart = lat.frac_to_cart(fi)
+        returned_dist = np.linalg.norm(image_cart - ref_cart)
+
+        min_dist = float("inf")
+        for di in range(-1, 2):
+            for dj in range(-1, 2):
+                for dk in range(-1, 2):
+                    trial_frac = fj + np.array([di, dj, dk], dtype=float)
+                    trial_cart = lat.frac_to_cart(trial_frac)
+                    min_dist = min(min_dist, float(np.linalg.norm(trial_cart - ref_cart)))
+        assert returned_dist == pytest.approx(min_dist, abs=1e-6)
+
     def test_wrap_frac(self):
         assert np.allclose(wrapped_frac(np.array([1.1, -0.2, 0.5])), [0.1, 0.8, 0.5])
 

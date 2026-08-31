@@ -79,11 +79,19 @@ def nearest_image(
     """
     frac_i = np.asarray(frac_i, dtype=float)
     frac_j = np.asarray(frac_j, dtype=float)
+
+    if lattice is not None:
+        from pymatgen.core import Lattice as PmgLattice
+
+        pmg_lat = PmgLattice(lattice.matrix)
+        dist, jimage = pmg_lat.get_distance_and_image(frac_i.tolist(), frac_j.tolist())
+        jimage = tuple(int(x) for x in jimage)
+        image_frac = frac_j + np.array(jimage, dtype=float)
+        return lattice.frac_to_cart(image_frac), jimage
+
     delta = frac_j - frac_i
     jimage = tuple(int(x) for x in -np.round(delta))
     image_frac = frac_j + np.array(jimage, dtype=float)
-    if lattice is not None:
-        return lattice.frac_to_cart(image_frac), jimage
     return image_frac, jimage
 
 

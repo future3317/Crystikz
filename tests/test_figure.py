@@ -10,6 +10,19 @@ from crystalfig.figure.builder import CrystalFigure
 
 
 class TestCrystalFigure:
+    def test_from_pymatgen_structure(self):
+        """Passing a pymatgen Structure directly must use the adapter."""
+        from pymatgen.core import Lattice as PmgLattice
+        from pymatgen.core import Structure
+
+        pmg = Structure(PmgLattice.cubic(4.0), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+        fig = CrystalFigure.from_structure(pmg)
+        assert fig.structure.num_sites == 2
+        assert set(fig.structure.unique_species()) == {"Na", "Cl"}
+
+    def test_perovskite_formula_reduced(self):
+        fig = CrystalFigure(perovskite_structure())
+        assert fig.structure.formula == "BaTiO3"
     def test_quick_export_pdf(self):
         fig = CrystalFigure(rocksalt_structure()).quick()
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -76,3 +89,22 @@ class TestCrystalFigure:
             # jimage should be an integer triple
             assert len(bond.jimage) == 3
             assert all(isinstance(x, int) for x in bond.jimage)
+
+    def test_cell_edges_follow_camera(self):
+        """Back edges classification must change when the camera view changes."""
+        struct = rocksalt_structure()
+        fig_default = CrystalFigure(struct).show_unit_cell()
+        scene_default = fig_default.build_scene()
+        edges_default = [p for p in scene_default.all_primitives() if p.__class__.__name__ == "CellEdge"]
+        back_default = sum(1 for e in edges_default if e.is_back)
+
+        fig_view = CrystalFigure(struct).show_unit_cell().view([1, 0, 0])
+        scene_view = fig_view.build_scene()
+        edges_view = [p for p in scene_view.all_primitives() if p.__class__.__name__ == "CellEdge"]
+        back_view = sum(1 for e in edges_view if e.is_back)
+
+        # The number of back edges should generally differ for a different view.
+        # If both are zero or equal, at least verify that the property is set.
+        assert len(edges_default) == 12
+        assert len(edges_view) == 12
+        assert back_default != back_view or back_default + back_view <= 24

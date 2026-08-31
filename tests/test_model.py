@@ -86,8 +86,8 @@ class TestCrystalStructure:
 
     def test_perovskite_preset_formula(self):
         struct = perovskite_structure()
-        # Formula sorts by descending count, then alphabetically.
-        assert struct.formula == "O3BaTi"
+        # Composition should give the standard reduced formula.
+        assert struct.formula == "BaTiO3"
         assert struct.num_sites == 5
 
 

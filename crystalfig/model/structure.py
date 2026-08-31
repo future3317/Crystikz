@@ -32,13 +32,14 @@ class CrystalStructure:
 
     @property
     def formula(self) -> str:
-        """Reduced formula counting the dominant element of each site."""
-        counts: dict[str, int] = {}
+        """Reduced formula using pymatgen Composition conventions."""
+        from pymatgen.core import Composition
+
+        comp: dict[str, float] = {}
         for site in self.sites:
-            el = site.dominant_element
-            counts[el] = counts.get(el, 0) + 1
-        parts = sorted(counts.items(), key=lambda x: (-x[1], x[0]))
-        return "".join(f"{k}{v if v > 1 else ''}" for k, v in parts)
+            for species, occ in site.occupancy.items():
+                comp[species] = comp.get(species, 0.0) + occ
+        return Composition(comp).reduced_formula
 
     @property
     def num_sites(self) -> int:

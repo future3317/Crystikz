@@ -4,6 +4,9 @@ import numpy as np
 import pytest
 
 from crystalfig.examples.presets import perovskite_structure, rocksalt_structure
+from crystalfig.model.lattice import Lattice
+from crystalfig.model.site import Site
+from crystalfig.model.structure import CrystalStructure
 from crystalfig.neighbors.strategies import CovalentRadiiStrategy, CutoffStrategy
 
 
@@ -56,3 +59,28 @@ class TestPBCBondGeometry:
             image_j = pos_j + struct.lattice.frac_to_cart(np.array(bond.jimage, dtype=float))
             reconstructed = np.linalg.norm(image_j - pos_i)
             assert reconstructed == pytest.approx(bond.distance, abs=1e-6)
+
+    def test_single_atom_primitive_cell(self):
+        """Periodic self-bonds of a single-atom primitive cell must not be dropped."""
+        struct = CrystalStructure(
+            lattice=Lattice.cubic(3.0),
+            sites=[Site([0.0, 0.0, 0.0], "Cu")],
+        )
+        bonds = CutoffStrategy(cutoff=3.5).get_bonds(struct)
+        # Should find the 6 nearest neighbours across cell faces.
+        assert len(bonds) == 6
+        # All bonds are periodic images of the same site.
+        assert all(bond.i == bond.j for bond in bonds)
+        assert all(bond.jimage != (0, 0, 0) for bond in bonds)
+
+    def test_canonical_deduplication(self):
+        """Reverse-direction periodic neighbours must not duplicate bonds."""
+        struct = rocksalt_structure()
+        bonds = CutoffStrategy(cutoff=3.0).get_bonds(struct)
+        keys = set()
+        for bond in bonds:
+            key = (bond.i, bond.j, bond.jimage)
+            reverse = (bond.j, bond.i, tuple(-x for x in bond.jimage))
+            assert key not in keys
+            assert reverse not in keys
+            keys.add(key)

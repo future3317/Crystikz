@@ -46,8 +46,7 @@ class CrystalFigure:
     @classmethod
     def from_structure(cls, structure, **kwargs) -> CrystalFigure:
         """Accept internal CrystalStructure, pymatgen Structure, or ASE Atoms."""
-        if hasattr(structure, "lattice") and hasattr(structure, "sites"):
-            # Internal model
+        if isinstance(structure, CrystalStructure):
             return cls(structure, **kwargs)
         try:
             from pymatgen.core import Structure as PmgStructure
@@ -219,7 +218,7 @@ class CrystalFigure:
     # Build & export
     # ------------------------------------------------------------------
     def build_scene(self) -> Scene:
-        builder = SceneBuilder(self.structure, self.theme, self.palette, self._scene_options)
+        builder = SceneBuilder(self.structure, self.theme, self.palette, self._scene_options, camera=self.camera)
         scene = builder.build()
         # Apply camera auto-fit
         bbox = scene.bounding_box()

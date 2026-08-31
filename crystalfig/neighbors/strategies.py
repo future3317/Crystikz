@@ -16,6 +16,19 @@ def _pmg_neighbor_list(structure: CrystalStructure, max_cutoff: float):
     return pmg.get_all_neighbors(max_cutoff, include_index=True, include_image=True)
 
 
+def _canonical_bond_key(i: int, j: int, image: tuple[int, int, int]) -> tuple:
+    """Canonical key treating (i,j,image) and (j,i,-image) as the same bond.
+
+    For self-bonds (i == j) each periodic image is kept distinct, so no
+    reversal is performed.
+    """
+    forward = (i, j, image)
+    if i == j:
+        return forward
+    reverse = (j, i, tuple(-x for x in image))
+    return min(forward, reverse)
+
+
 class CutoffStrategy:
     """Bond detection by global or element-pair distance cutoff.
 
@@ -38,22 +51,28 @@ class CutoffStrategy:
 
     def get_bonds(self, structure: CrystalStructure) -> list[NeighborBond]:
         bonds = []
+        seen: set[tuple] = set()
         max_cutoff = max(self.cutoff, *(self.pair_cutoffs.values() or [0.0]))
         all_neighbors = _pmg_neighbor_list(structure, max_cutoff)
         for i, nbrs in enumerate(all_neighbors):
             for _site, dist, j, image in nbrs:
-                if j <= i:
+                if dist < 0.1:
                     continue
+                jimage = tuple(int(round(x)) for x in image)
+                key = _canonical_bond_key(i, j, jimage)
+                if key in seen:
+                    continue
+                seen.add(key)
                 cutoff = self._cutoff_for(
                     structure.sites[i].dominant_element,
                     structure.sites[j].dominant_element,
                 )
-                if dist > cutoff or dist < 0.1:
+                if dist > cutoff:
                     continue
                 bonds.append(NeighborBond(
                     i=i,
                     j=j,
-                    jimage=tuple(int(round(x)) for x in image),
+                    jimage=jimage,
                     distance=float(dist),
                 ))
         return bonds
@@ -68,20 +87,26 @@ class CovalentRadiiStrategy:
 
     def get_bonds(self, structure: CrystalStructure) -> list[NeighborBond]:
         bonds = []
+        seen: set[tuple] = set()
         all_neighbors = _pmg_neighbor_list(structure, self.max_cutoff)
         for i, nbrs in enumerate(all_neighbors):
             for _site, dist, j, image in nbrs:
-                if j <= i:
+                if dist < 0.1:
                     continue
+                jimage = tuple(int(round(x)) for x in image)
+                key = _canonical_bond_key(i, j, jimage)
+                if key in seen:
+                    continue
+                seen.add(key)
                 sp1 = structure.sites[i].dominant_element
                 sp2 = structure.sites[j].dominant_element
                 cutoff = get_radius(sp1, "covalent", 0.2) + get_radius(sp2, "covalent", 0.2) + self.tolerance
-                if dist > cutoff or dist < 0.1:
+                if dist > cutoff:
                     continue
                 bonds.append(NeighborBond(
                     i=i,
                     j=j,
-                    jimage=tuple(int(round(x)) for x in image),
+                    jimage=jimage,
                     distance=float(dist),
                 ))
         return bonds
