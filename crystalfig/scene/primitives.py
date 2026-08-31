@@ -128,20 +128,6 @@ class Arrow(Primitive):
 
 
 @dataclass
-class Plane(Primitive):
-    """A crystallographic plane (e.g. Miller plane)."""
-
-    origin: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    normal: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, 1.0]))
-    width: float = 1.0
-    height: float = 1.0
-
-    def __post_init__(self):
-        self.origin = np.asarray(self.origin, dtype=float)
-        self.normal = np.asarray(self.normal, dtype=float)
-
-
-@dataclass
 class Text(Primitive):
     """Text label at a 3D position."""
 

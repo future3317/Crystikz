@@ -15,7 +15,6 @@ from crystalfig.scene.primitives import (
     Cylinder,
     LegendItem,
     Line,
-    Plane,
     Polyhedron,
     Sphere,
     Text,
@@ -132,7 +131,7 @@ class TikzRenderer:
             return [p.start, p.end]
         if isinstance(p, Polyhedron):
             return p.vertices
-        if isinstance(p, (Poly, Plane)):
+        if isinstance(p, Poly):
             return p.points
         if isinstance(p, (Arrow, Axis)):
             return [p.start, p.start + p.direction]

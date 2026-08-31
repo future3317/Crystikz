@@ -31,6 +31,16 @@ class ColorPalette:
         rgb = self.color(name, tuple(int(c * 255) for c in default))
         return tuple(c / 255.0 for c in rgb)
 
+    def copy(self) -> ColorPalette:
+        """Return a deep copy of the palette."""
+        from copy import deepcopy
+
+        return ColorPalette(
+            name=self.name,
+            element_colors=deepcopy(self.element_colors),
+            accents=deepcopy(self.accents),
+        )
+
 
 def _mute(rgb: tuple[int, int, int], factor: float = 0.35, target: tuple[int, int, int] = (150, 150, 155)) -> tuple[int, int, int]:
     """Blend an RGB color toward a neutral gray to lower saturation."""
@@ -45,6 +55,15 @@ def _desaturate_element(rgb: tuple[int, int, int], factor: float = 0.55) -> tupl
     r, g, b = rgb
     gray = 0.299 * r + 0.587 * g + 0.114 * b
     return tuple(int(rgb[i] * (1.0 - factor) + gray * factor) for i in range(3))
+
+
+def _publication_from_jmol(rgb: tuple[int, int, int]) -> tuple[int, int, int]:
+    """Derive a publication-friendly color from a raw Jmol color.
+
+    Lower saturation and mute toward the theme gray so the color harmonises
+    with the hand-tuned publication palette.
+    """
+    return _mute(_desaturate_element(rgb, factor=0.45), factor=0.25)
 
 
 # Base colors carry element identity; the muted palette blends them toward gray
@@ -153,6 +172,49 @@ _PUBLICATION_BASE: dict[str, tuple[int, int, int]] = {
     "La": (130, 180, 210),
     "Ce": (210, 210, 170),
     "Pb": (110, 110, 115),
+}
+
+# Raw Jmol/CPK colors for elements H (Z=1) through Bi (Z=83).  These are used
+# only to derive muted publication colors for elements not present above.
+_JMOL_BASE: dict[str, tuple[int, int, int]] = {
+    "H": (255, 255, 255), "He": (217, 255, 255), "Li": (204, 128, 255),
+    "Be": (194, 255, 0), "B": (255, 181, 181), "C": (128, 128, 128),
+    "N": (48, 80, 248), "O": (255, 13, 13), "F": (144, 224, 80),
+    "Ne": (179, 227, 245), "Na": (171, 92, 242), "Mg": (138, 255, 0),
+    "Al": (191, 166, 166), "Si": (240, 200, 160), "P": (255, 128, 0),
+    "S": (255, 255, 48), "Cl": (31, 240, 31), "Ar": (128, 209, 227),
+    "K": (143, 64, 212), "Ca": (61, 255, 0), "Sc": (230, 230, 230),
+    "Ti": (191, 194, 199), "V": (166, 166, 171), "Cr": (138, 153, 199),
+    "Mn": (156, 122, 199), "Fe": (224, 102, 51), "Co": (240, 144, 160),
+    "Ni": (80, 208, 80), "Cu": (200, 128, 51), "Zn": (125, 128, 176),
+    "Ga": (194, 143, 143), "Ge": (102, 143, 143), "As": (189, 128, 227),
+    "Se": (255, 161, 0), "Br": (166, 41, 41), "Kr": (92, 184, 209),
+    "Rb": (112, 46, 176), "Sr": (0, 255, 0), "Y": (148, 255, 255),
+    "Zr": (148, 224, 224), "Nb": (115, 194, 201), "Mo": (84, 181, 181),
+    "Tc": (59, 158, 158), "Ru": (36, 143, 143), "Rh": (10, 125, 140),
+    "Pd": (0, 105, 133), "Ag": (192, 192, 192), "Cd": (255, 217, 143),
+    "In": (166, 117, 115), "Sn": (102, 128, 128), "Sb": (158, 99, 181),
+    "Te": (212, 122, 0), "I": (148, 0, 148), "Xe": (66, 158, 176),
+    "Cs": (87, 23, 143), "Ba": (0, 201, 0), "La": (112, 212, 255),
+    "Ce": (255, 255, 199), "Pr": (217, 255, 199), "Nd": (199, 255, 199),
+    "Pm": (163, 255, 199), "Sm": (143, 255, 199), "Eu": (97, 255, 199),
+    "Gd": (69, 255, 199), "Tb": (48, 255, 199), "Dy": (31, 255, 199),
+    "Ho": (0, 255, 156), "Er": (0, 230, 117), "Tm": (0, 212, 82),
+    "Yb": (0, 191, 56), "Lu": (0, 171, 36), "Hf": (77, 194, 255),
+    "Ta": (77, 166, 255), "W": (33, 148, 214), "Re": (38, 125, 171),
+    "Os": (38, 102, 150), "Ir": (23, 84, 135), "Pt": (208, 208, 224),
+    "Au": (255, 209, 35), "Hg": (184, 184, 208), "Tl": (166, 84, 77),
+    "Pb": (87, 89, 97), "Bi": (158, 79, 181),
+}
+
+# Fill any gaps in the hand-tuned publication palette with muted Jmol colors.
+_PUBLICATION_BASE = {
+    **_PUBLICATION_BASE,
+    **{
+        el: _publication_from_jmol(_JMOL_BASE[el])
+        for el in _JMOL_BASE
+        if el not in _PUBLICATION_BASE
+    },
 }
 
 PUBLICATION = ColorPalette(

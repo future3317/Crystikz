@@ -85,34 +85,26 @@ class CrystalStructure:
     # Transformations
     # ------------------------------------------------------------------
     def make_supercell(self, scaling: int | tuple[int, int, int] | np.ndarray) -> CrystalStructure:
-        """Create a supercell by integer scaling along each lattice vector."""
+        """Create a supercell from an integer scaling or 3×3 transformation.
+
+        Supports a scalar ``n`` (n×n×n), a length-3 tuple (na×nb×nc), or an
+        arbitrary integer 3×3 matrix.  The transformation is delegated to
+        pymatgen so non-diagonal supercells are handled correctly.
+        """
         if isinstance(scaling, int):
-            sc = np.diag([scaling, scaling, scaling])
+            sc_matrix = np.diag([scaling, scaling, scaling])
         elif isinstance(scaling, tuple):
-            sc = np.diag(scaling)
+            sc_matrix = np.diag(scaling)
         else:
-            sc = np.asarray(scaling, dtype=int).reshape(3, 3)
+            sc_matrix = np.asarray(scaling, dtype=int).reshape(3, 3)
 
-        new_lattice = Lattice(self.lattice.supercell_matrix(sc))
-        new_sites: list[Site] = []
+        from crystalfig.io.pymatgen_adapter import from_pymatgen, to_pymatgen
 
-        # Generate all integer shifts within the supercell
-        for i, j, k in np.ndindex(*sc.diagonal()):
-            offset = (int(i), int(j), int(k))
-            for orig_site in self.sites:
-                new_frac = (orig_site.frac_coords + np.array(offset)) / sc.diagonal()
-                new_site = Site(
-                    frac_coords=new_frac,
-                    species=orig_site.species,
-                    properties=SiteProperties.from_dict(orig_site.properties.as_dict()),
-                    source_index=orig_site.source_index,
-                    image_offset=offset,
-                    wyckoff=orig_site.wyckoff,
-                    label=orig_site.label,
-                )
-                new_sites.append(new_site)
-
-        return CrystalStructure(lattice=new_lattice, sites=new_sites, properties=self.properties.copy())
+        pmg = to_pymatgen(self)
+        pmg.make_supercell(sc_matrix)
+        result = from_pymatgen(pmg)
+        result.properties = self.properties.copy()
+        return result
 
     def translate_frac(self, vector: np.ndarray) -> CrystalStructure:
         """Return a copy translated by a fractional vector."""

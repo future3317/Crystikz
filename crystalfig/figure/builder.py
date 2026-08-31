@@ -7,13 +7,22 @@ from pathlib import Path
 import numpy as np
 
 from crystalfig.exceptions import OptionalDependencyError, StructureParseError
-from crystalfig.export.exporter import Exporter, ExportResult
+from crystalfig.export.exporter import Exporter, ExportResult, RenderOptions
 from crystalfig.geometry.planes import MillerPlane
 from crystalfig.io.loader import load_structure
 from crystalfig.io.pymatgen_adapter import from_pymatgen
 from crystalfig.model.structure import CrystalStructure
+from crystalfig.neighbors.base import NeighborBond
 from crystalfig.neighbors.strategies import CovalentRadiiStrategy, CrystalNNStrategy, CutoffStrategy
-from crystalfig.scene.builder import SceneBuilder, SceneOptions
+from crystalfig.renderers.matplotlib_renderer import MatplotlibRenderer
+from crystalfig.scene.builder import (
+    Annotation,
+    AtomStyleOverride,
+    BondStyleOverride,
+    PolyhedraSpec,
+    SceneBuilder,
+    SceneOptions,
+)
 from crystalfig.scene.camera import Camera
 from crystalfig.scene.scene import Scene
 from crystalfig.styles.palette import get_palette
@@ -31,7 +40,7 @@ class CrystalFigure:
     ):
         self.structure = structure
         self.theme = theme if isinstance(theme, FigureTheme) else FigureTheme.from_preset(theme)
-        self.palette = get_palette(self.theme.palette.name)
+        self.palette = get_palette(self.theme.palette.name).copy()
         self.camera = camera or Camera(elevation=25.0, azimuth=45.0)
         self._scene_options = SceneOptions()
 
@@ -95,14 +104,14 @@ class CrystalFigure:
     # View / camera
     # ------------------------------------------------------------------
     def view(self, direction: str | list[int] | np.ndarray) -> CrystalFigure:
-        """Set camera to look along a crystallographic direction."""
+        """Set camera to look along a crystallographic direction [uvw]."""
         if isinstance(direction, str):
             mapping = {"a": [1, 0, 0], "b": [0, 1, 0], "c": [0, 0, 1]}
-            direction = mapping.get(direction, [1, 1, 0])
-        direction = np.asarray(direction, dtype=float)
-        # Convert fractional [uvw] to Cartesian unless already given in Cartesian.
-        if direction.shape == (3,):
-            direction = self.structure.lattice.frac_to_cart(direction)
+            if direction not in mapping:
+                raise ValueError(f"Unknown lattice axis '{direction}'. Use 'a', 'b', or 'c'.")
+            direction = mapping[direction]
+        direction = np.asarray(direction, dtype=float).reshape(3)
+        direction = self.structure.lattice.frac_to_cart(direction)
         self.camera = Camera.along_direction(direction, target=self._centroid())
         return self
 
@@ -146,53 +155,74 @@ class CrystalFigure:
 
     def add_bonds(
         self,
-        strategy: str = "crystalnn",
+        strategy: str | object = "crystalnn",
         cutoff: float = 2.5,
+        pair_cutoffs: dict[str, float] | None = None,
     ) -> CrystalFigure:
         self._scene_options.show_bonds = True
-        if strategy == "crystalnn":
-            strat = CrystalNNStrategy()
-        elif strategy == "cutoff":
-            strat = CutoffStrategy(cutoff=cutoff)
-        elif strategy == "covalent":
-            strat = CovalentRadiiStrategy()
-        elif strategy == "ase":
-            strat = _try_ase_strategy()
+        if isinstance(strategy, str):
+            strat = self._make_bond_strategy(strategy, cutoff=cutoff, pair_cutoffs=pair_cutoffs)
         else:
-            raise ValueError(f"Unknown bond strategy: {strategy}")
+            strat = strategy
         # Defer bond computation until build_scene so supercell is applied first.
         self._scene_options.bond_strategy = strat
         self._scene_options.bonds = None
         return self
 
+    def add_manual_bonds(self, bonds: list[NeighborBond]) -> CrystalFigure:
+        """Add bonds from an explicit list of NeighborBond objects."""
+        self._scene_options.bonds = list(bonds)
+        self._scene_options.show_bonds = True
+        return self
+
+    def _make_bond_strategy(
+        self,
+        strategy: str,
+        cutoff: float = 2.5,
+        pair_cutoffs: dict[str, float] | None = None,
+    ):
+        if strategy == "crystalnn":
+            return CrystalNNStrategy()
+        if strategy == "cutoff":
+            return CutoffStrategy(cutoff=cutoff, pair_cutoffs=pair_cutoffs or {})
+        if strategy == "covalent":
+            return CovalentRadiiStrategy()
+        if strategy == "ase":
+            return _try_ase_strategy()
+        raise ValueError(f"Unknown bond strategy: {strategy}")
+
     def add_polyhedra(
         self,
         centers: str | list[int],
-        strategy: str = "crystalnn",
+        strategy: str | object | None = "crystalnn",
         fill_color: str | None = None,
         opacity: float | None = None,
+        edge_width: float | None = None,
+        edge_color: str | None = None,
         show_bonds: bool | None = None,
     ) -> CrystalFigure:
         self._scene_options.show_polyhedra = True
-        self._scene_options.polyhedra_centers = centers
-        # Polyhedra need the bond graph internally.  By default we do not
-        # change the existing bond visibility, but the user can explicitly
-        # override it with show_bonds=True/False.
-        if self._scene_options.bond_strategy is None:
-            if strategy == "crystalnn":
-                strat = CrystalNNStrategy()
-            elif strategy == "cutoff":
-                strat = CutoffStrategy(cutoff=2.5)
-            elif strategy == "covalent":
-                strat = CovalentRadiiStrategy()
-            else:
-                raise ValueError(f"Unknown polyhedron bond strategy: {strategy}")
+
+        strat = None
+        if strategy is not None:
+            strat = self._make_bond_strategy(strategy) if isinstance(strategy, str) else strategy
+
+        # Global bond strategy: if none set, use the first polyhedra strategy.
+        if self._scene_options.bond_strategy is None and strat is not None:
             self._scene_options.bond_strategy = strat
+
         if show_bonds is not None:
             self._scene_options.show_bonds = show_bonds
-        self._scene_options.polyhedra_strategy = {"fill_color": fill_color} if fill_color else {}
-        if opacity is not None:
-            self.theme.polyhedron_opacity = opacity
+
+        self._scene_options.polyhedra_specs.append(PolyhedraSpec(
+            centers=centers,
+            strategy=strat,
+            fill_color=fill_color,
+            opacity=opacity,
+            edge_width=edge_width,
+            edge_color=edge_color,
+            show_bonds=show_bonds,
+        ))
         return self
 
     def add_vector(
@@ -220,26 +250,166 @@ class CrystalFigure:
         # Attach to centroid site or first site
         return self.add_vector(0, direction, **kwargs)
 
-    def select(self, indices: list[int] | None = None, species: str | None = None, **props) -> CrystalFigure:
-        """Select sites by indices, species, or property predicate."""
-        selected = set(indices or [])
+    def add_label(
+        self,
+        site_index: int,
+        text: str,
+        offset: tuple[float, float] = (6, 2),
+        fontsize: float | None = None,
+        color: str | None = None,
+        fontweight: str = "normal",
+    ) -> CrystalFigure:
+        """Add a screen-space label next to a site."""
+        self._scene_options.annotations.append(Annotation(
+            kind="site_label",
+            text=text,
+            site_index=site_index,
+            offset=offset,
+            fontsize=fontsize,
+            color=color,
+            fontweight=fontweight,
+        ))
+        return self
+
+    def add_formula_label(
+        self,
+        text: str,
+        position: str | tuple[float, float] = "top_left",
+        fontsize: float | None = None,
+        color: str | None = None,
+    ) -> CrystalFigure:
+        """Add a screen-space formula label."""
+        self._scene_options.annotations.append(Annotation(
+            kind="formula_label",
+            text=text,
+            position=position,
+            fontsize=fontsize,
+            color=color,
+        ))
+        return self
+
+    def add_panel_label(
+        self,
+        text: str,
+        position: str | tuple[float, float] = "top_left",
+        fontsize: float | None = None,
+        color: str | None = None,
+    ) -> CrystalFigure:
+        """Add a bold screen-space panel label."""
+        self._scene_options.annotations.append(Annotation(
+            kind="panel_label",
+            text=text,
+            position=position,
+            fontsize=fontsize,
+            color=color,
+            fontweight="bold",
+        ))
+        return self
+
+    def select(
+        self,
+        indices: int | list[int] | None = None,
+        species: str | None = None,
+        **props,
+    ) -> CrystalFigure:
+        """Select sites by indices, species, or property predicate/value."""
+        selected: set[int] = set()
+        if indices is not None:
+            if isinstance(indices, int):
+                selected.add(indices)
+            else:
+                selected.update(indices)
         if species:
             selected.update(self.structure.indices_of_species(species))
         for key, predicate in props.items():
             for i, site in enumerate(self.structure.sites):
                 val = site.properties.get(key)
-                if val is not None and predicate(val):
+                if val is None:
+                    continue
+                if callable(predicate):
+                    if predicate(val):
+                        selected.add(i)
+                elif val == predicate:
                     selected.add(i)
-        self._scene_options.selected_sites = list(selected)
+        existing = set(self._scene_options.selected_sites or [])
+        self._scene_options.selected_sites = sorted(existing | selected)
         return self
 
     def mark_defects(self, indices: list[int]) -> CrystalFigure:
         self._scene_options.defect_sites = indices
         return self
 
+    def style_atoms(
+        self,
+        species: str | None = None,
+        indices: list[int] | None = None,
+        color: str | None = None,
+        scale: float | None = None,
+        opacity: float | None = None,
+        radius: float | None = None,
+        render_style: str | None = None,
+    ) -> CrystalFigure:
+        """Apply a style override to a subset of atoms."""
+        self._scene_options.atom_overrides.append(AtomStyleOverride(
+            species=species,
+            indices=set(indices) if indices is not None else None,
+            color=color,
+            scale=scale,
+            opacity=opacity,
+            radius=radius,
+            render_style=render_style,
+            visible=True,
+        ))
+        return self
+
+    def hide_atoms(
+        self,
+        species: str | None = None,
+        indices: list[int] | None = None,
+    ) -> CrystalFigure:
+        """Hide a subset of atoms."""
+        self._scene_options.atom_overrides.append(AtomStyleOverride(
+            species=species,
+            indices=set(indices) if indices is not None else None,
+            visible=False,
+        ))
+        return self
+
+    def style_bonds(
+        self,
+        pair: tuple | None = None,
+        indices: list[int] | None = None,
+        width: float | None = None,
+        color: str | None = None,
+        opacity: float | None = None,
+    ) -> CrystalFigure:
+        """Apply a style override to a subset of bonds."""
+        self._scene_options.bond_overrides.append(BondStyleOverride(
+            pair=pair,
+            indices=set(indices) if indices is not None else None,
+            width=width,
+            color=color,
+            opacity=opacity,
+            visible=True,
+        ))
+        return self
+
+    def hide_bonds(
+        self,
+        pair: tuple | None = None,
+        indices: list[int] | None = None,
+    ) -> CrystalFigure:
+        """Hide a subset of bonds."""
+        self._scene_options.bond_overrides.append(BondStyleOverride(
+            pair=pair,
+            indices=set(indices) if indices is not None else None,
+            visible=False,
+        ))
+        return self
+
     def style(self, name: str) -> CrystalFigure:
         self.theme = FigureTheme.from_preset(name)
-        self.palette = get_palette(self.theme.palette.name)
+        self.palette = get_palette(self.theme.palette.name).copy()
         return self
 
     # ------------------------------------------------------------------
@@ -253,6 +423,18 @@ class CrystalFigure:
             self.camera.fit_to_scene(scene)
         return scene
 
+    def draw(self, ax, options: RenderOptions | None = None) -> None:
+        """Build the scene and draw it into an existing Matplotlib Axes."""
+        scene = self.build_scene()
+        renderer = MatplotlibRenderer(camera=self.camera)
+        options = options or RenderOptions(
+            width=self.theme.figure_width,
+            height=self.theme.figure_height,
+            transparent=self.theme.transparent,
+            dpi=self.theme.dpi,
+        )
+        renderer.draw(ax, scene, self.theme, options)
+
     def export(self, path: str, fmt: str | None = None, width: float | None = None, transparent: bool | None = None) -> ExportResult:
         from crystalfig.export.exporter import RenderOptions
         scene = self.build_scene()
@@ -264,6 +446,11 @@ class CrystalFigure:
             dpi=theme.dpi,
         )
         exporter = Exporter(scene, theme, camera=self.camera)
+        return exporter.export(path, fmt=fmt, options=options)
+
+    def export_scene(self, scene: Scene, path: str, fmt: str | None = None, options=None) -> ExportResult:
+        """Export a user-modified Scene directly."""
+        exporter = Exporter(scene, self.theme, camera=self.camera)
         return exporter.export(path, fmt=fmt, options=options)
 
     def export_tikz_pdf(self, path: str) -> ExportResult:

@@ -110,6 +110,11 @@ class SvgRenderer:
         if options.show_legend and theme.show_legend:
             lines.extend(self._draw_legend(scene, xmin, xmax, ymin, ymax))
 
+        # Annotations are drawn last so they sit on top of the scene.
+        for p in scene.all_primitives():
+            if isinstance(p, Text) and getattr(p, "layer", "default") == "annotation":
+                lines.extend(self._draw_annotation(p, xmin, xmax, ymin, ymax))
+
         lines.append("</svg>")
         svg = "\n".join(lines)
 
@@ -117,7 +122,10 @@ class SvgRenderer:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(svg)
         else:
-            path.write(svg.encode("utf-8") if hasattr(path, "write") else svg)
+            try:
+                path.write(svg)
+            except TypeError:
+                path.write(svg.encode("utf-8"))
 
     # ------------------------------------------------------------------
     # Bounds and depth sorting
@@ -557,6 +565,49 @@ class SvgRenderer:
             f'  <text x="{uv[0]:.4f}" y="{uv[1]:.4f}" text-anchor="{anchor}" '
             f'dominant-baseline="{baseline}" font-size="{p.fontsize * 0.35:.2f}" '
             f'fill="{color}">{escape(p.text)}</text>'
+        ]
+
+    def _draw_annotation(
+        self,
+        p: Text,
+        xmin: float,
+        xmax: float,
+        ymin: float,
+        ymax: float,
+    ) -> list[str]:
+        """Draw a screen-space annotation on top of the SVG."""
+        meta = p.metadata or {}
+        kind = meta.get("kind", "")
+        color = self._color_to_hex(p.color)
+        anchor = {"left": "start", "center": "middle", "right": "end"}.get(p.halign, "middle")
+        baseline = {"top": "auto", "center": "middle", "bottom": "auto"}.get(p.valign, "middle")
+        font_size = p.fontsize * 0.35
+        weight = getattr(p, "fontweight", "normal")
+        weight_attr = f' font-weight="{weight}"' if weight != "normal" else ""
+
+        if kind == "site_label":
+            uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
+            offset = meta.get("offset", (6, 2))
+            # Approximate point-to-viewBox scaling using a typical 72 dpi point.
+            dx = xmax - xmin
+            scale = dx / 200.0
+            x = uv[0] + offset[0] * scale
+            y = uv[1] - offset[1] * scale
+            return [
+                f'  <text x="{x:.4f}" y="{y:.4f}" text-anchor="{anchor}" '
+                f'dominant-baseline="{baseline}" font-size="{font_size:.2f}" '
+                f'fill="{color}"{weight_attr}>{escape(p.text)}</text>'
+            ]
+
+        pos = np.asarray(p.position).flatten()
+        if len(pos) < 2:
+            return []
+        x = xmin + pos[0] * (xmax - xmin)
+        y = ymin + (1.0 - pos[1]) * (ymax - ymin)
+        return [
+            f'  <text x="{x:.4f}" y="{y:.4f}" text-anchor="{anchor}" '
+            f'dominant-baseline="{baseline}" font-size="{font_size:.2f}" '
+            f'fill="{color}"{weight_attr}>{escape(p.text)}</text>'
         ]
 
     def _draw_legend(

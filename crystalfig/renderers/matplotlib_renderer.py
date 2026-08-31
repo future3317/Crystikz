@@ -18,7 +18,6 @@ from crystalfig.scene.primitives import (
     Cylinder,
     LegendItem,
     Line,
-    Plane,
     Polyhedron,
     Sphere,
     Text,
@@ -60,61 +59,13 @@ class MatplotlibRenderer:
         if fmt is None:
             fmt = self._guess_format(path)
 
-        # Fit camera to the full projected scene extent.
-        if self.camera.auto_fit:
-            self.camera.fit_to_scene(scene)
-
-        # Compute final projected bounds and derive a figure size that matches
-        # the scene's aspect ratio instead of forcing a square.
-        bounds = self._projected_bounds(scene)
-        if bounds is None:
-            bounds = (-1.0, 1.0, -1.0, 1.0)
-        xmin, xmax, ymin, ymax = bounds
-        dx = max(xmax - xmin, 1e-6)
-        dy = max(ymax - ymin, 1e-6)
-
-        self.theme = theme
-
-        width_inch = options.width / 25.4
-        if options.height:
-            height_inch = options.height / 25.4
-        else:
-            aspect = dy / dx
-            # Clamp extreme aspect ratios so very elongated cells do not produce
-            # impractical canvas dimensions.
-            aspect = max(0.35, min(aspect, 2.8))
-            height_inch = width_inch * aspect
-
+        width_inch, height_inch = self._figure_size(scene, options)
         fig, ax = plt.subplots(figsize=(width_inch, height_inch), dpi=options.dpi)
-        ax.set_aspect("equal")
-        ax.axis("off")
-
-        bg = options.background or theme.background
-        if bg and bg != "transparent":
-            fig.patch.set_facecolor(bg)
-            ax.set_facecolor(bg)
-        elif options.transparent or bg == "transparent":
-            fig.patch.set_alpha(0)
-            ax.set_facecolor("none")
-
-        if options.title:
-            ax.set_title(options.title, fontsize=theme.title_size)
-
-        if options.show_legend and theme.show_legend:
-            self._draw_legend(ax, scene, theme)
-
-        # Build atom lookup for bond clipping and color splitting.
-        self._atom_map = self._build_atom_map(scene)
-        self._sphere_list = [p for p in scene.all_primitives() if isinstance(p, Sphere)]
-        primitives = self._sort_by_depth(scene)
-        for p in primitives:
-            self._draw_primitive(ax, p, theme)
-
-        ax.set_xlim(xmin, xmax)
-        ax.set_ylim(ymin, ymax)
+        self.draw(ax, scene, theme, options)
 
         if isinstance(path, str):
             if fmt in ("png", "tiff", "tif"):
+                bg = options.background or theme.background
                 transparent = options.transparent or bg == "transparent"
                 fig.savefig(path, dpi=options.dpi, transparent=transparent)
             elif fmt in ("pdf", "svg", "eps", "pgf"):
@@ -126,6 +77,79 @@ class MatplotlibRenderer:
         else:
             fig.savefig(path, format=fmt)
         plt.close(fig)
+
+    def draw(
+        self,
+        ax,
+        scene: Scene,
+        theme: FigureTheme,
+        options: RenderOptions,
+    ) -> None:
+        """Draw a scene into an existing Matplotlib Axes."""
+        self.theme = theme
+
+        # Fit camera to the full projected scene extent.
+        if self.camera.auto_fit:
+            self.camera.fit_to_scene(scene)
+
+        bounds = self._projected_bounds(scene)
+        if bounds is None:
+            bounds = (-1.0, 1.0, -1.0, 1.0)
+        xmin, xmax, ymin, ymax = bounds
+
+        ax.set_aspect("equal")
+        ax.axis("off")
+
+        bg = options.background or theme.background
+        if bg and bg != "transparent":
+            ax.set_facecolor(bg)
+        elif options.transparent or bg == "transparent":
+            ax.set_facecolor("none")
+
+        if options.title:
+            ax.set_title(options.title, fontsize=theme.title_size)
+
+        if options.show_legend and theme.show_legend:
+            self._draw_legend(ax, scene, theme)
+
+        # Build atom lookup for bond clipping and color splitting.
+        self._atom_map = self._build_atom_map(scene)
+        self._sphere_list = [p for p in scene.all_primitives() if isinstance(p, Sphere)]
+
+        # Draw 3D primitives sorted by depth.
+        primitives = self._sort_by_depth(scene)
+        for p in primitives:
+            if getattr(p, "layer", "default") == "annotation":
+                continue
+            self._draw_primitive(ax, p, theme)
+
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
+
+        # Annotations are drawn last, on top, in screen/axes space.
+        for p in scene.all_primitives():
+            if isinstance(p, Text) and getattr(p, "layer", "default") == "annotation":
+                self._draw_annotation(ax, p)
+
+    def _figure_size(self, scene: Scene, options: RenderOptions) -> tuple[float, float]:
+        """Return figure size in inches matching the scene aspect ratio."""
+        bounds = self._projected_bounds(scene)
+        if bounds is None:
+            bounds = (-1.0, 1.0, -1.0, 1.0)
+        xmin, xmax, ymin, ymax = bounds
+        dx = max(xmax - xmin, 1e-6)
+        dy = max(ymax - ymin, 1e-6)
+
+        width_inch = options.width / 25.4
+        if options.height:
+            height_inch = options.height / 25.4
+        else:
+            aspect = dy / dx
+            # Clamp extreme aspect ratios so very elongated cells do not produce
+            # impractical canvas dimensions.
+            aspect = max(0.35, min(aspect, 2.8))
+            height_inch = width_inch * aspect
+        return width_inch, height_inch
 
     def _guess_format(self, path) -> str:
         if isinstance(path, str):
@@ -150,13 +174,15 @@ class MatplotlibRenderer:
                 pts.append(np.asarray(self.camera.project(p.end)).flatten()[:2])
             elif isinstance(p, Polyhedron):
                 pts.extend(self.camera.project(np.array(p.vertices)))
-            elif isinstance(p, (Poly, Plane)):
+            elif isinstance(p, Poly):
                 pts.extend(self.camera.project(np.array(p.points)))
             elif isinstance(p, (Arrow, Axis)):
                 pts.append(np.asarray(self.camera.project(p.start)).flatten()[:2])
                 pts.append(np.asarray(self.camera.project(p.start + p.direction)).flatten()[:2])
             elif isinstance(p, Text):
-                pts.append(np.asarray(self.camera.project(p.position)).flatten()[:2])
+                # Annotations with 2D normalized positions are not part of data bounds.
+                if getattr(p, "layer", "default") != "annotation":
+                    pts.append(np.asarray(self.camera.project(p.position)).flatten()[:2])
         if not pts:
             return None
         arr = np.array(pts)
@@ -222,7 +248,7 @@ class MatplotlibRenderer:
             return [p.start, p.end]
         if isinstance(p, Polyhedron):
             return p.vertices
-        if isinstance(p, (Poly, Plane)):
+        if isinstance(p, Poly):
             return p.points
         if isinstance(p, (Arrow, Axis)):
             return [p.start, p.start + p.direction]
@@ -450,9 +476,48 @@ class MatplotlibRenderer:
                 linewidth=2,
             )
             ax.add_patch(arrow)
-        elif isinstance(p, Text):
+        elif isinstance(p, Text) and getattr(p, "layer", "default") != "annotation":
+            # Non-annotation text is drawn in data coordinates.
             uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
             ax.text(uv[0], uv[1], p.text, fontsize=p.fontsize, color=p.color, ha=p.halign, va=p.valign)
+
+    def _draw_annotation(self, ax, p: Text) -> None:
+        """Draw a screen-space annotation on top of the scene."""
+        meta = p.metadata or {}
+        kind = meta.get("kind", "")
+        color = p.color
+        fontsize = p.fontsize
+        fontweight = getattr(p, "fontweight", "normal")
+
+        if kind == "site_label":
+            offset = meta.get("offset", (6, 2))
+            ax.annotate(
+                p.text,
+                xy=p.position,
+                xycoords="data",
+                xytext=offset,
+                textcoords="offset points",
+                fontsize=fontsize,
+                color=color,
+                fontweight=fontweight,
+                ha=p.halign,
+                va=p.valign,
+            )
+        else:
+            pos = np.asarray(p.position).flatten()
+            if len(pos) < 2:
+                return
+            ax.text(
+                pos[0],
+                pos[1],
+                p.text,
+                transform=ax.transAxes,
+                fontsize=fontsize,
+                color=color,
+                fontweight=fontweight,
+                ha=p.halign,
+                va=p.valign,
+            )
 
     def _draw_legend(self, ax, scene: Scene, theme: FigureTheme):
         legend_items = [p for p in scene.all_primitives() if isinstance(p, LegendItem)]

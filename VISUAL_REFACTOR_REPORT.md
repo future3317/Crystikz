@@ -113,17 +113,101 @@ python examples/make_contact_sheet.py
 | Light cell box | yes | yes | yes |
 | Auto aspect-ratio framing | yes | N/A | N/A |
 
+## Publication capability stabilization (this pass)
+
+After the visual refactor, the next priority was controllability: making it easy to
+override colors, radii, bonds, polyhedra, and annotations for real paper figures
+without adding heavy new abstractions.
+
+### Element coverage
+
+- `crystalfig/styles/palette.py`: `_PUBLICATION_BASE` now covers H through Bi (Z=1-83).
+  Existing hand-tuned colors are preserved; missing elements use muted Jmol-derived
+  colors.
+- `crystalfig/styles/radii.py`: Covalent radii now cover H through Bi. Unknown
+  elements fall back to 1.5 Å with a one-time warning instead of the previous 0.2 Å.
+
+### Correctness fixes
+
+- `cell_complete` boundary mode no longer draws bonds whose periodic partner lies
+  outside the displayed `[0,1]^3` cell, eliminating dangling bonds.
+- `CrystalStructure.make_supercell()` now supports arbitrary integer 3×3
+  transformation matrices via pymatgen.
+- `CrystalFigure.view()` rejects unknown string axes instead of silently defaulting
+  to `[1,1,0]`.
+- `load_structure()` recognizes `POSCAR`/`CONTCAR` files with no extension by
+  basename.
+- Species selectors like `"Ti"` now match the dominant element if an exact species
+  match fails.
+- Disordered sites emit a warning when only the dominant species is rendered.
+
+### User-control API
+
+- `CrystalFigure.palette` is now a per-figure copy; modifying it does not pollute
+  the global palette.
+- `style_atoms(species=..., indices=..., color=..., scale=..., opacity=...,
+  radius=..., render_style=...)` and `hide_atoms(...)` for per-species/per-site
+  atom overrides.
+- `style_bonds(pair=..., indices=..., width=..., color=..., opacity=...)` and
+  `hide_bonds(...)` for bond overrides.
+- `add_bonds()` accepts a strategy name, a `NeighborStrategy` instance, or
+  `pair_cutoffs` for cutoff strategies.
+- `add_manual_bonds(bonds)` for explicit bond lists.
+- `add_polyhedra()` appends a `PolyhedraSpec` instead of overwriting, so multiple
+  coordination environments can be drawn with independent colors and strategies.
+
+### Annotations and embedding
+
+- `add_label(site_index, text, offset=...)` for manual site labels.
+- `add_formula_label(text, position=...)` and `add_panel_label(text, position=...)`
+  for screen-space figure labels.
+- `CrystalFigure.draw(ax)` embeds a crystal figure into an existing Matplotlib Axes,
+  enabling normal multi-panel publication workflows without a custom compositor.
+- `CrystalFigure.export_scene(scene, path, ...)` lets advanced users modify a Scene
+  directly and export it.
+
+### Scene contract
+
+- `Scene.all_primitives()` respects `Primitive.visible=False` and `Group.visible=False`.
+- `Scene.get_group(name)` helper added.
+- Unused `Plane` primitive removed.
+
+## Verification (this pass)
+
+```bash
+python -m ruff check .
+python -m pytest tests/ -q
+python examples/generate_gallery.py
+python examples/make_contact_sheet.py
+python -m build --wheel
+```
+
+- `ruff check .` → all checks passed.
+- `pytest tests/ -q` → 84 passed.
+- Gallery and `gallery/contact_sheet.png` regenerated.
+- Wheel built successfully and smoke-installed.
+
+## Current renderer capabilities
+
+| Feature | Matplotlib | SVG | TikZ | Matplotlib3D |
+|--------|------------|-----|------|--------------|
+| Glossy atoms | yes (vector circles) | yes (radial-gradient-like) | yes (ball shading) | flat 3D scatter |
+| Tube / split-color bonds | yes | yes (gradient) | no (plain line) | yes |
+| Bond clipping at atom surface | yes | yes | no | no |
+| Clean polyhedron fill + silhouette edges | yes | yes | partial (no silhouette logic) | no |
+| Light cell box | yes | yes | yes | yes |
+| Auto aspect-ratio framing | yes | yes | N/A | N/A |
+| Screen-space annotations | yes | yes | partial | no |
+
 ## Remaining visual limitations
 
 1. **TikZ backend** still uses simple lines for bonds and full face-edge drawing for
    polyhedra; it does not yet implement split-color bonds, clipping, or silhouette
    edges.
-2. **SVG dedicated renderer** was not added; publication vector output currently goes
-   through Matplotlib (PDF/SVG) or TikZ.
-3. **Screen-space annotations** (corner axis triad, formula labels, panel labels,
-   manual labels) are not implemented.
-4. **Multi-panel compositor (`FigureGrid`)** is not implemented.
-5. **Depth compositing** is painter's-algorithm only; there is no true CSG occlusion
+2. **Depth compositing** is painter's-algorithm only; there is no true CSG occlusion
    for intersecting spheres/bonds.
-6. Atom glossy shading is built from stacked vector circles rather than true radial
-   gradients, so it is slightly less smooth than a dedicated SVG gradient backend.
+3. **Multi-panel compositor (`FigureGrid`)** is not implemented; use
+   `CrystalFigure.draw(ax=...)` with normal Matplotlib subplots instead.
+4. **Automatic label placement / collision avoidance** is not implemented.
+5. Atom glossy shading in Matplotlib is built from stacked vector circles rather than
+   true radial gradients; the SVG backend is now available for smoother gradients.

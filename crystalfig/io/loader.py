@@ -10,8 +10,12 @@ from crystalfig.model.structure import CrystalStructure
 
 
 def guess_format(path: str | Path) -> str:
-    """Guess file format from extension."""
-    ext = Path(path).suffix.lower()
+    """Guess file format from extension or basename."""
+    path = Path(path)
+    ext = path.suffix.lower()
+    basename = path.name.lower()
+    if basename in ("poscar", "contcar"):
+        return "poscar"
     mapping = {
         ".cif": "cif",
         ".poscar": "poscar",

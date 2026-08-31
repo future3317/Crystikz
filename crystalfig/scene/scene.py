@@ -33,11 +33,18 @@ class Scene:
             self.add(p, group=group)
         return self
 
+    def get_group(self, name: str) -> Group | None:
+        """Return a group by name, or None if it does not exist."""
+        return self.groups.get(name)
+
     def all_primitives(self) -> list[Any]:
-        """Flatten groups and return all primitives in deterministic order."""
-        out = list(self.primitives)
+        """Flatten groups and return all visible primitives in deterministic order."""
+        out = [p for p in self.primitives if getattr(p, "visible", True)]
         for name in sorted(self.groups.keys()):
-            out.extend(self.groups[name].primitives)
+            group = self.groups[name]
+            if not getattr(group, "visible", True):
+                continue
+            out.extend(p for p in group.primitives if getattr(p, "visible", True))
         return out
 
     def filter(self, predicate) -> Scene:

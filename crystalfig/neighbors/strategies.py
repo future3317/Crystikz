@@ -130,7 +130,7 @@ class CovalentRadiiStrategy:
                 seen.add(key)
                 sp1 = structure.sites[i].dominant_element
                 sp2 = structure.sites[j].dominant_element
-                cutoff = get_radius(sp1, "covalent", 0.2) + get_radius(sp2, "covalent", 0.2) + self.tolerance
+                cutoff = get_radius(sp1, "covalent") + get_radius(sp2, "covalent") + self.tolerance
                 if dist > cutoff:
                     continue
                 bonds.append(NeighborBond(

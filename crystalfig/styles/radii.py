@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from typing import Literal
 
@@ -17,7 +18,10 @@ class AtomicRadii:
         return self.radii.get(element, default)
 
 
-# Covalent radii in angstroms (Cordero et al., 2008)
+# Covalent radii in angstroms (Cordero et al., 2008).
+# Values for elements without a published Cordero radius use the Slater atomic
+# radius as a fallback so that every element H-Bi has a defined visualization
+# radius.
 COVALENT = AtomicRadii(
     name="covalent",
     radii={
@@ -32,7 +36,12 @@ COVALENT = AtomicRadii(
         "Nb": 1.64, "Mo": 1.54, "Tc": 1.47, "Ru": 1.46, "Rh": 1.42,
         "Pd": 1.39, "Ag": 1.45, "Cd": 1.44, "In": 1.42, "Sn": 1.39,
         "Sb": 1.39, "Te": 1.38, "I": 1.39, "Xe": 1.40, "Cs": 2.44,
-        "Ba": 2.15, "La": 2.07, "Ce": 2.04, "Pb": 1.46,
+        "Ba": 2.15, "La": 2.07, "Ce": 2.04, "Pr": 2.03, "Nd": 2.01,
+        "Pm": 1.99, "Sm": 1.98, "Eu": 1.98, "Gd": 1.96, "Tb": 1.94,
+        "Dy": 1.92, "Ho": 1.92, "Er": 1.89, "Tm": 1.90, "Yb": 1.87,
+        "Lu": 1.87, "Hf": 1.75, "Ta": 1.70, "W": 1.62, "Re": 1.51,
+        "Os": 1.44, "Ir": 1.41, "Pt": 1.36, "Au": 1.36, "Hg": 1.32,
+        "Tl": 1.45, "Pb": 1.46, "Bi": 1.46,
     },
 )
 
@@ -61,14 +70,31 @@ _RADII_SETS = {
 }
 
 
+# Track which elements have already triggered a missing-radius warning so the
+# message is emitted at most once per unknown element per process.
+_MISSING_RADIUS_WARNED: set[str] = set()
+
+
 def get_radius(
     element: str,
     kind: Literal["covalent", "vdw", "uniform"] = "covalent",
-    default: float = 0.2,
+    default: float = 1.5,
     uniform_value: float | None = None,
 ) -> float:
-    """Get atomic radius in angstroms."""
+    """Get atomic radius in angstroms.
+
+    Unknown elements fall back to ``default`` (1.5 Å) and emit a one-time
+    warning so publication figures do not silently use an imperceptibly small
+    radius.
+    """
     radii = _RADII_SETS.get(kind, COVALENT)
     if kind == "uniform" and uniform_value is not None:
         return uniform_value
-    return radii.get(element, default)
+    value = radii.radii.get(element)
+    if value is None and element not in _MISSING_RADIUS_WARNED:
+        _MISSING_RADIUS_WARNED.add(element)
+        warnings.warn(
+            f"No {kind} radius known for element '{element}'; using default {default} Å.",
+            stacklevel=2,
+        )
+    return value if value is not None else default

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -22,11 +23,93 @@ from crystalfig.scene.primitives import (
     Polygon,
     Polyhedron,
     Sphere,
+    Text,
 )
 from crystalfig.scene.scene import Scene
 from crystalfig.styles.palette import ColorPalette
 from crystalfig.styles.radii import get_radius
 from crystalfig.styles.theme import FigureTheme
+
+_DISORDERED_WARNED: set[tuple[int, tuple[int, int, int]]] = set()
+
+
+@dataclass
+class AtomStyleOverride:
+    """Per-site or per-species atom style override."""
+
+    species: str | None = None
+    indices: set[int] | None = None
+    color: str | None = None
+    scale: float | None = None
+    opacity: float | None = None
+    radius: float | None = None
+    render_style: str | None = None
+    visible: bool = True
+
+    def matches(self, site_index: int, site) -> bool:
+        if self.indices is not None and site_index in self.indices:
+            return True
+        return self.species is not None and (
+            self.species == site.dominant_species or self.species == site.dominant_element
+        )
+
+
+@dataclass
+class BondStyleOverride:
+    """Per-pair or per-index bond style override."""
+
+    pair: tuple | None = None
+    indices: set[int] | None = None
+    width: float | None = None
+    color: str | None = None
+    opacity: float | None = None
+    visible: bool = True
+
+    def matches(self, bond_index: int, bond: NeighborBond, site_i, site_j) -> bool:
+        if self.indices is not None and bond_index in self.indices:
+            return True
+        if self.pair is None:
+            return False
+        p = self.pair
+        if len(p) == 2 and all(isinstance(x, int) for x in p) and (
+            (bond.i, bond.j) == p or (bond.j, bond.i) == p
+        ):
+            return True
+        if len(p) == 2 and all(isinstance(x, str) for x in p):
+            sp_i = site_i.dominant_species if site_i else ""
+            sp_j = site_j.dominant_species if site_j else ""
+            el_i = site_i.dominant_element if site_i else ""
+            el_j = site_j.dominant_element if site_j else ""
+            if ({sp_i, sp_j} == set(p)) or ({el_i, el_j} == set(p)):
+                return True
+        return False
+
+
+@dataclass
+class PolyhedraSpec:
+    """Specification for one set of coordination polyhedra."""
+
+    centers: list[int] | str
+    strategy: Callable | None = None
+    fill_color: str | None = None
+    opacity: float | None = None
+    edge_width: float | None = None
+    edge_color: str | None = None
+    show_bonds: bool | None = None
+
+
+@dataclass
+class Annotation:
+    """Screen-space or data-space annotation."""
+
+    kind: str  # "site_label", "formula_label", "panel_label"
+    text: str
+    site_index: int | None = None
+    offset: tuple[float, float] = (0.0, 0.0)
+    position: str | tuple[float, float] = "top_left"
+    fontsize: float | None = None
+    color: str | None = None
+    fontweight: str = "normal"
 
 
 @dataclass
@@ -44,12 +127,24 @@ class SceneOptions:
     display_boundary: str = "cell_complete"  # cell_complete, connected, polyhedra_complete
     bonds: list[NeighborBond] | None = None
     bond_strategy: Callable | None = None
-    polyhedra_centers: list[int] | str | None = None
-    polyhedra_strategy: Callable | None = None
+    polyhedra_specs: list[PolyhedraSpec] = None  # type: ignore[assignment]
     vectors: list[tuple[int, np.ndarray, str]] | None = None
     miller_planes: list[MillerPlane] | None = None
     selected_sites: list[int] | None = None
     defect_sites: list[int] | None = None
+    atom_overrides: list[AtomStyleOverride] = None  # type: ignore[assignment]
+    bond_overrides: list[BondStyleOverride] = None  # type: ignore[assignment]
+    annotations: list[Annotation] = None  # type: ignore[assignment]
+
+    def __post_init__(self):
+        if self.polyhedra_specs is None:
+            self.polyhedra_specs = []
+        if self.atom_overrides is None:
+            self.atom_overrides = []
+        if self.bond_overrides is None:
+            self.bond_overrides = []
+        if self.annotations is None:
+            self.annotations = []
 
 
 class SceneBuilder:
@@ -125,7 +220,29 @@ class SceneBuilder:
         if self.options.show_legend:
             scene.extend(self._legend(structure), group="legend")
 
+        if self.options.annotations:
+            scene.extend(self._annotations(structure), group="annotations")
+
         return scene
+
+    def _resolve_centers(self, structure: CrystalStructure, centers: list[int] | str) -> list[int]:
+        """Resolve a center spec to site indices, allowing element strings."""
+        if isinstance(centers, str):
+            indices = structure.indices_of_species(centers)
+            if not indices:
+                indices = structure.indices_of_element(centers)
+            if not indices:
+                warnings.warn(f"No sites match species/element '{centers}'.", stacklevel=2)
+                return []
+            if len(indices) > 1 and centers in {site.dominant_element for site in structure.sites}:
+                exact = structure.indices_of_species(centers)
+                if not exact:
+                    warnings.warn(
+                        f"Element '{centers}' is ambiguous; matched {len(indices)} sites by element.",
+                        stacklevel=2,
+                    )
+            return indices
+        return list(centers)
 
     def _make_sphere(
         self,
@@ -141,11 +258,39 @@ class SceneBuilder:
         color = self.palette.hex(element)
         radius = self._atom_radius(element, radius_factor)
         label = site.label or site.dominant_species
+        render_style = self.theme.atom_style
+        opacity = 1.0
+
+        if site.is_disordered:
+            key = (site.source_index, site.image_offset)
+            if key not in _DISORDERED_WARNED:
+                _DISORDERED_WARNED.add(key)
+                warnings.warn(
+                    f"Site {site_index} ({site.dominant_species}) is disordered; "
+                    "only the dominant species is being rendered.",
+                    stacklevel=2,
+                )
+
+        for override in self.options.atom_overrides:
+            if override.matches(site_index, site):
+                if override.color is not None:
+                    color = override.color
+                if override.radius is not None:
+                    radius = override.radius
+                if override.scale is not None:
+                    radius = self._atom_radius(element, override.scale)
+                if override.opacity is not None:
+                    opacity = override.opacity
+                if override.render_style is not None:
+                    render_style = override.render_style
+                if not override.visible:
+                    return None  # type: ignore[return-value]
+
         return Sphere(
             position=pos,
             radius=radius,
             color=color,
-            opacity=1.0,
+            opacity=opacity,
             label=label,
             metadata={
                 "site_index": site_index,
@@ -153,13 +298,13 @@ class SceneBuilder:
                 "species": site.dominant_species,
                 "element": element,
             },
-            render_style=self.theme.atom_style,
+            render_style=render_style,
         )
 
     def _atom_radius(self, element: str, factor: float | None = None) -> float:
         """Return display radius for an element."""
         if factor is None:
-            if self.options.show_polyhedra:
+            if self.options.show_polyhedra and self.options.polyhedra_specs:
                 factor = getattr(self.theme, "atom_radius_scale_polyhedron", 0.22)
                 max_radius = 0.18
             else:
@@ -167,22 +312,24 @@ class SceneBuilder:
                 max_radius = 0.38
         else:
             max_radius = 0.40
-        base = get_radius(element, "covalent", default=0.2)
+        base = get_radius(element, "covalent")
         # Clamp very large radii so A-sites do not swallow the cage.
         return min(base * factor, max_radius)
 
     def _atoms(self, structure: CrystalStructure) -> list[Sphere]:
         centers: set[int] = set()
-        if self.options.show_polyhedra and self.options.polyhedra_centers is not None:
-            pc = self.options.polyhedra_centers
-            centers = set(structure.indices_of_species(pc)) if isinstance(pc, str) else set(pc)
+        for spec in self.options.polyhedra_specs:
+            centers.update(self._resolve_centers(structure, spec.centers))
+
         spheres = []
         for i in range(len(structure.sites)):
             if i in centers:
                 factor = getattr(self.theme, "atom_radius_scale_polyhedron_center", 0.10)
             else:
                 factor = None
-            spheres.append(self._make_sphere(structure, i, radius_factor=factor))
+            sphere = self._make_sphere(structure, i, radius_factor=factor)
+            if sphere is not None:
+                spheres.append(sphere)
         return spheres
 
     def _expand_image_atoms(
@@ -269,29 +416,48 @@ class SceneBuilder:
 
     def _bonds(self, structure: CrystalStructure, bonds: list[NeighborBond]) -> list[Bond]:
         cylinders = []
-        for bond in bonds:
+        tol = 1e-6
+        for bond_index, bond in enumerate(bonds):
             site_i = structure.sites[bond.i]
             site_j = structure.sites[bond.j]
             start = site_i.cart_coords(structure.lattice)
 
-            # In cell_complete mode, route every cross-cell bond to the partner
-            # replica that lies inside the displayed [0,1]^3 cell.  This avoids
-            # dangling bonds pointing at atoms we are not drawing.
+            # In cell_complete mode, only draw bonds whose partner lies inside or
+            # on the boundary of the displayed [0,1]^3 cell.  This prevents bonds
+            # from dangling at periodic images that have no displayed atom.
             if self.options.display_boundary == "cell_complete":
                 partner_frac = site_j.frac_coords + np.array(bond.jimage, dtype=float)
-                _, image_offset = self._fold_to_unit_cell(partner_frac)
-                end = site_j.cart_coords(structure.lattice) + structure.lattice.frac_to_cart(np.array(image_offset, dtype=float))
+                if not all(-tol <= f <= 1.0 + tol for f in partner_frac):
+                    continue
+                end = site_j.cart_coords(structure.lattice) + structure.lattice.frac_to_cart(np.array(bond.jimage))
+                image_offset = bond.jimage
             else:
                 end = site_j.cart_coords(structure.lattice) + structure.lattice.frac_to_cart(np.array(bond.jimage))
                 image_offset = bond.jimage
 
-            color = self.theme.bond_color
+            color = self._bond_color(bond)
+            width = self._bond_width(bond)
+            opacity = self._bond_opacity(bond)
+            visible = True
+            for override in self.options.bond_overrides:
+                if override.matches(bond_index, bond, site_i, site_j):
+                    if override.color is not None:
+                        color = override.color
+                    if override.width is not None:
+                        width = override.width
+                    if override.opacity is not None:
+                        opacity = override.opacity
+                    if not override.visible:
+                        visible = False
+            if not visible:
+                continue
+
             cylinders.append(Bond(
                 start=start,
                 end=end,
-                radius=self.theme.bond_width,
+                radius=width,
                 color=color,
-                opacity=0.85,
+                opacity=opacity,
                 site_i=bond.i,
                 site_j=bond.j,
                 jimage=image_offset,
@@ -299,13 +465,20 @@ class SceneBuilder:
             ))
         return cylinders
 
+    def _bond_color(self, bond: NeighborBond) -> str:
+        return self.theme.bond_color
+
+    def _bond_width(self, bond: NeighborBond) -> float:
+        return self.theme.bond_width
+
+    def _bond_opacity(self, bond: NeighborBond) -> float:
+        return 0.85
+
     def _polyhedra(self, structure: CrystalStructure, bonds: list[NeighborBond] | None) -> list[Polyhedron]:
         polyhedra = []
-        centers = self.options.polyhedra_centers
-        if centers is None:
+        specs = self.options.polyhedra_specs
+        if not specs:
             return polyhedra
-        if isinstance(centers, str):
-            centers = structure.indices_of_species(centers)
 
         bonds = bonds or []
         # Store (neighbor_index, image_offset) so periodic images are not folded back.
@@ -314,38 +487,53 @@ class SceneBuilder:
             adjacency[bond.i].append((bond.j, bond.jimage))
             adjacency[bond.j].append((bond.i, tuple(-x for x in bond.jimage)))
 
-        for center_idx in centers:
-            center_site = structure.sites[center_idx]
-            center_pos = center_site.cart_coords(structure.lattice)
-            nbrs = adjacency.get(center_idx, [])
-            if not nbrs:
-                continue
-            vertex_positions = []
-            vertex_indices = []
-            vertex_metadata = []
-            for j, jimage in nbrs:
-                offset = np.array(jimage, dtype=float)
-                vertex_frac = structure.sites[j].frac_coords + offset
-                vertex_positions.append(structure.lattice.frac_to_cart(vertex_frac))
-                vertex_indices.append(j)
-                vertex_metadata.append({"site_index": j, "image_offset": jimage})
-            if len(vertex_positions) < 4:
-                continue
-            try:
-                cp = build_polyhedron(center_pos, vertex_positions, vertex_indices, center_idx)
-            except Exception:
-                continue
-            fill = self.options.polyhedra_strategy.get("fill_color", self.palette.hex("accent")) if isinstance(self.options.polyhedra_strategy, dict) else self.palette.hex("accent")
-            polyhedra.append(Polyhedron(
-                center_site=center_idx,
-                vertices=cp.vertex_positions,
-                faces=cp.faces,
-                fill_color=fill,
-                edge_color=self.palette.hex("dark"),
-                opacity=self.theme.polyhedron_opacity,
-                edge_width=self.theme.polyhedron_edge_width,
-                vertex_metadata=vertex_metadata,
-            ))
+        for spec in specs:
+            spec_bonds = bonds
+            if spec.strategy is not None:
+                spec_bonds = spec.strategy.get_bonds(structure)
+                # Rebuild adjacency for this spec.
+                adjacency = {i: [] for i in range(len(structure))}
+                for bond in spec_bonds:
+                    adjacency[bond.i].append((bond.j, bond.jimage))
+                    adjacency[bond.j].append((bond.i, tuple(-x for x in bond.jimage)))
+
+            centers = self._resolve_centers(structure, spec.centers)
+            fill_color = spec.fill_color or self.palette.hex("accent")
+            opacity = spec.opacity if spec.opacity is not None else self.theme.polyhedron_opacity
+            edge_width = spec.edge_width if spec.edge_width is not None else self.theme.polyhedron_edge_width
+            edge_color = spec.edge_color or self.palette.hex("dark")
+
+            for center_idx in centers:
+                center_site = structure.sites[center_idx]
+                center_pos = center_site.cart_coords(structure.lattice)
+                nbrs = adjacency.get(center_idx, [])
+                if not nbrs:
+                    continue
+                vertex_positions = []
+                vertex_indices = []
+                vertex_metadata = []
+                for j, jimage in nbrs:
+                    offset = np.array(jimage, dtype=float)
+                    vertex_frac = structure.sites[j].frac_coords + offset
+                    vertex_positions.append(structure.lattice.frac_to_cart(vertex_frac))
+                    vertex_indices.append(j)
+                    vertex_metadata.append({"site_index": j, "image_offset": jimage})
+                if len(vertex_positions) < 4:
+                    continue
+                try:
+                    cp = build_polyhedron(center_pos, vertex_positions, vertex_indices, center_idx)
+                except Exception:
+                    continue
+                polyhedra.append(Polyhedron(
+                    center_site=center_idx,
+                    vertices=cp.vertex_positions,
+                    faces=cp.faces,
+                    fill_color=fill_color,
+                    edge_color=edge_color,
+                    opacity=opacity,
+                    edge_width=edge_width,
+                    vertex_metadata=vertex_metadata,
+                ))
         return polyhedra
 
     def _cell_edges(self, structure: CrystalStructure) -> list[CellEdge]:
@@ -369,6 +557,7 @@ class SceneBuilder:
                 linewidth=self.theme.cell_edge_width * (0.55 if is_back else 1.0),
                 opacity=0.35 if is_back else 0.70,
                 is_back=is_back,
+                layer="background",
             ))
         return lines
 
@@ -461,3 +650,60 @@ class SceneBuilder:
                 color=self.palette.hex(element_symbol(species)),
             ))
         return items
+
+    def _annotations(self, structure: CrystalStructure) -> list[Text]:
+        texts = []
+        for ann in self.options.annotations:
+            fontsize = ann.fontsize or self.theme.label_size
+            color = ann.color or self.theme.palette.hex("dark")
+            if ann.kind == "site_label":
+                if ann.site_index is None or ann.site_index >= len(structure.sites):
+                    continue
+                site = structure.sites[ann.site_index]
+                pos = site.cart_coords(structure.lattice)
+                texts.append(Text(
+                    position=pos,
+                    text=ann.text,
+                    fontsize=fontsize,
+                    color=color,
+                    halign="left",
+                    valign="bottom",
+                    layer="annotation",
+                    metadata={"offset": ann.offset, "kind": "site_label"},
+                ))
+            elif ann.kind == "formula_label":
+                texts.append(Text(
+                    position=self._screen_position(ann.position),
+                    text=ann.text,
+                    fontsize=fontsize,
+                    color=color,
+                    halign="left",
+                    valign="top",
+                    layer="annotation",
+                    metadata={"position": ann.position, "kind": "formula_label"},
+                ))
+            elif ann.kind == "panel_label":
+                texts.append(Text(
+                    position=self._screen_position(ann.position),
+                    text=ann.text,
+                    fontsize=fontsize,
+                    color=color,
+                    fontweight=ann.fontweight or "bold",
+                    halign="left",
+                    valign="top",
+                    layer="annotation",
+                    metadata={"position": ann.position, "kind": "panel_label"},
+                ))
+        return texts
+
+    def _screen_position(self, position: str | tuple[float, float]) -> np.ndarray:
+        """Map a named screen position to normalized device coordinates."""
+        mapping = {
+            "top_left": np.array([0.02, 0.98]),
+            "top_right": np.array([0.98, 0.98]),
+            "bottom_left": np.array([0.02, 0.02]),
+            "bottom_right": np.array([0.98, 0.02]),
+        }
+        if isinstance(position, str):
+            return mapping.get(position, np.array([0.02, 0.98]))
+        return np.asarray(position, dtype=float)

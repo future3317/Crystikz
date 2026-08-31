@@ -2,17 +2,21 @@
 
 Publication-grade crystal structure visualization toolkit for materials science and equivariant geometric deep learning.
 
-`crystalfig` converts crystallographic data (CIF, POSCAR, pymatgen `Structure`, ASE `Atoms`) into publication-ready figures via multiple backends: Matplotlib (PDF/SVG/PNG/EPS/PGF), TikZ/PGF (pure LaTeX vector), and optional PyVista/VTK for advanced 3D rendering.
+`crystalfig` converts crystallographic data (CIF, POSCAR, pymatgen `Structure`, ASE `Atoms`) into publication-ready figures via multiple backends:
 
-The core philosophy is:
+- **MatplotlibRenderer** — vector PDF/SVG/EPS/PGF and high-DPI PNG/TIFF.
+- **SvgRenderer** — pure SVG with radial-gradient atoms, gradient bonds, and translucent polyhedra.
+- **TikzRenderer** — pure LaTeX TikZ for font-uniform papers.
+
+The core pipeline is:
 
 ```text
-Crystal data / Structure
-→ canonical internal model
-→ analysis + geometry construction
-→ backend-independent Scene
-→ multiple rendering backends
-→ publication-ready PDF/SVG/PGF/TikZ/PNG/TIFF
+Crystal data (CIF / POSCAR / pymatgen / ASE)
+    → canonical internal model (CrystalStructure)
+    → analysis + geometry construction
+    → backend-independent Scene
+    → renderer
+    → publication-ready PDF/SVG/TEX/PNG
 ```
 
 ## Quick start
@@ -20,13 +24,21 @@ Crystal data / Structure
 ### Install
 
 ```bash
-pip install dist/crystalfig-0.1.0-py3-none-any.whl
+pip install crystalfig
 ```
 
-For optional dependencies:
+For development:
 
 ```bash
-pip install crystalfig[ase,reciprocal,pyvista]
+git clone https://github.com/future3317/Crystikz
+cd Crystikz
+pip install -e ".[dev]"
+```
+
+Optional extras:
+
+```bash
+pip install crystalfig[ase,reciprocal,latex]
 ```
 
 ### One-line: CIF → PDF
@@ -50,12 +62,27 @@ fig = (
     .show_unit_cell()
     .add_bonds(strategy="crystalnn")
     .add_polyhedra(centers="Ti")
-    .add_lattice_axes()
-    .style("publication_muted")
+    .style("publication_polyhedra")
 )
 
 fig.export("BaTiO3.pdf")
 fig.export("BaTiO3.svg")
+```
+
+### Embed in a normal Matplotlib figure
+
+```python
+import matplotlib.pyplot as plt
+from crystalfig import CrystalFigure
+from crystalfig.examples.presets import rocksalt_structure
+
+fig, axes = plt.subplots(1, 2, figsize=(7, 3.5))
+
+CrystalFigure(rocksalt_structure()).quick().draw(axes[0])
+axes[1].plot([0, 1, 2], [0, 1, 0])
+
+plt.tight_layout()
+plt.savefig("combined.pdf")
 ```
 
 ### CLI
@@ -69,53 +96,56 @@ crystalfig inspect BaTiO3.cif
 
 # Check environment
 crystalfig doctor
-
-# Preflight an exported PDF
-crystalfig preflight BaTiO3.pdf
-
-# Batch from YAML
-crystalfig batch figures.yaml
 ```
 
 ## Features
 
 ### Structure input
 
-- CIF, POSCAR, CSSR, JSON, YAML
+- CIF, POSCAR (with or without extension), CSSR, JSON, YAML
 - pymatgen `Structure`
 - ASE `Atoms` (optional)
 
 ### Structure analysis
 
 - Conventional / primitive cells via spglib
-- Supercells (diagonal or 3×3 matrix)
-- Space group, Wyckoff positions, symmetry-equivalent sites
-- Reciprocal lattice and first Brillouin zone
+- Supercells (diagonal integer tuple or general 3×3 integer matrix)
+- Reciprocal lattice and first Brillouin zone (basic Voronoi construction)
 
 ### Visual elements
 
-- Atoms: shaded spheres, flat circles, wireframe, space-filling
-- Bonds: CrystalNN, cutoff, covalent-radii, ASE natural cutoffs
-- Coordination polyhedra: automatic ConvexHull faces, no hand-written face lists
+- Atoms: glossy shaded spheres, flat circles, wireframe
+- Bonds: CrystalNN, cutoff, covalent-radii, ASE natural cutoffs; split-color or uniform
+- Coordination polyhedra: automatic ConvexHull faces
 - Unit cell / supercell edges with front/back styling
-- Crystallographic axes
-- Miller planes and `[uvw]` directions
-- Polarization, force, magnetic-moment, phonon arrows
-- Site-property colormaps
-- Defect / vacancy highlights
+- Vectors (polarization, force, magnetic moment, phonon arrows)
+- Miller plane intersection polygons
+- Manual site/species styling overrides
 
 ### Backends
 
 - **MatplotlibRenderer**: true vector PDF/SVG/EPS/PGF, high-DPI PNG/TIFF
-- **TikzRenderer**: pure LaTeX TikZ with centralized library management
-- **PyVistaRenderer**: optional 3D meshes / isosurfaces (placeholder)
+- **SvgRenderer**: pure SVG publication output
+- **TikzRenderer**: standalone TikZ with centralized library management
+- **Matplotlib3DRenderer**: true 3D projection preview (hybrid vector/raster)
 
 ### Export
 
 - `.pdf`, `.svg`, `.eps`, `.png`, `.tiff`, `.pgf`, `.tex`
-- Figure size in mm/cm/in/pt
+- Figure size in mm
 - Transparent backgrounds
-- Recipe YAML/JSON for full reproducibility
+
+## Current limitations
+
+The following items are **not implemented** in the current release:
+
+- Volumetric isosurfaces (CHGCAR, cube)
+- Trajectory / multi-frame export
+- Magnetic symmetry (spglib magnetic groups)
+- Advanced automatic label placement / collision avoidance
+- Multi-panel compositor (`FigureGrid`); use `CrystalFigure.draw(ax=...)` with normal Matplotlib subplots instead
+- PyVista/Fresnel/POV-Ray advanced 3D rendering is not included
+- Brillouin-zone k-paths require the optional `seekpath` dependency
 
 ## Scientific conventions
 
@@ -129,12 +159,12 @@ crystalfig batch figures.yaml
 
 ```text
 crystalfig/
-    model/          # canonical structure, lattice, site, properties
+    model/          # canonical structure, lattice, site
     io/             # loaders and adapters
     geometry/       # periodic images, polyhedra, Miller planes, BZ
-    neighbors/      # bond strategies (CrystalNN, cutoff, covalent, ASE)
+    neighbors/      # bond strategies
     scene/          # backend-independent scene graph and camera
-    renderers/      # Matplotlib, TikZ, optional PyVista
+    renderers/      # Matplotlib, SVG, TikZ, Matplotlib3D
     styles/         # palettes, radii, publication themes
     figure/         # high-level CrystalFigure fluent API
     export/         # compiler, preflight, unified exporter
@@ -146,7 +176,7 @@ crystalfig/
 
 ```bash
 # Run tests
-python -m pytest tests -v
+python -m pytest tests -q
 
 # Lint
 python -m ruff check .
@@ -156,6 +186,7 @@ python -m build --wheel
 
 # Generate gallery
 python examples/generate_gallery.py
+python examples/make_contact_sheet.py
 ```
 
 ## License

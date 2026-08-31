@@ -7,7 +7,8 @@ name = "crystalfig"
 version = "0.1.0"
 description = "Publication-grade crystal structure visualization toolkit for materials science and equivariant geometric deep learning."
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [
     {name = "AI4Materials Group"}
@@ -16,6 +17,7 @@ keywords = ["crystallography", "materials-science", "visualization", "tikz", "ma
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -23,6 +25,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "numpy>=1.24.0",
@@ -40,6 +43,7 @@ pyvista = ["pyvista>=0.43.0", "vtk"]
 raytrace = ["fresnel>=0.13.0"]
 latex = ["pdf2image>=1.16.0"]
 dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.1.0", "build>=1.0.0"]
+test = ["pytest>=7.0", "pytest-cov"]
 docs = ["sphinx", "sphinx-rtd-theme"]
 all = ["ase>=3.22.0", "seekpath>=2.0.0", "pyvista>=0.43.0", "vtk", "fresnel>=0.13.0"]
 

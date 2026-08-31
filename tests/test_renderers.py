@@ -11,6 +11,7 @@ from crystalfig.export.latex import LatexCompiler
 from crystalfig.figure.builder import CrystalFigure
 from crystalfig.renderers.matplotlib_3d_renderer import Matplotlib3DRenderer
 from crystalfig.renderers.matplotlib_renderer import MatplotlibRenderer
+from crystalfig.renderers.svg_renderer import SvgRenderer
 from crystalfig.renderers.tikz_renderer import TikzRenderer
 from crystalfig.scene.camera import Camera
 
@@ -34,6 +35,29 @@ class TestMatplotlibRenderer:
             out = Path(tmpdir) / "test.png"
             renderer.export(scene, str(out), fig.theme, RenderOptions(width=80.0, dpi=150), fmt="png")
             assert out.exists()
+
+    def test_draw_does_not_close(self):
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        fig = CrystalFigure(rocksalt_structure()).show_unit_cell()
+        scene = fig.build_scene()
+        renderer = MatplotlibRenderer(camera=Camera())
+        _, ax = plt.subplots()
+        renderer.draw(ax, scene, fig.theme, RenderOptions(width=80.0))
+        assert ax.figure is not None
+        plt.close(ax.figure)
+
+
+class TestSvgRenderer:
+    def test_svg_contains_gradients_for_glossy_atoms(self):
+        fig = CrystalFigure(rocksalt_structure()).show_unit_cell()
+        scene = fig.build_scene()
+        renderer = SvgRenderer(camera=Camera())
+        svg = renderer.render(scene, fig.theme, RenderOptions(width=80.0))
+        assert "<svg" in svg
+        # Glossy shaded spheres emit clipPath defs for radial shading.
+        assert "<clipPath" in svg
 
 
 class TestMatplotlib3DRenderer:

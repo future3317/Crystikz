@@ -25,7 +25,6 @@ from crystalfig.scene.primitives import (
     Cylinder,
     LegendItem,
     Line,
-    Plane,
     Polyhedron,
     Sphere,
 )
@@ -137,7 +136,7 @@ class Matplotlib3DRenderer:
                 pts.append(p.end if hasattr(p, "end") else p.start + p.direction)
             elif isinstance(p, Polyhedron):
                 pts.extend(p.vertices)
-            elif isinstance(p, (Poly, Plane)):
+            elif isinstance(p, Poly):
                 pts.extend(p.points)
         pts = np.array(pts)
         if pts.size == 0:
@@ -183,12 +182,10 @@ class Matplotlib3DRenderer:
             if isinstance(p, (Arrow, Axis)):
                 self._draw_arrow(ax, p)
 
-        # Draw polygons / planes.
+        # Draw polygons.
         for p in scene.all_primitives():
             if isinstance(p, Poly):
                 self._draw_polygon(ax, p)
-            elif isinstance(p, Plane):
-                self._draw_plane(ax, p)
 
         # Text in 3D is tricky; skip unless explicitly requested later.
         if theme.show_legend and legend_items:
@@ -312,31 +309,6 @@ class Matplotlib3DRenderer:
         )
         ax.add_collection3d(poly3d)
 
-    def _draw_plane(self, ax, p: Plane):
-        # Draw a simple rectangular plane patch oriented by the normal.
-        normal = np.asarray(p.normal, dtype=float)
-        normal /= np.linalg.norm(normal) + 1e-12
-        # Two arbitrary orthogonal directions in the plane.
-        u = np.cross(normal, [0, 0, 1]) if abs(normal[2]) < 0.9 else np.cross(normal, [0, 1, 0])
-        u /= np.linalg.norm(u)
-        v = np.cross(normal, u)
-        w, h = p.width, p.height
-        corners = np.array([
-            p.origin + (-w / 2) * u + (-h / 2) * v,
-            p.origin + (w / 2) * u + (-h / 2) * v,
-            p.origin + (w / 2) * u + (h / 2) * v,
-            p.origin + (-w / 2) * u + (h / 2) * v,
-        ])
-        fill = self._to_rgba(p.color, p.opacity)
-        poly3d = Poly3DCollection(
-            [corners],
-            facecolors=fill,
-            edgecolors=fill,
-            linewidths=0.5,
-            alpha=p.opacity,
-        )
-        ax.add_collection3d(poly3d)
-
     def _draw_arrow(self, ax, p: Arrow):
         start = np.asarray(p.start, dtype=float)
         end = start + np.asarray(p.direction, dtype=float)
@@ -382,7 +354,7 @@ class Matplotlib3DRenderer:
                     pts.append(p.end if hasattr(p, "end") else p.start + p.direction)
                 elif isinstance(p, Polyhedron):
                     pts.extend(p.vertices)
-                elif isinstance(p, (Poly, Plane)):
+                elif isinstance(p, Poly):
                     pts.extend(p.points)
             if not pts:
                 return

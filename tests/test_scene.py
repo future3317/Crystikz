@@ -47,3 +47,19 @@ class TestScene:
         scene.add(Sphere(position=np.array([0, 0, 0]), radius=0.2))
         d = scene.as_dict()
         assert "primitives" in d
+
+    def test_visible_false_skipped(self):
+        scene = Scene()
+        scene.add(Sphere(position=np.array([0, 0, 0]), radius=0.2, visible=True))
+        scene.add(Sphere(position=np.array([1, 1, 1]), radius=0.2, visible=False))
+        assert len(scene.all_primitives()) == 1
+
+    def test_group_visible_respected(self):
+        from crystalfig.scene.primitives import Group
+        scene = Scene()
+        scene.add(Sphere(position=np.array([0, 0, 0]), radius=0.2))
+        group = Group(name="hidden", primitives=[Sphere(position=np.array([1, 1, 1]), radius=0.2)])
+        group.visible = False
+        scene.groups["hidden"] = group
+        assert len(scene.all_primitives()) == 1
+        assert scene.get_group("hidden") is group

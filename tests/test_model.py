@@ -78,6 +78,25 @@ class TestCrystalStructure:
         assert len(super_struct) == 8
         assert super_struct.volume == pytest.approx(8 * struct.volume)
 
+    def test_supercell_tuple(self):
+        lat = Lattice.cubic(4.0)
+        sites = [Site([0, 0, 0], "Na"), Site([0.5, 0.5, 0.5], "Cl")]
+        struct = CrystalStructure(lat, sites)
+        super_struct = struct.make_supercell((2, 1, 1))
+        assert len(super_struct) == 4
+        assert super_struct.volume == pytest.approx(2 * struct.volume)
+
+    def test_supercell_general_matrix(self):
+        """Non-diagonal 3×3 integer transformation matrices must work."""
+        lat = Lattice.cubic(4.0)
+        sites = [Site([0, 0, 0], "Na")]
+        struct = CrystalStructure(lat, sites)
+        # A shear-like supercell transformation that doubles the volume.
+        sc_matrix = np.array([[2, 0, 0], [0, 1, 0], [0, 0, 1]])
+        super_struct = struct.make_supercell(sc_matrix)
+        assert len(super_struct) == 2
+        assert super_struct.volume == pytest.approx(2 * struct.volume)
+
     def test_unique_species(self):
         lat = Lattice.cubic(4.0)
         sites = [Site([0, 0, 0], "Na"), Site([0.5, 0.5, 0.5], "Cl")]
