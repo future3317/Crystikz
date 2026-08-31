@@ -84,3 +84,18 @@ class TestPBCBondGeometry:
             assert key not in keys
             assert reverse not in keys
             keys.add(key)
+
+    def test_distant_images_deduplicated(self):
+        """For a single (i, j) pair only the minimum-distance images are kept."""
+        struct = perovskite_structure()
+        # Use a large search radius so higher-order periodic images are found.
+        bonds = CutoffStrategy(cutoff=4.5).get_bonds(struct)
+        ti_o_bonds = [
+            b for b in bonds
+            if struct.sites[b.i].dominant_species == "Ti"
+            and struct.sites[b.j].dominant_species == "O"
+        ]
+        # Ti has 3 unique O sites; each contributes 2 nearest images (opposite faces).
+        # Distant images of the same O site are dropped.
+        assert len(ti_o_bonds) == 6
+        assert all(b.distance < 2.1 for b in ti_o_bonds)

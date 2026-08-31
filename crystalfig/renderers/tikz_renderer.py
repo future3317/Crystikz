@@ -63,10 +63,9 @@ class TikzRenderer:
         self._color_map = {}
         self._color_counter = 0
 
-        # Fit camera
-        bbox = scene.bounding_box()
-        if bbox is not None and self.camera.auto_fit:
-            self.camera.fit_to_bounding_box(bbox)
+        # Fit camera to the full projected scene extent.
+        if self.camera.auto_fit:
+            self.camera.fit_to_scene(scene)
 
         primitives = self._sort_by_depth(scene)
         palette = theme.palette

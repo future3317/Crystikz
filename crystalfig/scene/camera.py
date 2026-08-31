@@ -175,3 +175,56 @@ class Camera:
         if size > 0:
             self.scale = 2.0 * (1.0 - self.padding) / size
         return self
+
+    def fit_to_scene(self, scene) -> Camera:
+        """Adjust scale so every projected primitive fits in a [-1, 1] view.
+
+        Uses unscaled camera coordinates so degenerate views (e.g. looking along
+        a body diagonal) do not collapse to zero extent.
+        """
+        bounds = self._scene_camera_bounds(scene)
+        if bounds is None:
+            return self
+        (umin, vmin), (umax, vmax) = bounds
+        size = max(umax - umin, vmax - vmin)
+        if size > 0:
+            self.scale = 2.0 * (1.0 - self.padding) / size
+        return self
+
+    def _scene_camera_bounds(self, scene):
+        """Return ((umin, vmin), (umax, vmax)) in unscaled camera coordinates."""
+        pts = []
+        rot = self.rotation_matrix()
+        x_axis = rot[0]
+        y_axis = rot[1]
+
+        def add_point(point, radius: float = 0.0):
+            p = np.asarray(point, dtype=float) - self.target
+            ux = float(np.dot(p, x_axis))
+            uy = float(np.dot(p, y_axis))
+            if radius > 0.0:
+                pts.extend([(ux + radius, uy), (ux - radius, uy), (ux, uy + radius), (ux, uy - radius)])
+            else:
+                pts.append((ux, uy))
+
+        for p in scene.all_primitives():
+            if hasattr(p, "position"):  # Sphere, Text
+                r = getattr(p, "radius", 0.0)
+                add_point(p.position, r)
+            elif hasattr(p, "start") and hasattr(p, "end"):  # Bond, Line, CellEdge, Cylinder
+                add_point(p.start)
+                add_point(p.end)
+            elif hasattr(p, "vertices"):  # Polyhedron
+                for v in p.vertices:
+                    add_point(v)
+            elif hasattr(p, "points"):  # Polygon, Polyline
+                for v in p.points:
+                    add_point(v)
+            elif hasattr(p, "start") and hasattr(p, "direction"):  # Arrow, Axis
+                add_point(p.start)
+                add_point(p.start + p.direction)
+
+        if not pts:
+            return None
+        arr = np.array(pts)
+        return arr.min(axis=0), arr.max(axis=0)

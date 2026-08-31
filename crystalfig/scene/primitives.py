@@ -104,6 +104,8 @@ class Polyhedron(Primitive):
     fill_color: str | tuple[float, float, float, float] | None = None
     edge_color: str | tuple[float, float, float, float] | None = None
     edge_width: float = 0.5
+    # Per-vertex metadata: [{"site_index": int, "image_offset": (i,j,k)}, ...]
+    vertex_metadata: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self):
         self.vertices = [np.asarray(v, dtype=float) for v in self.vertices]

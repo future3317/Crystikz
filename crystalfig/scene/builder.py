@@ -34,11 +34,11 @@ class SceneOptions:
     """Options controlling scene construction."""
 
     show_unit_cell: bool = True
-    show_axes: bool = True
+    show_axes: bool = False
     show_atoms: bool = True
     show_bonds: bool = False
     show_polyhedra: bool = False
-    show_legend: bool = True
+    show_legend: bool = False
     atom_style: str = "shaded"
     supercell: tuple[int, int, int] | None = None
     bonds: list[NeighborBond] | None = None
@@ -85,14 +85,18 @@ class SceneBuilder:
         if self.options.show_unit_cell:
             scene.extend(self._cell_edges(structure), group="cell")
 
+        # Build polyhedra first so we know which image atoms are needed.
+        polyhedra: list[Polyhedron] = []
         if self.options.show_polyhedra:
-            scene.extend(self._polyhedra(structure, bonds), group="polyhedra")
+            polyhedra = self._polyhedra(structure, bonds)
+            scene.extend(polyhedra, group="polyhedra")
 
         if self.options.show_bonds and bonds:
             scene.extend(self._bonds(structure, bonds), group="bonds")
 
         if self.options.show_atoms:
             scene.extend(self._atoms(structure), group="atoms")
+            scene.extend(self._expand_image_atoms(structure, bonds or [], polyhedra), group="image_atoms")
 
         if self.options.show_axes:
             scene.extend(self._axes(structure), group="axes")
@@ -114,24 +118,66 @@ class SceneBuilder:
 
         return scene
 
+    def _make_sphere(
+        self,
+        structure: CrystalStructure,
+        site_index: int,
+        image_offset: tuple[int, int, int] = (0, 0, 0),
+        radius_factor: float | None = None,
+    ) -> Sphere:
+        """Create a sphere for a site, optionally at a periodic image position."""
+        site = structure.sites[site_index]
+        pos = site.cart_coords(structure.lattice) + structure.lattice.frac_to_cart(np.array(image_offset, dtype=float))
+        element = site.dominant_element
+        color = self.palette.hex(element)
+        radius = self._atom_radius(element, radius_factor)
+        label = site.label or site.dominant_species
+        return Sphere(
+            position=pos,
+            radius=radius,
+            color=color,
+            opacity=1.0,
+            label=label,
+            metadata={
+                "site_index": site_index,
+                "image_offset": image_offset,
+                "species": site.dominant_species,
+                "element": element,
+            },
+            render_style=self.theme.atom_style,
+        )
+
+    def _atom_radius(self, element: str, factor: float | None = None) -> float:
+        """Return display radius for an element."""
+        if factor is None:
+            if self.options.show_polyhedra:
+                factor = getattr(self.theme, "atom_radius_scale_polyhedron", 0.18)
+            else:
+                factor = getattr(self.theme, "atom_radius_scale", 0.30)
+        base = get_radius(element, "covalent", default=0.2)
+        # Clamp very large radii so A-sites do not swallow the cage.
+        return min(base * factor, 0.35)
+
     def _atoms(self, structure: CrystalStructure) -> list[Sphere]:
-        spheres = []
-        for i, site in enumerate(structure.sites):
-            pos = site.cart_coords(structure.lattice)
-            element = site.dominant_element
-            color = self.palette.hex(element)
-            radius = get_radius(element, "covalent", default=0.2) * 0.4  # scale for visual balance
-            label = site.label or site.dominant_species
-            spheres.append(Sphere(
-                position=pos,
-                radius=radius,
-                color=color,
-                opacity=1.0,
-                label=label,
-                metadata={"site_index": i, "species": site.dominant_species, "element": element},
-                render_style=self.theme.atom_style,
-            ))
-        return spheres
+        return [self._make_sphere(structure, i) for i in range(len(structure.sites))]
+
+    def _expand_image_atoms(
+        self,
+        structure: CrystalStructure,
+        bonds: list[NeighborBond],
+        polyhedra: list[Polyhedron],
+    ) -> list[Sphere]:
+        """Generate spheres for periodic-image atoms referenced by bonds/polyhedra."""
+        images: dict[tuple[int, tuple[int, int, int]], None] = {}
+        for bond in bonds:
+            if any(bond.jimage):
+                images[(bond.j, bond.jimage)] = None
+        for poly in polyhedra:
+            for meta in getattr(poly, "vertex_metadata", []):
+                offset = tuple(meta.get("image_offset", (0, 0, 0)))
+                if any(offset):
+                    images[(meta["site_index"], offset)] = None
+        return [self._make_sphere(structure, idx, offset) for (idx, offset) in images.keys()]
 
     def _bonds(self, structure: CrystalStructure, bonds: list[NeighborBond]) -> list[Bond]:
         cylinders = []
@@ -177,11 +223,13 @@ class SceneBuilder:
                 continue
             vertex_positions = []
             vertex_indices = []
+            vertex_metadata = []
             for j, jimage in nbrs:
                 offset = np.array(jimage, dtype=float)
                 vertex_frac = structure.sites[j].frac_coords + offset
                 vertex_positions.append(structure.lattice.frac_to_cart(vertex_frac))
                 vertex_indices.append(j)
+                vertex_metadata.append({"site_index": j, "image_offset": jimage})
             if len(vertex_positions) < 4:
                 continue
             try:
@@ -197,6 +245,7 @@ class SceneBuilder:
                 edge_color=self.palette.hex("dark"),
                 opacity=self.theme.polyhedron_opacity,
                 edge_width=self.theme.polyhedron_edge_width,
+                vertex_metadata=vertex_metadata,
             ))
         return polyhedra
 
@@ -284,7 +333,7 @@ class SceneBuilder:
             site = structure.sites[i]
             spheres.append(Sphere(
                 position=site.cart_coords(structure.lattice),
-                radius=get_radius(site.dominant_element, "covalent", 0.2) * 0.5,
+                radius=self._atom_radius(site.dominant_element) * 1.2,
                 color=self.palette.hex("amber"),
                 opacity=0.4,
                 render_style="wireframe",
@@ -297,7 +346,7 @@ class SceneBuilder:
             site = structure.sites[i]
             spheres.append(Sphere(
                 position=site.cart_coords(structure.lattice),
-                radius=get_radius(site.dominant_element, "covalent", 0.2) * 0.4,
+                radius=self._atom_radius(site.dominant_element) * 1.1,
                 color=self.palette.hex("secondary"),
                 opacity=0.5,
                 render_style="wireframe",

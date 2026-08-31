@@ -29,6 +29,36 @@ def _canonical_bond_key(i: int, j: int, image: tuple[int, int, int]) -> tuple:
     return min(forward, reverse)
 
 
+def _dedup_bonds_min_image(bonds: list[NeighborBond], tol: float = 1e-6) -> list[NeighborBond]:
+    """For each (i, j) pair keep all periodic images at the minimum distance.
+
+    This prevents a single pair of sites from producing long spokes to distant
+    periodic images (e.g. higher-order images within a large search radius)
+    while preserving symmetry-equivalent nearest neighbours such as the six
+    Cl neighbours of Na in rock-salt.
+    Self-bonds (i == j) are kept distinct per image.
+    """
+    min_dist: dict[tuple[int, int], float] = {}
+    groups: dict[tuple[int, int], list[NeighborBond]] = {}
+    for bond in bonds:
+        key = (bond.i, bond.j)
+        if bond.i == bond.j:
+            # Keep self-images separate so they are not collapsed.
+            key = (bond.i, bond.j, bond.jimage)
+        groups.setdefault(key, []).append(bond)
+        prev = min_dist.get(key)
+        if prev is None or bond.distance < prev:
+            min_dist[key] = bond.distance
+
+    result = []
+    for key, group in groups.items():
+        d_min = min_dist[key]
+        for bond in group:
+            if bond.distance <= d_min + tol:
+                result.append(bond)
+    return result
+
+
 class CutoffStrategy:
     """Bond detection by global or element-pair distance cutoff.
 
@@ -75,7 +105,7 @@ class CutoffStrategy:
                     jimage=jimage,
                     distance=float(dist),
                 ))
-        return bonds
+        return _dedup_bonds_min_image(bonds)
 
 
 class CovalentRadiiStrategy:
@@ -109,7 +139,7 @@ class CovalentRadiiStrategy:
                     jimage=jimage,
                     distance=float(dist),
                 ))
-        return bonds
+        return _dedup_bonds_min_image(bonds)
 
 
 class CrystalNNStrategy:

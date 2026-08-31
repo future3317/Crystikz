@@ -58,11 +58,14 @@ class TestCrystalFigure:
         assert len(polyhedra) > 0
 
     def test_supercell(self):
-        """Primitive rocksalt has 2 atoms; a 2x1x1 supercell has 4 atoms."""
+        """Primitive rocksalt has 2 atoms; a 2x1x1 supercell has 4 canonical atoms."""
         fig = CrystalFigure(rocksalt_structure()).supercell((2, 1, 1)).quick()
         scene = fig.build_scene()
         atoms = [p for p in scene.all_primitives() if p.__class__.__name__ == "Sphere"]
-        assert len(atoms) == 4
+        canonical = [p for p in atoms if p.metadata.get("image_offset") == (0, 0, 0)]
+        assert len(canonical) == 4
+        # Periodic-image partner atoms are now also emitted for visible bonds.
+        assert len(atoms) >= len(canonical)
 
     def test_supercell_bonds_and_polyhedra(self):
         """Bonds and polyhedra must be computed on the supercell structure."""
@@ -77,8 +80,9 @@ class TestCrystalFigure:
         bonds = [p for p in scene.all_primitives() if p.__class__.__name__ == "Bond"]
         polyhedra = [p for p in scene.all_primitives() if p.__class__.__name__ == "Polyhedron"]
         # Primitive perovskite: 5 atoms, 6 Ti-O bonds, 1 octahedron.
-        # 2x1x1 supercell doubles those counts.
-        assert len(atoms) == 10
+        # 2x1x1 supercell doubles those counts (canonical sites only).
+        canonical = [p for p in atoms if p.metadata.get("image_offset") == (0, 0, 0)]
+        assert len(canonical) == 10
         assert len(bonds) == 12
         assert len(polyhedra) == 2
 

@@ -15,8 +15,26 @@ from crystalfig.model.site import Site
 from crystalfig.model.structure import CrystalStructure
 
 
-def rocksalt_structure(a: float = 5.64) -> CrystalStructure:
-    """NaCl rocksalt structure (primitive cell, 2 atoms)."""
+def rocksalt_structure(a: float = 5.64, *, conventional: bool = False) -> CrystalStructure:
+    """NaCl rocksalt structure.
+
+    By default returns the primitive FCC cell (2 atoms). Pass
+    ``conventional=True`` for the intuitive cubic cell (8 atoms) used in
+    publication figures.
+    """
+    if conventional:
+        lattice = Lattice.from_parameters(a, a, a, 90.0, 90.0, 90.0)
+        sites = [
+            Site(frac_coords=[0.0, 0.0, 0.0], species="Na"),
+            Site(frac_coords=[0.5, 0.5, 0.0], species="Cl"),
+            Site(frac_coords=[0.5, 0.0, 0.5], species="Cl"),
+            Site(frac_coords=[0.0, 0.5, 0.5], species="Cl"),
+            Site(frac_coords=[0.5, 0.5, 0.5], species="Na"),
+            Site(frac_coords=[0.5, 0.0, 0.0], species="Na"),
+            Site(frac_coords=[0.0, 0.5, 0.0], species="Na"),
+            Site(frac_coords=[0.0, 0.0, 0.5], species="Na"),
+        ]
+        return CrystalStructure(lattice=lattice, sites=sites)
     # FCC primitive vectors
     lattice = Lattice(np.array([
         [0.0, a / 2, a / 2],
@@ -30,8 +48,25 @@ def rocksalt_structure(a: float = 5.64) -> CrystalStructure:
     return CrystalStructure(lattice=lattice, sites=sites)
 
 
-def diamond_structure(a: float = 5.43) -> CrystalStructure:
-    """Diamond cubic Si structure (primitive cell, 2 atoms)."""
+def diamond_structure(a: float = 5.43, *, conventional: bool = False) -> CrystalStructure:
+    """Diamond cubic Si structure.
+
+    By default returns the primitive FCC cell (2 atoms). Pass
+    ``conventional=True`` for the conventional cubic cell (8 atoms).
+    """
+    if conventional:
+        lattice = Lattice.from_parameters(a, a, a, 90.0, 90.0, 90.0)
+        sites = [
+            Site(frac_coords=[0.0, 0.0, 0.0], species="Si"),
+            Site(frac_coords=[0.0, 0.5, 0.5], species="Si"),
+            Site(frac_coords=[0.5, 0.0, 0.5], species="Si"),
+            Site(frac_coords=[0.5, 0.5, 0.0], species="Si"),
+            Site(frac_coords=[0.25, 0.25, 0.25], species="Si"),
+            Site(frac_coords=[0.25, 0.75, 0.75], species="Si"),
+            Site(frac_coords=[0.75, 0.25, 0.75], species="Si"),
+            Site(frac_coords=[0.75, 0.75, 0.25], species="Si"),
+        ]
+        return CrystalStructure(lattice=lattice, sites=sites)
     lattice = Lattice(np.array([
         [0.0, a / 2, a / 2],
         [a / 2, 0.0, a / 2],

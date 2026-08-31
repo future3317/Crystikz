@@ -220,10 +220,9 @@ class CrystalFigure:
     def build_scene(self) -> Scene:
         builder = SceneBuilder(self.structure, self.theme, self.palette, self._scene_options, camera=self.camera)
         scene = builder.build()
-        # Apply camera auto-fit
-        bbox = scene.bounding_box()
-        if bbox is not None and self.camera.auto_fit:
-            self.camera.fit_to_bounding_box(bbox)
+        # Apply camera auto-fit using the full projected primitive extent.
+        if self.camera.auto_fit:
+            self.camera.fit_to_scene(scene)
         return scene
 
     def export(self, path: str, fmt: str | None = None, width: float | None = None, transparent: bool | None = None) -> ExportResult:
@@ -260,8 +259,7 @@ class CrystalFigure:
         """Apply a sensible default visualization."""
         return (
             self.show_unit_cell()
-            .show_axes()
-            .add_bonds(strategy="covalent")
+            .add_bonds(strategy="cutoff", cutoff=3.0)
         )
 
 
