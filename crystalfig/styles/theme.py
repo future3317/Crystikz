@@ -12,8 +12,8 @@ from crystalfig.styles.palette import ColorPalette, get_palette
 class FigureTheme:
     """A publication figure theme."""
 
-    name: str = "publication_muted"
-    palette: ColorPalette = field(default_factory=lambda: get_palette("muted"))
+    name: str = "publication"
+    palette: ColorPalette = field(default_factory=lambda: get_palette("publication"))
     figure_width: float = 89.0  # mm
     figure_height: float | None = None  # mm; None means auto
     font_size: float = 7.0  # pt
@@ -22,10 +22,12 @@ class FigureTheme:
     background: str = "white"  # white, transparent, or color
     atom_style: str = "shaded"  # shaded, flat, space_filling
     atom_radius_scale: float = 0.22  # multiplier for covalent radii in ball-stick mode
-    atom_radius_scale_polyhedron: float = 0.14  # smaller centers/vertices in polyhedron mode
+    atom_radius_scale_polyhedron: float = 0.22  # vertex atoms in polyhedron mode
+    atom_radius_scale_polyhedron_center: float = 0.10  # central cation in polyhedron mode
     bond_width: float = 0.06  # in angstroms for 3D backends
     bond_color: str = "gray"
-    cell_edge_width: float = 1.0
+    bond_color_mode: str = "split"  # "uniform" or "split"
+    cell_edge_width: float = 0.7
     cell_front_style: str = "solid"
     cell_back_style: str = "dashed"
     polyhedron_opacity: float = 0.22
@@ -41,8 +43,28 @@ class FigureTheme:
 
     @classmethod
     def from_preset(cls, name: str) -> FigureTheme:
+        pub = cls(name="publication", palette=get_palette("publication"))
         presets = {
+            "publication": pub,
             "publication_muted": cls(name="publication_muted", palette=get_palette("muted")),
+            "publication_structure": pub,
+            "publication_polyhedra": cls(
+                name="publication_polyhedra",
+                palette=get_palette("publication"),
+                atom_radius_scale=0.20,
+                atom_radius_scale_polyhedron=0.22,
+                atom_radius_scale_polyhedron_center=0.09,
+                polyhedron_opacity=0.20,
+                polyhedron_edge_width=0.35,
+                bond_width=0.04,
+            ),
+            "publication_overview": cls(
+                name="publication_overview",
+                palette=get_palette("publication"),
+                atom_radius_scale=0.16,
+                bond_width=0.03,
+                cell_edge_width=0.6,
+            ),
             "one_column": cls(name="one_column", figure_width=89.0),
             "two_column": cls(name="two_column", figure_width=183.0),
             "square": cls(name="square", figure_width=120.0, figure_height=120.0),

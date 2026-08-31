@@ -28,7 +28,11 @@ def main():
         return fig.theme.show_legend is False and fig.theme.show_axes is False
 
     # 1. NaCl rocksalt ball-and-stick (conventional cell is more intuitive)
-    fig = CrystalFigure(rocksalt_structure(conventional=True)).quick()
+    fig = (
+        CrystalFigure(rocksalt_structure(conventional=True))
+        .show_unit_cell()
+        .add_bonds("crystalnn")
+    )
     fig.export(GALLERY_DIR / "01_rocksalt_ballstick.pdf")
     fig.export(GALLERY_DIR / "01_rocksalt_ballstick.svg")
     fig.export(GALLERY_DIR / "01_rocksalt_ballstick.png", width=80.0, transparent=True)
@@ -44,24 +48,26 @@ def main():
     fig.export(GALLERY_DIR / "02_diamond_tetrahedral.png", width=90.0, transparent=True)
 
     # 3. BaTiO3 perovskite with TiO6 octahedron and polarization
-    # (polyhedra already imply the coordination bonds; drawing both creates clutter)
+    # Use the polyhedron preset so A-site atoms do not overwhelm the cage.
     struct = perovskite_structure(a=3.95, c=4.05)
     fig = (
-        CrystalFigure(struct)
+        CrystalFigure(struct, theme="publication_polyhedra")
         .show_unit_cell()
-        .add_polyhedra("Ti", opacity=0.25)
+        .add_polyhedra("Ti", strategy="cutoff", opacity=0.22)
         .add_vector(1, [0, 0, 0.4], color="amber", scale=1.0)
     )
+    fig.view([1, 2, 3])
     fig.export(GALLERY_DIR / "03_perovskite_octahedron.pdf")
     fig.export(GALLERY_DIR / "03_perovskite_octahedron.png", width=90.0, transparent=True)
     fig.export_tikz_pdf(GALLERY_DIR / "03_perovskite_octahedron_tikz.pdf")
 
     # 4. Rutile TiO2 distorted octahedra
     fig = (
-        CrystalFigure(rutile_structure())
+        CrystalFigure(rutile_structure(), theme="publication_polyhedra")
         .show_unit_cell()
-        .add_polyhedra("Ti", opacity=0.20)
+        .add_polyhedra("Ti", strategy="cutoff", opacity=0.20)
     )
+    fig.view([2, 2, 1])
     fig.export(GALLERY_DIR / "04_rutile_distorted.pdf")
     fig.export(GALLERY_DIR / "04_rutile_distorted.png", width=90.0, transparent=True)
 
@@ -72,18 +78,19 @@ def main():
         .show_unit_cell()
         .add_bonds("cutoff", cutoff=2.6)
     )
-    fig.view([1, 1, 0])
+    fig.view([1, 1, 1])
     fig.export(GALLERY_DIR / "05_wurtzite_hexagonal.pdf")
     fig.export(GALLERY_DIR / "05_wurtzite_hexagonal.png", width=90.0, transparent=True)
 
-    # 6. MoS2 layered: expand in-plane and view along a-axis to reveal layer stacking
+    # 6. MoS2 layered: modest in-plane expansion with a near-c-axis tilt so the
+    # honeycomb in-plane network and layer stacking are both readable.
     fig = (
         CrystalFigure(mos2_structure())
-        .supercell((3, 3, 1))
+        .supercell((2, 2, 2))
         .show_unit_cell()
         .add_bonds("cutoff", cutoff=2.8)
     )
-    fig.view([1, 0, 0])
+    fig.view([2, 2, 5])
     fig.export(GALLERY_DIR / "06_mos2_layered.pdf")
     fig.export(GALLERY_DIR / "06_mos2_layered.png", width=90.0, transparent=True)
 

@@ -37,6 +37,16 @@ def _mute(rgb: tuple[int, int, int], factor: float = 0.35, target: tuple[int, in
     return tuple(int(rgb[i] * (1.0 - factor) + target[i] * factor) for i in range(3))
 
 
+def _desaturate_element(rgb: tuple[int, int, int], factor: float = 0.55) -> tuple[int, int, int]:
+    """Desaturate an element color while preserving its hue identity.
+
+    Uses HSL-style luminance-preserving desaturation toward the perceptual gray.
+    """
+    r, g, b = rgb
+    gray = 0.299 * r + 0.587 * g + 0.114 * b
+    return tuple(int(rgb[i] * (1.0 - factor) + gray * factor) for i in range(3))
+
+
 # Base colors carry element identity; the muted palette blends them toward gray
 # so the figure reads as a single publication theme rather than a Jmol screenshot.
 _MUTED_BASE = {
@@ -75,6 +85,79 @@ _MUTED_BASE = {
 MUTED = ColorPalette(
     name="muted",
     element_colors={k: _mute(v) for k, v in _MUTED_BASE.items()},
+    accents={
+        "primary": (44, 95, 138),
+        "secondary": (196, 90, 74),
+        "accent": (67, 147, 108),
+        "amber": (217, 131, 36),
+        "purple": (117, 112, 179),
+        "gray": (140, 150, 160),
+        "dark": (40, 44, 52),
+        "light": (248, 249, 250),
+    },
+)
+
+# Hand-tuned publication palette: keeps element identity but avoids neon / pure RGB.
+# Colors are chosen to work together in multi-panel Nature-style figures.
+_PUBLICATION_BASE: dict[str, tuple[int, int, int]] = {
+    "H": (245, 245, 245),
+    "C": (90, 90, 90),
+    "N": (80, 110, 175),
+    "O": (195, 75, 70),          # muted red, not #ff0d0d
+    "F": (110, 170, 90),
+    "Na": (160, 100, 195),
+    "Mg": (135, 175, 90),
+    "Al": (165, 145, 145),
+    "Si": (195, 165, 130),
+    "P": (195, 120, 60),
+    "S": (195, 175, 75),         # muted yellow
+    "Cl": (95, 200, 95),
+    "K": (150, 90, 180),
+    "Ca": (120, 185, 95),
+    "Sc": (200, 200, 200),
+    "Ti": (155, 160, 165),       # soft gray metal
+    "V": (145, 145, 150),
+    "Cr": (130, 140, 175),
+    "Mn": (150, 125, 170),
+    "Fe": (175, 95, 65),
+    "Co": (185, 120, 135),
+    "Ni": (105, 175, 105),
+    "Cu": (175, 125, 75),
+    "Zn": (130, 135, 175),       # muted blue-gray
+    "Ga": (175, 130, 130),
+    "Ge": (115, 145, 145),
+    "As": (175, 125, 195),
+    "Se": (195, 140, 70),
+    "Br": (155, 80, 80),
+    "Kr": (120, 170, 185),
+    "Rb": (140, 80, 165),
+    "Sr": (120, 180, 120),
+    "Y": (135, 200, 200),
+    "Zr": (140, 190, 190),
+    "Nb": (120, 175, 180),
+    "Mo": (110, 170, 170),
+    "Tc": (95, 155, 155),
+    "Ru": (80, 140, 140),
+    "Rh": (70, 125, 135),
+    "Pd": (60, 110, 130),
+    "Ag": (180, 180, 180),
+    "Cd": (195, 175, 135),
+    "In": (165, 120, 120),
+    "Sn": (115, 140, 140),
+    "Sb": (150, 100, 165),
+    "Te": (185, 120, 65),
+    "I": (145, 70, 145),
+    "Xe": (125, 155, 170),
+    "Cs": (120, 70, 150),
+    "Ba": (105, 165, 105),       # muted green, not neon
+    "La": (130, 180, 210),
+    "Ce": (210, 210, 170),
+    "Pb": (110, 110, 115),
+}
+
+PUBLICATION = ColorPalette(
+    name="publication",
+    element_colors=_PUBLICATION_BASE.copy(),
     accents={
         "primary": (44, 95, 138),
         "secondary": (196, 90, 74),
@@ -136,6 +219,8 @@ JMOL = ColorPalette(
 _PALETTES: dict[str, ColorPalette] = {
     "muted": MUTED,
     "publication_muted": MUTED,
+    "publication": PUBLICATION,
+    "journal_clean": PUBLICATION,
     "okabe_ito": OKABE_ITO,
     "colorblind_safe": OKABE_ITO,
     "monochrome": MONOCHROME,

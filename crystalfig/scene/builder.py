@@ -76,8 +76,13 @@ class SceneBuilder:
             structure = self.structure
 
         # Bonds must be computed on the final (possibly supercell) structure.
+        # They are needed both for explicit bond rendering and for polyhedra.
         bonds = self.options.bonds
-        if self.options.show_bonds and bonds is None and self.options.bond_strategy is not None:
+        if (
+            bonds is None
+            and self.options.bond_strategy is not None
+            and (self.options.show_bonds or self.options.show_polyhedra)
+        ):
             bonds = self.options.bond_strategy.get_bonds(structure)
 
         scene = Scene(metadata={"formula": structure.formula, "num_sites": structure.num_sites})
@@ -151,15 +156,30 @@ class SceneBuilder:
         """Return display radius for an element."""
         if factor is None:
             if self.options.show_polyhedra:
-                factor = getattr(self.theme, "atom_radius_scale_polyhedron", 0.18)
+                factor = getattr(self.theme, "atom_radius_scale_polyhedron", 0.22)
+                max_radius = 0.16
             else:
                 factor = getattr(self.theme, "atom_radius_scale", 0.30)
+                max_radius = 0.30
+        else:
+            max_radius = 0.35
         base = get_radius(element, "covalent", default=0.2)
         # Clamp very large radii so A-sites do not swallow the cage.
-        return min(base * factor, 0.35)
+        return min(base * factor, max_radius)
 
     def _atoms(self, structure: CrystalStructure) -> list[Sphere]:
-        return [self._make_sphere(structure, i) for i in range(len(structure.sites))]
+        centers: set[int] = set()
+        if self.options.show_polyhedra and self.options.polyhedra_centers is not None:
+            pc = self.options.polyhedra_centers
+            centers = set(structure.indices_of_species(pc)) if isinstance(pc, str) else set(pc)
+        spheres = []
+        for i in range(len(structure.sites)):
+            if i in centers:
+                factor = getattr(self.theme, "atom_radius_scale_polyhedron_center", 0.10)
+            else:
+                factor = None
+            spheres.append(self._make_sphere(structure, i, radius_factor=factor))
+        return spheres
 
     def _expand_image_atoms(
         self,
@@ -177,7 +197,7 @@ class SceneBuilder:
                 offset = tuple(meta.get("image_offset", (0, 0, 0)))
                 if any(offset):
                     images[(meta["site_index"], offset)] = None
-        return [self._make_sphere(structure, idx, offset) for (idx, offset) in images.keys()]
+        return [self._make_sphere(structure, idx, offset) for (idx, offset) in images]
 
     def _bonds(self, structure: CrystalStructure, bonds: list[NeighborBond]) -> list[Bond]:
         cylinders = []
@@ -266,9 +286,9 @@ class SceneBuilder:
             lines.append(CellEdge(
                 start=corners[i],
                 end=corners[j],
-                color=self.palette.hex("dark"),
-                linewidth=self.theme.cell_edge_width * (0.6 if is_back else 1.0),
-                opacity=0.4 if is_back else 0.9,
+                color=self.palette.hex("gray"),
+                linewidth=self.theme.cell_edge_width * (0.55 if is_back else 1.0),
+                opacity=0.35 if is_back else 0.70,
                 is_back=is_back,
             ))
         return lines

@@ -26,7 +26,7 @@ class CrystalFigure:
     def __init__(
         self,
         structure: CrystalStructure,
-        theme: str | FigureTheme = "publication_muted",
+        theme: str | FigureTheme = "publication",
         camera: Camera | None = None,
     ):
         self.structure = structure
@@ -157,11 +157,25 @@ class CrystalFigure:
         strategy: str = "crystalnn",
         fill_color: str | None = None,
         opacity: float | None = None,
+        show_bonds: bool | None = None,
     ) -> CrystalFigure:
         self._scene_options.show_polyhedra = True
         self._scene_options.polyhedra_centers = centers
+        # Polyhedra need the bond graph internally.  By default we do not
+        # change the existing bond visibility, but the user can explicitly
+        # override it with show_bonds=True/False.
         if self._scene_options.bond_strategy is None:
-            self.add_bonds(strategy=strategy)
+            if strategy == "crystalnn":
+                strat = CrystalNNStrategy()
+            elif strategy == "cutoff":
+                strat = CutoffStrategy(cutoff=2.5)
+            elif strategy == "covalent":
+                strat = CovalentRadiiStrategy()
+            else:
+                raise ValueError(f"Unknown polyhedron bond strategy: {strategy}")
+            self._scene_options.bond_strategy = strat
+        if show_bonds is not None:
+            self._scene_options.show_bonds = show_bonds
         self._scene_options.polyhedra_strategy = {"fill_color": fill_color} if fill_color else {}
         if opacity is not None:
             self.theme.polyhedron_opacity = opacity

@@ -27,9 +27,10 @@ from crystalfig.scene.primitives import (
     Line,
     Plane,
     Polyhedron,
-    Polygon as Poly,
     Sphere,
-    Text,
+)
+from crystalfig.scene.primitives import (
+    Polygon as Poly,
 )
 from crystalfig.scene.scene import Scene
 from crystalfig.styles.theme import FigureTheme
@@ -67,10 +68,7 @@ class Matplotlib3DRenderer:
             fmt = self._guess_format(path)
 
         width_inch = options.width / 25.4
-        if options.height:
-            height_inch = options.height / 25.4
-        else:
-            height_inch = width_inch
+        height_inch = options.height / 25.4 if options.height else width_inch
 
         fig = plt.figure(figsize=(width_inch, height_inch), dpi=options.dpi)
         ax = fig.add_subplot(111, projection="3d")
@@ -318,10 +316,7 @@ class Matplotlib3DRenderer:
         normal = np.asarray(p.normal, dtype=float)
         normal /= np.linalg.norm(normal) + 1e-12
         # Two arbitrary orthogonal directions in the plane.
-        if abs(normal[2]) < 0.9:
-            u = np.cross(normal, [0, 0, 1])
-        else:
-            u = np.cross(normal, [0, 1, 0])
+        u = np.cross(normal, [0, 0, 1]) if abs(normal[2]) < 0.9 else np.cross(normal, [0, 1, 0])
         u /= np.linalg.norm(u)
         v = np.cross(normal, u)
         w, h = p.width, p.height

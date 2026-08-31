@@ -79,7 +79,11 @@ class MatplotlibRenderer:
         if options.height:
             height_inch = options.height / 25.4
         else:
-            height_inch = width_inch * (dy / dx)
+            aspect = dy / dx
+            # Clamp extreme aspect ratios so very elongated cells do not produce
+            # impractical canvas dimensions.
+            aspect = max(0.35, min(aspect, 2.8))
+            height_inch = width_inch * aspect
 
         fig, ax = plt.subplots(figsize=(width_inch, height_inch), dpi=options.dpi)
         ax.set_aspect("equal")
@@ -99,8 +103,9 @@ class MatplotlibRenderer:
         if options.show_legend and theme.show_legend:
             self._draw_legend(ax, scene, theme)
 
-        # Build atom lookup for bond clipping and draw all primitives.
+        # Build atom lookup for bond clipping and color splitting.
         self._atom_map = self._build_atom_map(scene)
+        self._sphere_list = [p for p in scene.all_primitives() if isinstance(p, Sphere)]
         primitives = self._sort_by_depth(scene)
         for p in primitives:
             self._draw_primitive(ax, p, theme)
@@ -225,32 +230,98 @@ class MatplotlibRenderer:
             return [p.position]
         return []
 
+    def _draw_sphere(self, ax, p: Sphere) -> None:
+        """Draw a glossy sphere with soft radial shading (vector-friendly)."""
+        uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
+        base_color = self._to_rgba(p.color, p.opacity)
+        r = p.radius * self.camera.scale
+
+        if p.render_style == "wireframe":
+            circle = Circle(uv, r, fill=False, edgecolor=base_color, linewidth=1.5, linestyle="--", zorder=5)
+            ax.add_patch(circle)
+            return
+
+        if p.render_style == "flat":
+            circle = Circle(uv, r, color=base_color, ec="none", zorder=5)
+            ax.add_patch(circle)
+            return
+
+        # Default "shaded" / "glossy" style.
+        # Base fill.
+        ax.add_patch(Circle(uv, r, color=base_color, ec="none", zorder=5))
+
+        # Darker rim for volume.
+        rim_color = self._darken(p.color, 0.25)
+        ax.add_patch(Circle(uv, r, fill=False, edgecolor=self._to_rgba(rim_color, 0.35 * p.opacity), linewidth=0.6, zorder=6))
+
+        # Soft diffuse shading: a darker crescent in the lower-right quadrant.
+        crescent = Circle(uv + np.array([0.30 * r, -0.30 * r]), 0.70 * r,
+                          color=self._to_rgba(self._darken(p.color, 0.35), 0.16 * p.opacity), zorder=5)
+        ax.add_patch(crescent)
+
+        # Main highlight upper-left.
+        highlight = Circle(uv + np.array([-0.32 * r, 0.32 * r]), 0.26 * r,
+                           color=(1.0, 1.0, 1.0, 0.28 * p.opacity), zorder=7)
+        ax.add_patch(highlight)
+        # Tiny bright spot.
+        spot = Circle(uv + np.array([-0.36 * r, 0.36 * r]), 0.10 * r,
+                      color=(1.0, 1.0, 1.0, 0.45 * p.opacity), zorder=7)
+        ax.add_patch(spot)
+
+    def _draw_bond(self, ax, p: Bond) -> None:
+        """Draw a tube-like bond, optionally clipped and split-colored."""
+        start, end = self._clip_bond(p)
+        uv1 = np.asarray(self.camera.project(start)).flatten()[:2]
+        uv2 = np.asarray(self.camera.project(end)).flatten()[:2]
+
+        # Tube width in points, scaled with camera.
+        lw_pt = max(1.2, self.theme.bond_width * self.camera.scale * 18)
+
+        if getattr(self.theme, "bond_color_mode", "uniform") == "split":
+            mid = (uv1 + uv2) / 2.0
+            color_i = self._atom_color_at(p.site_i, (0, 0, 0))
+            color_j = self._atom_color_at(p.site_j, tuple(p.jimage))
+            alpha = p.opacity
+            ax.plot([uv1[0], mid[0]], [uv1[1], mid[1]], color=self._to_rgba(color_i, alpha),
+                    linewidth=lw_pt, solid_capstyle="round", zorder=4)
+            ax.plot([mid[0], uv2[0]], [mid[1], uv2[1]], color=self._to_rgba(color_j, alpha),
+                    linewidth=lw_pt, solid_capstyle="round", zorder=4)
+        else:
+            color = self._to_rgba(p.color, p.opacity)
+            ax.plot([uv1[0], uv2[0]], [uv1[1], uv2[1]], color=color,
+                    linewidth=lw_pt, solid_capstyle="round", zorder=4)
+
+    def _atom_color_at(self, site_index: int, image_offset: tuple[int, int, int]) -> str | tuple:
+        key = (site_index, tuple(image_offset))
+        if key in self._atom_map:
+            pos, radius = self._atom_map[key]
+            # Find matching sphere to get color.
+            for sp in self._sphere_list:
+                meta = sp.metadata or {}
+                if (meta.get("site_index"), tuple(meta.get("image_offset", (0, 0, 0)))) == key:
+                    return sp.color
+        return self.theme.bond_color
+
+    def _darken(self, color, factor: float = 0.2) -> tuple[float, float, float]:
+        from matplotlib.colors import to_rgb
+        rgb = to_rgb(color)
+        return tuple(max(0.0, c * (1.0 - factor)) for c in rgb)
+
     def _draw_primitive(self, ax, p, theme: FigureTheme):
         if isinstance(p, Sphere):
-            uv = np.asarray(self.camera.project(p.position)).flatten()[:2]
-            color = self._to_rgba(p.color, p.opacity)
-            r = p.radius * self.camera.scale
-            if p.render_style == "wireframe":
-                circle = Circle(uv, r, fill=False, edgecolor=color, linewidth=1.5, linestyle="--", zorder=5)
-            else:
-                circle = Circle(uv, r, color=color, ec="black", linewidth=0.25, zorder=5)
-                # Simple specular highlight to avoid completely flat spheres.
-                highlight = Circle(uv + np.array([-0.35 * r, 0.35 * r]), 0.22 * r, color="white", alpha=0.30, zorder=6)
-                ax.add_patch(highlight)
-            ax.add_patch(circle)
+            self._draw_sphere(ax, p)
         elif isinstance(p, (Line, Bond, CellEdge, Cylinder)):
             if isinstance(p, Bond):
-                start, end = self._clip_bond(p)
-                lw = max(1.0, self.theme.bond_width * 25)
+                self._draw_bond(ax, p)
             else:
                 start, end = p.start, p.end
                 lw = getattr(p, "linewidth", getattr(p, "radius", 1.0) * 10)
-            uv1 = np.asarray(self.camera.project(start)).flatten()[:2]
-            uv2 = np.asarray(self.camera.project(end)).flatten()[:2]
-            alpha = p.opacity
-            style = "--" if getattr(p, "dashed", False) or getattr(p, "is_back", False) else "-"
-            color = self._to_rgba(p.color, alpha)
-            ax.plot([uv1[0], uv2[0]], [uv1[1], uv2[1]], color=color, linewidth=lw, linestyle=style, solid_capstyle="round")
+                uv1 = np.asarray(self.camera.project(start)).flatten()[:2]
+                uv2 = np.asarray(self.camera.project(end)).flatten()[:2]
+                alpha = p.opacity
+                style = "--" if getattr(p, "dashed", False) or getattr(p, "is_back", False) else "-"
+                color = self._to_rgba(p.color, alpha)
+                ax.plot([uv1[0], uv2[0]], [uv1[1], uv2[1]], color=color, linewidth=lw, linestyle=style, solid_capstyle="round")
         elif isinstance(p, Polyhedron):
             if not p.faces:
                 return
@@ -282,19 +353,34 @@ class MatplotlibRenderer:
                 poly = Polygon(uv, closed=True, facecolor=fill, edgecolor="none")
                 ax.add_patch(poly)
 
-            # Draw cage edges that belong to at least one front-facing face.
-            # This avoids the dark wireframe clutter on the back of the polyhedron.
-            front_edges: set[tuple[int, int]] = set()
+            # Draw silhouette / boundary edges only.  An edge is visible if it
+            # separates a front-facing face from a back-facing face (or lies on
+            # the polyhedron boundary), not if it is internal to the front set.
+            edge_counts: dict[tuple[int, int], int] = {}
+            edge_front: dict[tuple[int, int], int] = {}
             for _, face, nz in face_data:
-                if nz >= 0:
-                    m = len(face)
-                    for k in range(m):
-                        a, b = face[k], face[(k + 1) % m]
-                        front_edges.add((min(a, b), max(a, b)))
-            edge_rgba = self._to_rgba(p.edge_color or p.color, 0.30)
-            for a, b in front_edges:
+                m = len(face)
+                for k in range(m):
+                    a, b = face[k], face[(k + 1) % m]
+                    key = (min(a, b), max(a, b))
+                    edge_counts[key] = edge_counts.get(key, 0) + 1
+                    if nz >= 0:
+                        edge_front[key] = edge_front.get(key, 0) + 1
+
+            visible_edges: set[tuple[int, int]] = set()
+            for key, total in edge_counts.items():
+                front = edge_front.get(key, 0)
+                # Silhouette: at least one front and one back adjacent face.
+                if 0 < front < total:
+                    visible_edges.add(key)
+                # Boundary edge on the front surface (only one adjacent face).
+                if total == 1 and front == 1:
+                    visible_edges.add(key)
+
+            edge_rgba = self._to_rgba(p.edge_color or p.color, 0.35)
+            for a, b in visible_edges:
                 uv = self.camera.project(np.array([p.vertices[a], p.vertices[b]]))
-                ax.plot(uv[:, 0], uv[:, 1], color=edge_rgba, linewidth=0.6, solid_capstyle="round")
+                ax.plot(uv[:, 0], uv[:, 1], color=edge_rgba, linewidth=max(0.35, p.edge_width * 0.6), solid_capstyle="round")
         elif isinstance(p, Poly):
             if len(p.points) < 3:
                 return
