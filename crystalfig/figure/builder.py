@@ -244,6 +244,26 @@ class CrystalFigure:
         exporter = Exporter(scene, self.theme, camera=self.camera)
         return exporter.export_pdf_with_latex(path)
 
+    def export_3d(
+        self,
+        path: str,
+        width: float | None = None,
+        height: float | None = None,
+        transparent: bool | None = None,
+    ) -> ExportResult:
+        """Export using Matplotlib's true 3D projection."""
+        from crystalfig.export.exporter import RenderOptions
+
+        scene = self.build_scene()
+        exporter = Exporter(scene, self.theme, camera=self.camera)
+        options = RenderOptions(
+            width=width or self.theme.figure_width,
+            height=height,
+            transparent=transparent if transparent is not None else self.theme.transparent,
+            dpi=self.theme.dpi,
+        )
+        return exporter.export_3d(path, options)
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------

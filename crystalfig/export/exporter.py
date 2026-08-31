@@ -8,6 +8,7 @@ from pathlib import Path
 from crystalfig.exceptions import ExportError
 from crystalfig.export.latex import LatexCompiler
 from crystalfig.renderers.base import RenderOptions
+from crystalfig.renderers.matplotlib_3d_renderer import Matplotlib3DRenderer
 from crystalfig.renderers.matplotlib_renderer import MatplotlibRenderer
 from crystalfig.renderers.tikz_renderer import TikzRenderer
 from crystalfig.scene.camera import Camera
@@ -75,3 +76,18 @@ class Exporter:
         if not result.success:
             raise ExportError("LaTeX compilation failed.")
         return ExportResult(str(path), "pdf", "pure", {"engine": compiler})
+
+    def export_3d(self, path: str, options: RenderOptions | None = None) -> ExportResult:
+        """Export using Matplotlib's true 3D projection (mpl_toolkits.mplot3d)."""
+        path = Path(path)
+        fmt = path.suffix.lstrip(".").lower()
+        options = options or RenderOptions(
+            width=self.theme.figure_width,
+            height=self.theme.figure_height,
+            transparent=self.theme.transparent,
+            dpi=self.theme.dpi,
+        )
+        renderer = Matplotlib3DRenderer(camera=self.camera)
+        renderer.export(self.scene, str(path), self.theme, options, fmt=fmt)
+        vector_status = "pure" if fmt in ("pdf", "svg", "eps", "pgf") else "raster"
+        return ExportResult(str(path), fmt, vector_status, {"renderer": "matplotlib3d"})

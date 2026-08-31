@@ -9,6 +9,7 @@ from crystalfig.examples.presets import rocksalt_structure
 from crystalfig.export.exporter import RenderOptions
 from crystalfig.export.latex import LatexCompiler
 from crystalfig.figure.builder import CrystalFigure
+from crystalfig.renderers.matplotlib_3d_renderer import Matplotlib3DRenderer
 from crystalfig.renderers.matplotlib_renderer import MatplotlibRenderer
 from crystalfig.renderers.tikz_renderer import TikzRenderer
 from crystalfig.scene.camera import Camera
@@ -32,6 +33,27 @@ class TestMatplotlibRenderer:
         with tempfile.TemporaryDirectory() as tmpdir:
             out = Path(tmpdir) / "test.png"
             renderer.export(scene, str(out), fig.theme, RenderOptions(width=80.0, dpi=150), fmt="png")
+            assert out.exists()
+
+
+class TestMatplotlib3DRenderer:
+    def test_export_png(self):
+        fig = CrystalFigure(rocksalt_structure(conventional=True)).show_unit_cell().add_bonds("covalent")
+        scene = fig.build_scene()
+        renderer = Matplotlib3DRenderer(camera=Camera())
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out = Path(tmpdir) / "test_3d.png"
+            renderer.export(scene, str(out), fig.theme, RenderOptions(width=80.0, dpi=150), fmt="png")
+            assert out.exists()
+            assert out.stat().st_size > 0
+
+    def test_export_pdf(self):
+        fig = CrystalFigure(rocksalt_structure(conventional=True)).show_unit_cell()
+        scene = fig.build_scene()
+        renderer = Matplotlib3DRenderer(camera=Camera())
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out = Path(tmpdir) / "test_3d.pdf"
+            renderer.export(scene, str(out), fig.theme, RenderOptions(width=80.0), fmt="pdf")
             assert out.exists()
 
 

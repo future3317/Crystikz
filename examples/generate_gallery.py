@@ -96,7 +96,15 @@ def main():
     compiler = LatexCompiler(engine=LatexCompiler.detect_engine() or "pdflatex")
     compiler.compile(tex, str(GALLERY_DIR / "07_equivariant_gnn.pdf"))
 
-    # 8. Brillouin zone
+    # 8. Diamond Si rendered with true Matplotlib 3D projection
+    fig = (
+        CrystalFigure(diamond_structure(conventional=True))
+        .show_unit_cell()
+        .add_bonds("covalent")
+    )
+    fig.export_3d(GALLERY_DIR / "08_diamond_3d.png", width=120.0, transparent=True)
+
+    # 9. Brillouin zone
     bz = BrillouinZone.from_lattice(rocksalt_structure().lattice)
     print(f"Brillouin zone vertices: {len(bz.vertices)}")
 
