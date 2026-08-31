@@ -248,25 +248,25 @@ class MatplotlibRenderer:
 
         # Default "shaded" / "glossy" style.
         # Base fill.
-        ax.add_patch(Circle(uv, r, color=base_color, ec="none", zorder=5))
+        disk = Circle(uv, r, color=base_color, ec="none", zorder=5)
+        ax.add_patch(disk)
 
         # Darker rim for volume.
         rim_color = self._darken(p.color, 0.25)
         ax.add_patch(Circle(uv, r, fill=False, edgecolor=self._to_rgba(rim_color, 0.35 * p.opacity), linewidth=0.6, zorder=6))
 
         # Soft diffuse shading: a darker crescent in the lower-right quadrant.
-        crescent = Circle(uv + np.array([0.30 * r, -0.30 * r]), 0.70 * r,
-                          color=self._to_rgba(self._darken(p.color, 0.35), 0.16 * p.opacity), zorder=5)
+        # Clip to the atom disk so the shade never leaks outside the sphere.
+        crescent = Circle(uv + np.array([0.28 * r, -0.28 * r]), 0.72 * r,
+                          color=self._to_rgba(self._darken(p.color, 0.30), 0.14 * p.opacity), zorder=5)
+        crescent.set_clip_path(disk)
         ax.add_patch(crescent)
 
-        # Main highlight upper-left.
-        highlight = Circle(uv + np.array([-0.32 * r, 0.32 * r]), 0.26 * r,
-                           color=(1.0, 1.0, 1.0, 0.28 * p.opacity), zorder=7)
+        # Continuous soft highlight upper-left.
+        highlight = Circle(uv + np.array([-0.30 * r, 0.30 * r]), 0.38 * r,
+                           color=(1.0, 1.0, 1.0, 0.22 * p.opacity), zorder=7)
+        highlight.set_clip_path(disk)
         ax.add_patch(highlight)
-        # Tiny bright spot.
-        spot = Circle(uv + np.array([-0.36 * r, 0.36 * r]), 0.10 * r,
-                      color=(1.0, 1.0, 1.0, 0.45 * p.opacity), zorder=7)
-        ax.add_patch(spot)
 
     def _draw_bond(self, ax, p: Bond) -> None:
         """Draw a tube-like bond, optionally clipped and split-colored."""
@@ -277,7 +277,8 @@ class MatplotlibRenderer:
         # Tube width in points, scaled with camera.
         lw_pt = max(1.2, self.theme.bond_width * self.camera.scale * 18)
 
-        if getattr(self.theme, "bond_color_mode", "uniform") == "split":
+        mode = getattr(self.theme, "bond_color_mode", "uniform")
+        if mode == "split":
             mid = (uv1 + uv2) / 2.0
             color_i = self._atom_color_at(p.site_i, (0, 0, 0))
             color_j = self._atom_color_at(p.site_j, tuple(p.jimage))
@@ -286,6 +287,10 @@ class MatplotlibRenderer:
                     linewidth=lw_pt, solid_capstyle="round", zorder=4)
             ax.plot([mid[0], uv2[0]], [mid[1], uv2[1]], color=self._to_rgba(color_j, alpha),
                     linewidth=lw_pt, solid_capstyle="round", zorder=4)
+        elif mode == "split_soft":
+            color_i = self._atom_color_at(p.site_i, (0, 0, 0))
+            color_j = self._atom_color_at(p.site_j, tuple(p.jimage))
+            self._draw_gradient_bond(ax, uv1, uv2, color_i, color_j, lw_pt, p.opacity)
         else:
             color = self._to_rgba(p.color, p.opacity)
             ax.plot([uv1[0], uv2[0]], [uv1[1], uv2[1]], color=color,
@@ -301,6 +306,36 @@ class MatplotlibRenderer:
                 if (meta.get("site_index"), tuple(meta.get("image_offset", (0, 0, 0)))) == key:
                     return sp.color
         return self.theme.bond_color
+
+    def _draw_gradient_bond(
+        self,
+        ax,
+        uv1: np.ndarray,
+        uv2: np.ndarray,
+        color_i: str | tuple,
+        color_j: str | tuple,
+        lw_pt: float,
+        alpha: float,
+        n_segments: int = 6,
+    ) -> None:
+        """Draw a bond that softly blends from color_i to color_j."""
+        tvals = np.linspace(0.0, 1.0, n_segments + 1)
+        for k in range(n_segments):
+            t0 = tvals[k]
+            t1 = tvals[k + 1]
+            # Use the midpoint color for the whole segment.
+            c = self._blend_colors(color_i, color_j, (t0 + t1) / 2.0)
+            p0 = uv1 + (uv2 - uv1) * t0
+            p1 = uv1 + (uv2 - uv1) * t1
+            ax.plot([p0[0], p1[0]], [p0[1], p1[1]], color=self._to_rgba(c, alpha),
+                    linewidth=lw_pt, solid_capstyle="round", zorder=4)
+
+    def _blend_colors(self, color_a, color_b, t: float) -> tuple[float, float, float]:
+        """Linearly blend two colors in RGB space."""
+        from matplotlib.colors import to_rgb
+        a = np.array(to_rgb(color_a))
+        b = np.array(to_rgb(color_b))
+        return tuple((1.0 - t) * a + t * b)
 
     def _darken(self, color, factor: float = 0.2) -> tuple[float, float, float]:
         from matplotlib.colors import to_rgb
@@ -353,34 +388,46 @@ class MatplotlibRenderer:
                 poly = Polygon(uv, closed=True, facecolor=fill, edgecolor="none")
                 ax.add_patch(poly)
 
-            # Draw silhouette / boundary edges only.  An edge is visible if it
-            # separates a front-facing face from a back-facing face (or lies on
-            # the polyhedron boundary), not if it is internal to the front set.
-            edge_counts: dict[tuple[int, int], int] = {}
-            edge_front: dict[tuple[int, int], int] = {}
+            # Draw true polyhedron edges: keep edges between non-coplanar faces
+            # (this removes internal triangulation diagonals) and boundary edges.
+            # Front edges are drawn slightly stronger than back edges.
+            edge_faces: dict[tuple[int, int], list[tuple[np.ndarray, float]]] = {}
             for _, face, nz in face_data:
                 m = len(face)
+                # Newell-method normal in camera space for this face.
+                pts = np.array([cam_vertices[i] for i in face])
+                n = np.zeros(3)
+                for k in range(m):
+                    v0 = pts[k]
+                    v1 = pts[(k + 1) % m]
+                    n[0] += (v0[1] - v1[1]) * (v0[2] + v1[2])
+                    n[1] += (v0[2] - v1[2]) * (v0[0] + v1[0])
+                    n[2] += (v0[0] - v1[0]) * (v0[1] + v1[1])
+                n = n / (np.linalg.norm(n) + 1e-12)
                 for k in range(m):
                     a, b = face[k], face[(k + 1) % m]
                     key = (min(a, b), max(a, b))
-                    edge_counts[key] = edge_counts.get(key, 0) + 1
-                    if nz >= 0:
-                        edge_front[key] = edge_front.get(key, 0) + 1
+                    edge_faces.setdefault(key, []).append((n, nz))
 
             visible_edges: set[tuple[int, int]] = set()
-            for key, total in edge_counts.items():
-                front = edge_front.get(key, 0)
-                # Silhouette: at least one front and one back adjacent face.
-                if 0 < front < total:
+            for key, faces in edge_faces.items():
+                if len(faces) == 1:
                     visible_edges.add(key)
-                # Boundary edge on the front surface (only one adjacent face).
-                if total == 1 and front == 1:
-                    visible_edges.add(key)
+                else:
+                    # Keep edge if adjacent faces are not coplanar.
+                    n1 = faces[0][0]
+                    n2 = faces[1][0]
+                    if abs(np.dot(n1, n2)) < 0.985:  # angle > ~10 degrees
+                        visible_edges.add(key)
 
-            edge_rgba = self._to_rgba(p.edge_color or p.color, 0.35)
             for a, b in visible_edges:
                 uv = self.camera.project(np.array([p.vertices[a], p.vertices[b]]))
-                ax.plot(uv[:, 0], uv[:, 1], color=edge_rgba, linewidth=max(0.35, p.edge_width * 0.6), solid_capstyle="round")
+                mid_cam_z = float(np.mean([cam_vertices[a][2], cam_vertices[b][2]]))
+                is_front = mid_cam_z >= 0
+                alpha = 0.45 if is_front else 0.22
+                lw = max(0.35, p.edge_width * (0.9 if is_front else 0.55))
+                edge_rgba = self._to_rgba(p.edge_color or p.color, alpha)
+                ax.plot(uv[:, 0], uv[:, 1], color=edge_rgba, linewidth=lw, solid_capstyle="round")
         elif isinstance(p, Poly):
             if len(p.points) < 3:
                 return

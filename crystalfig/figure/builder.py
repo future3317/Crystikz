@@ -130,6 +130,20 @@ class CrystalFigure:
         self._scene_options.show_axes = show
         return self
 
+    def boundary_mode(self, mode: str) -> CrystalFigure:
+        """Set which periodic-image atoms are displayed.
+
+        Modes:
+            cell_complete: show all atoms within/on the displayed cell, including
+                boundary duplicates (e.g. one corner atom appears at all 8 corners).
+            connected: only show image atoms needed by visible bonds/polyhedra.
+            polyhedra_complete: connected + guarantee every polyhedron vertex sphere.
+        """
+        if mode not in ("cell_complete", "connected", "polyhedra_complete"):
+            raise ValueError(f"Unknown boundary mode: {mode}")
+        self._scene_options.display_boundary = mode
+        return self
+
     def add_bonds(
         self,
         strategy: str = "crystalnn",

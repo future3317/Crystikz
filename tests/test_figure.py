@@ -59,7 +59,12 @@ class TestCrystalFigure:
 
     def test_supercell(self):
         """Primitive rocksalt has 2 atoms; a 2x1x1 supercell has 4 canonical atoms."""
-        fig = CrystalFigure(rocksalt_structure()).supercell((2, 1, 1)).quick()
+        fig = (
+            CrystalFigure(rocksalt_structure())
+            .supercell((2, 1, 1))
+            .boundary_mode("connected")
+            .quick()
+        )
         scene = fig.build_scene()
         atoms = [p for p in scene.all_primitives() if p.__class__.__name__ == "Sphere"]
         canonical = [p for p in atoms if p.metadata.get("image_offset") == (0, 0, 0)]
@@ -72,6 +77,7 @@ class TestCrystalFigure:
         fig = (
             CrystalFigure(perovskite_structure())
             .supercell((2, 1, 1))
+            .boundary_mode("connected")
             .add_bonds("cutoff", cutoff=2.5)
             .add_polyhedra("Ti")
         )
@@ -93,6 +99,24 @@ class TestCrystalFigure:
             # jimage should be an integer triple
             assert len(bond.jimage) == 3
             assert all(isinstance(x, int) for x in bond.jimage)
+
+    def test_cell_complete_boundary_atoms(self):
+        """cell_complete mode replicates boundary atoms so the cell looks full."""
+        fig = (
+            CrystalFigure(rocksalt_structure(conventional=True))
+            .boundary_mode("cell_complete")
+            .show_unit_cell()
+        )
+        scene = fig.build_scene()
+        atoms = [p for p in scene.all_primitives() if p.__class__.__name__ == "Sphere"]
+        # The conventional rocksalt cell has one Na and one Cl site; with boundary
+        # completion Na at a corner appears at all 8 corners and Cl at (0.5,0,0)
+        # appears on 4 edges, so the total number of spheres is greater than 2.
+        assert len(atoms) > 2
+        # All emitted spheres must still be valid periodic images.
+        for a in atoms:
+            offset = a.metadata.get("image_offset", (0, 0, 0))
+            assert all(isinstance(x, int) for x in offset)
 
     def test_cell_edges_follow_camera(self):
         """Back edges classification must change when the camera view changes."""

@@ -21,13 +21,13 @@ class FigureTheme:
     title_size: float = 8.0  # pt
     background: str = "white"  # white, transparent, or color
     atom_style: str = "shaded"  # shaded, flat, space_filling
-    atom_radius_scale: float = 0.22  # multiplier for covalent radii in ball-stick mode
-    atom_radius_scale_polyhedron: float = 0.22  # vertex atoms in polyhedron mode
-    atom_radius_scale_polyhedron_center: float = 0.10  # central cation in polyhedron mode
+    atom_radius_scale: float = 0.28  # multiplier for covalent radii in ball-stick mode
+    atom_radius_scale_polyhedron: float = 0.24  # vertex atoms in polyhedron mode
+    atom_radius_scale_polyhedron_center: float = 0.11  # central cation in polyhedron mode
     bond_width: float = 0.06  # in angstroms for 3D backends
     bond_color: str = "gray"
-    bond_color_mode: str = "split"  # "uniform" or "split"
-    cell_edge_width: float = 0.7
+    bond_color_mode: str = "split_soft"  # "uniform", "split", or "split_soft"
+    cell_edge_width: float = 0.55
     cell_front_style: str = "solid"
     cell_back_style: str = "dashed"
     polyhedron_opacity: float = 0.22
@@ -51,19 +51,20 @@ class FigureTheme:
             "publication_polyhedra": cls(
                 name="publication_polyhedra",
                 palette=get_palette("publication"),
-                atom_radius_scale=0.20,
-                atom_radius_scale_polyhedron=0.22,
-                atom_radius_scale_polyhedron_center=0.09,
+                atom_radius_scale=0.26,
+                atom_radius_scale_polyhedron=0.24,
+                atom_radius_scale_polyhedron_center=0.10,
                 polyhedron_opacity=0.20,
                 polyhedron_edge_width=0.35,
                 bond_width=0.04,
+                cell_edge_width=0.50,
             ),
             "publication_overview": cls(
                 name="publication_overview",
                 palette=get_palette("publication"),
-                atom_radius_scale=0.16,
+                atom_radius_scale=0.20,
                 bond_width=0.03,
-                cell_edge_width=0.6,
+                cell_edge_width=0.45,
             ),
             "one_column": cls(name="one_column", figure_width=89.0),
             "two_column": cls(name="two_column", figure_width=183.0),

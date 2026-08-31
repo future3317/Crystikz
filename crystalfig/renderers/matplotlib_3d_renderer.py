@@ -89,10 +89,11 @@ class Matplotlib3DRenderer:
             axis.pane.set_edgecolor("none")
 
         # Default view; can be overridden by camera elevation/azimuth when available.
+        # Camera stores elevation/azimuth in degrees.
         elev, azim = 25.0, -60.0
         if self.camera is not None:
-            elev = float(np.degrees(self.camera.elevation)) if hasattr(self.camera, "elevation") else elev
-            azim = float(np.degrees(self.camera.azimuth)) if hasattr(self.camera, "azimuth") else azim
+            elev = float(self.camera.elevation) if hasattr(self.camera, "elevation") else elev
+            azim = float(self.camera.azimuth) if hasattr(self.camera, "azimuth") else azim
         ax.view_init(elev=elev, azim=azim)
         ax.set_box_aspect([1, 1, 1])
 

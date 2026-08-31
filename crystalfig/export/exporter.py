@@ -89,5 +89,7 @@ class Exporter:
         )
         renderer = Matplotlib3DRenderer(camera=self.camera)
         renderer.export(self.scene, str(path), self.theme, options, fmt=fmt)
-        vector_status = "pure" if fmt in ("pdf", "svg", "eps", "pgf") else "raster"
+        # Matplotlib 3D projection bakes the view into the output; vector formats
+        # contain vector primitives but are not a pure, camera-independent scene.
+        vector_status = "hybrid" if fmt in ("pdf", "svg", "eps", "pgf") else "raster"
         return ExportResult(str(path), fmt, vector_status, {"renderer": "matplotlib3d"})

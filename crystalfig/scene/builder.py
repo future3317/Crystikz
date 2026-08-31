@@ -41,6 +41,7 @@ class SceneOptions:
     show_legend: bool = False
     atom_style: str = "shaded"
     supercell: tuple[int, int, int] | None = None
+    display_boundary: str = "cell_complete"  # cell_complete, connected, polyhedra_complete
     bonds: list[NeighborBond] | None = None
     bond_strategy: Callable | None = None
     polyhedra_centers: list[int] | str | None = None
@@ -101,7 +102,10 @@ class SceneBuilder:
 
         if self.options.show_atoms:
             scene.extend(self._atoms(structure), group="atoms")
-            scene.extend(self._expand_image_atoms(structure, bonds or [], polyhedra), group="image_atoms")
+            scene.extend(
+                self._expand_image_atoms(structure, bonds or [], polyhedra),
+                group="image_atoms",
+            )
 
         if self.options.show_axes:
             scene.extend(self._axes(structure), group="axes")
@@ -157,12 +161,12 @@ class SceneBuilder:
         if factor is None:
             if self.options.show_polyhedra:
                 factor = getattr(self.theme, "atom_radius_scale_polyhedron", 0.22)
-                max_radius = 0.16
+                max_radius = 0.18
             else:
                 factor = getattr(self.theme, "atom_radius_scale", 0.30)
-                max_radius = 0.30
+                max_radius = 0.38
         else:
-            max_radius = 0.35
+            max_radius = 0.40
         base = get_radius(element, "covalent", default=0.2)
         # Clamp very large radii so A-sites do not swallow the cage.
         return min(base * factor, max_radius)
@@ -187,17 +191,66 @@ class SceneBuilder:
         bonds: list[NeighborBond],
         polyhedra: list[Polyhedron],
     ) -> list[Sphere]:
-        """Generate spheres for periodic-image atoms referenced by bonds/polyhedra."""
+        """Generate spheres for periodic-image atoms according to display_boundary."""
+        mode = self.options.display_boundary
         images: dict[tuple[int, tuple[int, int, int]], None] = {}
-        for bond in bonds:
-            if any(bond.jimage):
-                images[(bond.j, bond.jimage)] = None
-        for poly in polyhedra:
-            for meta in getattr(poly, "vertex_metadata", []):
-                offset = tuple(meta.get("image_offset", (0, 0, 0)))
-                if any(offset):
-                    images[(meta["site_index"], offset)] = None
+
+        if mode == "connected":
+            for bond in bonds:
+                if any(bond.jimage):
+                    images[(bond.j, bond.jimage)] = None
+        elif mode == "polyhedra_complete":
+            for bond in bonds:
+                if any(bond.jimage):
+                    images[(bond.j, bond.jimage)] = None
+            for poly in polyhedra:
+                for meta in getattr(poly, "vertex_metadata", []):
+                    offset = tuple(meta.get("image_offset", (0, 0, 0)))
+                    if any(offset):
+                        images[(meta["site_index"], offset)] = None
+        else:  # cell_complete (default)
+            # Boundary completion is the base set; also include atoms referenced by
+            # visible bonds/polyhedra so cross-cell bonds do not end in empty space.
+            images = self._cell_complete_images(structure)
+            for bond in bonds:
+                if any(bond.jimage):
+                    images[(bond.j, bond.jimage)] = None
+            for poly in polyhedra:
+                for meta in getattr(poly, "vertex_metadata", []):
+                    offset = tuple(meta.get("image_offset", (0, 0, 0)))
+                    if any(offset):
+                        images[(meta["site_index"], offset)] = None
+
         return [self._make_sphere(structure, idx, offset) for (idx, offset) in images]
+
+    def _cell_complete_images(
+        self,
+        structure: CrystalStructure,
+    ) -> dict[tuple[int, tuple[int, int, int]], None]:
+        """Return image offsets that reproduce atoms on the cell boundaries.
+
+        A site at a face/edge/corner of the canonical cell is visually replicated
+        so the displayed unit cell looks complete (e.g. one Ba at (0,0,0) appears
+        at all 8 corners).  Interior atoms are not duplicated.
+        """
+        images: dict[tuple[int, tuple[int, int, int]], None] = {}
+        tol = 1e-6
+        for i, site in enumerate(structure.sites):
+            frac = site.frac_coords
+            ranges = []
+            for f in frac:
+                f = float(f) % 1.0
+                opts = [0]
+                if f < tol:
+                    opts.append(1)
+                elif f > 1.0 - tol:
+                    opts.append(-1)
+                ranges.append(opts)
+            for di in ranges[0]:
+                for dj in ranges[1]:
+                    for dk in ranges[2]:
+                        images[(i, (di, dj, dk))] = None
+        return images
 
     def _bonds(self, structure: CrystalStructure, bonds: list[NeighborBond]) -> list[Bond]:
         cylinders = []

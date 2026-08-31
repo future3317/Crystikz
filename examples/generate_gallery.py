@@ -16,6 +16,7 @@ from crystalfig.examples.presets import (
 )
 from crystalfig.figure.builder import CrystalFigure
 from crystalfig.geometry.reciprocal import BrillouinZone
+from crystalfig.scene.camera import Camera
 
 GALLERY_DIR = Path(__file__).parent.parent / "gallery"
 
@@ -56,7 +57,7 @@ def main():
         .add_polyhedra("Ti", strategy="cutoff", opacity=0.22)
         .add_vector(1, [0, 0, 0.4], color="amber", scale=1.0)
     )
-    fig.view([1, 2, 3])
+    fig.camera = Camera(elevation=22.0, azimuth=35.0)
     fig.export(GALLERY_DIR / "03_perovskite_octahedron.pdf")
     fig.export(GALLERY_DIR / "03_perovskite_octahedron.png", width=90.0, transparent=True)
     fig.export_tikz_pdf(GALLERY_DIR / "03_perovskite_octahedron_tikz.pdf")
@@ -82,15 +83,17 @@ def main():
     fig.export(GALLERY_DIR / "05_wurtzite_hexagonal.pdf")
     fig.export(GALLERY_DIR / "05_wurtzite_hexagonal.png", width=90.0, transparent=True)
 
-    # 6. MoS2 layered: modest in-plane expansion with a near-c-axis tilt so the
-    # honeycomb in-plane network and layer stacking are both readable.
+    # 6. MoS2 layered: modest side view of a (2,2,1) supercell so both the
+    # in-plane honeycomb and the S-Mo-S layer stacking are readable.
     fig = (
         CrystalFigure(mos2_structure())
-        .supercell((2, 2, 2))
+        .supercell((2, 2, 1))
         .show_unit_cell()
         .add_bonds("cutoff", cutoff=2.8)
     )
-    fig.view([2, 2, 5])
+    fig.theme.atom_radius_scale = 0.22
+    fig.theme.bond_width = 0.045
+    fig.camera = Camera(elevation=38.0, azimuth=-25.0)
     fig.export(GALLERY_DIR / "06_mos2_layered.pdf")
     fig.export(GALLERY_DIR / "06_mos2_layered.png", width=90.0, transparent=True)
 
