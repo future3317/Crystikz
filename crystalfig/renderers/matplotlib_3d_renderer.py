@@ -106,9 +106,8 @@ class Matplotlib3DRenderer:
                 transparent = options.transparent or bg == "transparent"
                 fig.savefig(path, dpi=options.dpi, transparent=transparent)
             elif fmt in ("pdf", "svg", "eps", "pgf"):
-                matplotlib.rcParams["pdf.fonttype"] = 42
-                matplotlib.rcParams["ps.fonttype"] = 42
-                fig.savefig(path, format=fmt)
+                with matplotlib.rc_context({"pdf.fonttype": 42, "ps.fonttype": 42}):
+                    fig.savefig(path, format=fmt)
             else:
                 fig.savefig(path)
         else:

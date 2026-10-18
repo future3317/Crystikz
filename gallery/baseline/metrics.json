@@ -35,20 +35,20 @@
       "reference_coordination": 6,
       "png_pixels": [
         1051,
-        526
+        521
       ],
       "png_size_mm": [
         88.985,
-        44.535
+        44.111
       ],
-      "rendered_content_occupancy_max_axis": 0.7072,
+      "rendered_content_occupancy_max_axis": 0.7063,
       "touches_image_edge": false,
-      "foreground_luminance_std": 21.389,
+      "foreground_luminance_std": 17.674,
       "alpha_bbox": [
         169,
         79,
         908,
-        451
+        447
       ],
       "element_colors": {
         "Na": "#a064c3",
@@ -77,20 +77,20 @@
       "reference_coordination": 4,
       "png_pixels": [
         1051,
-        519
+        584
       ],
       "png_size_mm": [
         88.985,
-        43.942
+        49.445
       ],
-      "rendered_content_occupancy_max_axis": 0.7071,
+      "rendered_content_occupancy_max_axis": 0.7055,
       "touches_image_edge": false,
-      "foreground_luminance_std": 15.638,
+      "foreground_luminance_std": 11.527,
       "alpha_bbox": [
         169,
-        78,
+        89,
         908,
-        445
+        501
       ],
       "element_colors": {
         "Si": "#c3a582"
@@ -118,20 +118,20 @@
       "reference_coordination": 6,
       "png_pixels": [
         1051,
-        1247
+        1193
       ],
       "png_size_mm": [
         88.985,
-        105.579
+        101.007
       ],
-      "rendered_content_occupancy_max_axis": 0.7033,
+      "rendered_content_occupancy_max_axis": 0.7031,
       "touches_image_edge": false,
-      "foreground_luminance_std": 21.488,
+      "foreground_luminance_std": 25.336,
       "alpha_bbox": [
         169,
-        191,
+        183,
         908,
-        1068
+        1021
       ],
       "element_colors": {
         "Ba": "#69a569",
@@ -161,20 +161,20 @@
       "reference_coordination": 6,
       "png_pixels": [
         1051,
-        1144
+        866
       ],
       "png_size_mm": [
         88.985,
-        96.859
+        73.321
       ],
-      "rendered_content_occupancy_max_axis": 0.7037,
+      "rendered_content_occupancy_max_axis": 0.7031,
       "touches_image_edge": false,
-      "foreground_luminance_std": 23.238,
+      "foreground_luminance_std": 27.614,
       "alpha_bbox": [
         169,
-        175,
+        133,
         908,
-        980
+        741
       ],
       "element_colors": {
         "Ti": "#9ba0a5",
@@ -203,20 +203,20 @@
       "reference_coordination": 4,
       "png_pixels": [
         1051,
-        2148
+        1409
       ],
       "png_size_mm": [
         88.985,
-        181.864
+        119.295
       ],
       "rendered_content_occupancy_max_axis": 0.7031,
       "touches_image_edge": false,
-      "foreground_luminance_std": 18.834,
+      "foreground_luminance_std": 21.883,
       "alpha_bbox": [
         169,
-        331,
+        217,
         908,
-        1838
+        1206
       ],
       "element_colors": {
         "Zn": "#8287af",
@@ -245,20 +245,20 @@
       "reference_coordination": 6,
       "png_pixels": [
         1051,
-        2943
+        2281
       ],
       "png_size_mm": [
         88.985,
-        249.174
+        193.125
       ],
-      "rendered_content_occupancy_max_axis": 0.7013,
+      "rendered_content_occupancy_max_axis": 0.7031,
       "touches_image_edge": false,
-      "foreground_luminance_std": 14.144,
+      "foreground_luminance_std": 11.22,
       "alpha_bbox": [
-        220,
-        454,
-        857,
-        2518
+        169,
+        351,
+        908,
+        1951
       ],
       "element_colors": {
         "Mo": "#6eaaaa",
@@ -295,7 +295,7 @@
       ],
       "rendered_content_occupancy_max_axis": 0.7037,
       "touches_image_edge": false,
-      "foreground_luminance_std": 26.735,
+      "foreground_luminance_std": 28.643,
       "alpha_bbox": [
         170,
         136,

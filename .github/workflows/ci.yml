@@ -31,3 +31,28 @@ jobs:
 
       - name: Test with pytest
         run: python -m pytest tests -q
+
+  visual-gallery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install gallery dependencies
+        run: python -m pip install -e ".[dev,render3d]"
+
+      - name: Render reference structures
+        run: python examples/generate_gallery.py
+
+      - name: Upload visual gallery
+        uses: actions/upload-artifact@v4
+        with:
+          name: crystalfig-visual-gallery
+          path: |
+            gallery/baseline/contact_sheet.png
+            gallery/baseline/metrics.json
+            gallery/pyvista/*.png

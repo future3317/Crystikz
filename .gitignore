@@ -73,3 +73,4 @@ gallery/*.fls
 gallery/baseline/*.png
 gallery/baseline/*.svg
 !gallery/baseline/contact_sheet.png
+gallery/pyvista/*.png

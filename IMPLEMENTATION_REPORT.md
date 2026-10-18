@@ -10,7 +10,7 @@ Input (CIF/POSCAR/pymatgen/ASE)
     → crystalfig.model.CrystalStructure (canonical internal model)
     → crystalfig.geometry / crystalfig.neighbors (analysis)
     → crystalfig.scene.Scene + Camera (backend-independent scene graph)
-    → crystalfig.renderers (Matplotlib, SVG, TikZ, Matplotlib3D)
+    → crystalfig.renderers (Matplotlib, SVG, TikZ, Matplotlib3D preview, optional PyVista)
     → crystalfig.export (PDF/SVG/PNG/TEX + preflight)
     → publication-ready output
 ```
@@ -28,6 +28,7 @@ The high-level `CrystalFigure` fluent API lives in `crystalfig.figure.builder`. 
 - `ase` — ASE adapter and natural-cutoff neighbor strategy
 - `reciprocal` — seekpath for Brillouin-zone k-paths
 - `latex` — pdf2image helpers (mainly for preflight)
+- `render3d` — PyVista/VTK depth-buffered 3D PNG renderer
 
 ## 3. Implemented Features
 
@@ -67,7 +68,8 @@ The high-level `CrystalFigure` fluent API lives in `crystalfig.figure.builder`. 
 - `MatplotlibRenderer`: PDF/SVG/EPS/PGF/PNG/TIFF, transparent backgrounds, exact figure size
 - `SvgRenderer`: pure SVG publication output with gradients and translucent polyhedra
 - `TikzRenderer`: standalone TikZ with centralized library loading
-- `Matplotlib3DRenderer`: true 3D projection preview (hybrid vector/raster)
+- `Matplotlib3DRenderer`: 3D projection preview; painter sorting is not a full depth buffer
+- `PyVistaRenderer`: optional mesh-based 3D output with spherical atoms, clipped cylindrical bonds, lighting and alpha PNG
 
 ### Figure builder
 
@@ -95,7 +97,7 @@ The high-level `CrystalFigure` fluent API lives in `crystalfig.figure.builder`. 
 python -m pytest tests -q
 ```
 
-Result: **84 passed, 10 warnings** (pymatgen/spglib deprecation/oxidation-state notices).
+Visual-upgrade result: **122 passed, 10 warnings** (pymatgen/spglib deprecation and oxidation-state notices).
 
 Coverage includes:
 
@@ -122,6 +124,10 @@ python -m build --wheel
 
 Built `dist/crystalfig-0.1.0-py3-none-any.whl` successfully.
 
+The visual-upgrade build completed with the project build environment using
+`python -m build --no-isolation --wheel`; the repository's local `build/` output directory
+shadows the `build` module when invoked from the repository root.
+
 Installed into a clean venv and verified:
 
 ```bash
@@ -143,6 +149,8 @@ Gallery generated in `gallery/`:
 - `05_wurtzite_hexagonal.pdf`
 - `06_mos2_layered.pdf`
 - `07_equivariant_gnn.{tex,pdf}`
+- `gallery/pyvista/{nacl,si,batio3,rutile_tio2,zno,mos2}.png` at 89 mm / 600 dpi (generated locally)
+- `gallery/pyvista/contact_sheet.png` (generated locally)
 - `contact_sheet.png`
 
 ## 7. Linting
@@ -162,6 +170,6 @@ Result: **All checks passed!**
 - Advanced depth occlusion for vector renderers uses a painter's algorithm with average-depth sorting; complex inter-penetrating meshes may need a dedicated 3D backend.
 - Automatic label placement / collision avoidance is not implemented; use manual annotations or external layout.
 - Brillouin-zone k-paths require the optional `seekpath` dependency.
-- PyVista/Fresnel/POV-Ray backends are not included.
+- Fresnel and POV-Ray backends are not included; PyVista is available as an optional extra.
 
 These limitations are all outside the core publication-vector workflow and are documented as future extension points rather than incomplete core requirements.

@@ -10,6 +10,48 @@ from scipy.spatial import ConvexHull
 from crystalfig.exceptions import GeometryError
 
 
+def visible_polyhedron_edges(vertices, faces, camera_rotation, edge_mode="silhouette"):
+    """Classify convex-hull edges for a camera-facing 2D projection.
+
+    Returns ``(vertex_a, vertex_b, front_facing)`` edges. Coplanar triangle
+    diagonals are always omitted, so triangulation does not become visible.
+    """
+    if edge_mode == "none":
+        return []
+    camera_vertices = (np.asarray(vertices, dtype=float) @ np.asarray(camera_rotation).T)
+    edge_faces: dict[tuple[int, int], list[tuple[np.ndarray, bool]]] = {}
+    for face in faces:
+        points = camera_vertices[face]
+        normal = np.zeros(3)
+        for i in range(len(points)):
+            a, b = points[i], points[(i + 1) % len(points)]
+            normal += np.cross(a, b)
+        norm = np.linalg.norm(normal)
+        if norm < 1e-12:
+            continue
+        normal /= norm
+        front = normal[2] >= 0
+        for i in range(len(face)):
+            a, b = face[i], face[(i + 1) % len(face)]
+            edge_faces.setdefault((min(a, b), max(a, b)), []).append((normal, front))
+
+    result = []
+    for edge, adjacent in edge_faces.items():
+        if len(adjacent) > 1 and all(np.dot(adjacent[0][0], n) > 0.985 for n, _ in adjacent[1:]):
+            continue
+        fronts = [front for _, front in adjacent]
+        has_front = any(fronts)
+        is_silhouette = len(fronts) == 1 or any(fronts) and not all(fronts)
+        if edge_mode == "silhouette" and not is_silhouette:
+            continue
+        if edge_mode == "visible" and not has_front:
+            continue
+        if edge_mode not in {"silhouette", "visible", "all"}:
+            raise ValueError(f"Unknown polyhedron edge mode: {edge_mode}")
+        result.append((*edge, has_front))
+    return result
+
+
 @dataclass
 class CoordinationPolyhedron:
     """A coordination polyhedron around a central site."""

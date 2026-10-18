@@ -6,9 +6,26 @@ import pytest
 from crystalfig.exceptions import GeometryError
 from crystalfig.geometry.periodic import PeriodicImages, nearest_image, wrapped_frac
 from crystalfig.geometry.planes import MillerPlane
-from crystalfig.geometry.polyhedra import build_polyhedron
+from crystalfig.geometry.polyhedra import build_polyhedron, visible_polyhedron_edges
 from crystalfig.geometry.reciprocal import BrillouinZone
 from crystalfig.model.lattice import Lattice
+
+
+def test_polyhedron_edge_modes_hide_coplanar_triangulation_edges():
+    vertices = np.array([
+        [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+        [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1],
+    ], dtype=float)
+    faces = [
+        [0, 2, 1], [0, 3, 2], [4, 5, 6], [4, 6, 7],
+        [0, 1, 5], [0, 5, 4], [3, 6, 2], [3, 7, 6],
+        [0, 4, 7], [0, 7, 3], [1, 2, 6], [1, 6, 5],
+    ]
+    rotation = np.eye(3)
+    assert len(visible_polyhedron_edges(vertices, faces, rotation, "none")) == 0
+    assert len(visible_polyhedron_edges(vertices, faces, rotation, "silhouette")) == 4
+    assert len(visible_polyhedron_edges(vertices, faces, rotation, "visible")) == 12
+    assert len(visible_polyhedron_edges(vertices, faces, rotation, "all")) == 12
 
 
 class TestPeriodic:

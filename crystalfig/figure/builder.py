@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+from scipy.spatial import cKDTree
 
 from crystalfig.exceptions import OptionalDependencyError, StructureParseError
 from crystalfig.export.exporter import Exporter, ExportResult, RenderOptions
@@ -43,6 +44,8 @@ class CrystalFigure:
         self.palette = get_palette(self.theme.palette.name).copy()
         self.camera = camera or Camera(elevation=25.0, azimuth=45.0)
         self._scene_options = SceneOptions()
+        if camera is None:
+            self.view_preset(self.theme.camera_preset)
 
     # ------------------------------------------------------------------
     # Constructors
@@ -119,6 +122,50 @@ class CrystalFigure:
     def view_along_lattice(self, axis: int) -> CrystalFigure:
         direction = self.structure.lattice.matrix[axis]
         self.camera = Camera.along_direction(direction, target=self._centroid())
+        return self
+
+    def view_preset(self, name: str) -> CrystalFigure:
+        """Set a deterministic view for common crystal figure types."""
+        target = self._centroid()
+        directions = {
+            "isometric": [1, 1, 1],
+            "along_a": [1, 0, 0],
+            "along_b": [0, 1, 0],
+            "along_c": [0, 0, 1],
+            "layer_top": [0, 0, 1],
+            "layer_oblique": [1, 1, 2],
+            "polyhedron_focus": [1, 1, 1],
+        }
+        if name == "auto":
+            candidates = [
+                np.array(d, dtype=float)
+                for d in ([1, 1, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1],
+                          [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 2, 3], [2, 3, 1])
+            ]
+            positions = np.asarray(self.structure.cart_coords, dtype=float)
+            best_score = -np.inf
+            best_camera = None
+            for direction in candidates:
+                candidate = Camera.along_direction(
+                    self.structure.lattice.frac_to_cart(direction), target=target
+                )
+                uv = candidate.project(positions)
+                if len(uv) < 2:
+                    score = 0.0
+                else:
+                    nearest_spacing = float(cKDTree(uv).query(uv, k=2)[0][:, 1].min())
+                    spread = np.ptp(uv, axis=0)
+                    aspect_penalty = abs(np.log((spread[0] + 1e-9) / (spread[1] + 1e-9)))
+                    score = (nearest_spacing / (np.linalg.norm(spread) + 1e-9)
+                             - 0.04 * aspect_penalty)
+                if score > best_score:
+                    best_score, best_camera = score, candidate
+            self.camera = best_camera
+            return self
+        if name not in directions:
+            raise ValueError(f"Unknown view preset {name!r}.")
+        direction = self.structure.lattice.frac_to_cart(np.asarray(directions[name], dtype=float))
+        self.camera = Camera.along_direction(direction, target=target)
         return self
 
     def view_normal_to_plane(self, hkl: tuple[int, int, int]) -> CrystalFigure:
@@ -411,6 +458,8 @@ class CrystalFigure:
     def style(self, name: str) -> CrystalFigure:
         self.theme = FigureTheme.from_preset(name)
         self.palette = get_palette(self.theme.palette.name).copy()
+        if self.theme.camera_preset:
+            self.view_preset(self.theme.camera_preset)
         return self
 
     # ------------------------------------------------------------------
@@ -436,18 +485,32 @@ class CrystalFigure:
         )
         renderer.draw(ax, scene, self.theme, options)
 
-    def export(self, path: str, fmt: str | None = None, width: float | None = None, transparent: bool | None = None) -> ExportResult:
-        from crystalfig.export.exporter import RenderOptions
+    def export(
+        self,
+        path: str,
+        fmt: str | None = None,
+        width: float | None = None,
+        transparent: bool | None = None,
+        *,
+        backend: str | None = None,
+        dpi: int | None = None,
+        height: float | None = None,
+    ) -> ExportResult:
+        """Export via an explicit renderer or choose one from the file format.
+
+        ``backend`` and ``dpi`` are keyword-only additions; the original positional
+        ``fmt, width, transparent`` arguments retain their meaning.
+        """
         scene = self.build_scene()
         theme = self.theme
         options = RenderOptions(
-            width=width or theme.figure_width,
-            height=theme.figure_height,
+            width=width if width is not None else theme.figure_width,
+            height=height if height is not None else theme.figure_height,
             transparent=transparent if transparent is not None else theme.transparent,
-            dpi=theme.dpi,
+            dpi=dpi if dpi is not None else theme.dpi,
         )
         exporter = Exporter(scene, theme, camera=self.camera)
-        return exporter.export(path, fmt=fmt, options=options)
+        return exporter.export(path, fmt=fmt, options=options, backend=backend)
 
     def export_scene(self, scene: Scene, path: str, fmt: str | None = None, options=None) -> ExportResult:
         """Export a user-modified Scene directly."""
@@ -459,6 +522,27 @@ class CrystalFigure:
         scene = self.build_scene()
         exporter = Exporter(scene, self.theme, camera=self.camera)
         return exporter.export_pdf_with_latex(path)
+
+    def export_hybrid_pdf(
+        self,
+        path: str,
+        width: float | None = None,
+        height: float | None = None,
+        dpi: int | None = None,
+        transparent: bool | None = None,
+        background_backend: str = "pyvista",
+    ) -> ExportResult:
+        """Export a 3D raster scene with editable vector annotations in PDF."""
+        scene = self.build_scene()
+        options = RenderOptions(
+            width=width if width is not None else self.theme.figure_width,
+            height=height if height is not None else self.theme.figure_height,
+            dpi=dpi if dpi is not None else self.theme.dpi,
+            transparent=transparent if transparent is not None else self.theme.transparent,
+        )
+        return Exporter(scene, self.theme, camera=self.camera).export_hybrid_pdf(
+            path, options, background_backend=background_backend
+        )
 
     def export_3d(
         self,

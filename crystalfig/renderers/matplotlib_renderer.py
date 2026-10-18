@@ -10,6 +10,7 @@ import numpy as np
 from matplotlib.patches import Circle, FancyArrowPatch, Polygon
 
 from crystalfig.exceptions import RenderError
+from crystalfig.geometry.polyhedra import visible_polyhedron_edges
 from crystalfig.renderers.base import RenderOptions
 from crystalfig.scene.primitives import (
     Arrow,
@@ -72,9 +73,8 @@ class MatplotlibRenderer:
                 transparent = options.transparent or bg == "transparent"
                 fig.savefig(path, dpi=options.dpi, transparent=transparent)
             elif fmt in ("pdf", "svg", "eps", "pgf"):
-                matplotlib.rcParams["pdf.fonttype"] = 42
-                matplotlib.rcParams["ps.fonttype"] = 42
-                fig.savefig(path, format=fmt)
+                with matplotlib.rc_context({"pdf.fonttype": 42, "ps.fonttype": 42}):
+                    fig.savefig(path, format=fmt)
             else:
                 fig.savefig(path)
         else:
@@ -160,7 +160,6 @@ class MatplotlibRenderer:
             aspect = dy / dx
             # Clamp extreme aspect ratios so very elongated cells do not produce
             # impractical canvas dimensions.
-            aspect = max(0.35, min(aspect, 2.8))
             height_inch = width_inch * aspect
         return width_inch, height_inch
 
@@ -304,16 +303,18 @@ class MatplotlibRenderer:
 
         # Soft diffuse shading: a darker crescent in the lower-right quadrant.
         # Clip to the atom disk so the shade never leaks outside the sphere.
-        crescent = Circle(uv + np.array([0.28 * r, -0.28 * r]), 0.72 * r,
-                          color=self._to_rgba(self._darken(p.color, 0.30), 0.14 * p.opacity), zorder=5)
+        matte = getattr(self.theme, "atom_material", "matte") == "matte"
+        crescent = Circle(uv + np.array([0.24 * r, -0.24 * r]), 0.72 * r,
+                          color=self._to_rgba(self._darken(p.color, 0.24), (0.08 if matte else 0.14) * p.opacity), zorder=5)
         crescent.set_clip_path(disk)
         ax.add_patch(crescent)
 
         # Continuous soft highlight upper-left.
-        highlight = Circle(uv + np.array([-0.30 * r, 0.30 * r]), 0.38 * r,
-                           color=(1.0, 1.0, 1.0, 0.22 * p.opacity), zorder=7)
-        highlight.set_clip_path(disk)
-        ax.add_patch(highlight)
+        if not matte:
+            highlight = Circle(uv + np.array([-0.28 * r, 0.28 * r]), 0.24 * r,
+                               color=(1.0, 1.0, 1.0, 0.12 * p.opacity), zorder=7)
+            highlight.set_clip_path(disk)
+            ax.add_patch(highlight)
 
     def _draw_bond(self, ax, p: Bond) -> None:
         """Draw a tube-like bond, optionally clipped and split-colored."""
@@ -401,7 +402,14 @@ class MatplotlibRenderer:
                 uv1 = np.asarray(self.camera.project(start)).flatten()[:2]
                 uv2 = np.asarray(self.camera.project(end)).flatten()[:2]
                 alpha = p.opacity
-                style = "--" if getattr(p, "dashed", False) or getattr(p, "is_back", False) else "-"
+                style = "--" if getattr(p, "dashed", False) else "-"
+                if isinstance(p, CellEdge) and p.is_back:
+                    back_style = self.theme.cell_back_style
+                    if back_style == "hide":
+                        return
+                    style = "--" if back_style == "dashed" else "-"
+                    if back_style == "faint":
+                        alpha *= 0.45
                 color = self._to_rgba(p.color, alpha)
                 ax.plot([uv1[0], uv2[0]], [uv1[1], uv2[1]], color=color, linewidth=lw, linestyle=style, solid_capstyle="round")
         elif isinstance(p, Polyhedron):
@@ -432,51 +440,29 @@ class MatplotlibRenderer:
                 # Keep polyhedra visually light: back faces are very faint,
                 # front faces are only modestly opaque so overlapping faces do
                 # not accumulate into a solid block (e.g. Rutile, BaTiO3).
-                alpha = p.opacity * (0.18 if nz < 0 else 0.55)
+                alpha = p.opacity * (
+                    self.theme.polyhedron_back_opacity
+                    if nz < 0
+                    else self.theme.polyhedron_face_opacity
+                )
                 fill = self._to_rgba(p.fill_color or p.color, alpha)
                 poly = Polygon(uv, closed=True, facecolor=fill, edgecolor="none")
                 ax.add_patch(poly)
 
-            # Draw true polyhedron edges: keep edges between non-coplanar faces
-            # (this removes internal triangulation diagonals) and boundary edges.
-            # Front edges are drawn slightly stronger than back edges.
-            edge_faces: dict[tuple[int, int], list[tuple[np.ndarray, float]]] = {}
-            for _, face, nz in face_data:
-                m = len(face)
-                # Newell-method normal in camera space for this face.
-                pts = np.array([cam_vertices[i] for i in face])
-                n = np.zeros(3)
-                for k in range(m):
-                    v0 = pts[k]
-                    v1 = pts[(k + 1) % m]
-                    n[0] += (v0[1] - v1[1]) * (v0[2] + v1[2])
-                    n[1] += (v0[2] - v1[2]) * (v0[0] + v1[0])
-                    n[2] += (v0[0] - v1[0]) * (v0[1] + v1[1])
-                n = n / (np.linalg.norm(n) + 1e-12)
-                for k in range(m):
-                    a, b = face[k], face[(k + 1) % m]
-                    key = (min(a, b), max(a, b))
-                    edge_faces.setdefault(key, []).append((n, nz))
-
-            visible_edges: set[tuple[int, int]] = set()
-            for key, faces in edge_faces.items():
-                if len(faces) == 1:
-                    visible_edges.add(key)
-                else:
-                    # Keep edge if adjacent faces are not coplanar.
-                    n1 = faces[0][0]
-                    n2 = faces[1][0]
-                    if abs(np.dot(n1, n2)) < 0.985:  # angle > ~10 degrees
-                        visible_edges.add(key)
-
-            for a, b in visible_edges:
+            # Draw silhouette or visible creases without triangulation diagonals.
+            edge_mode = p.edge_mode or self.theme.polyhedron_edge_mode
+            back_mode = p.back_edges or self.theme.polyhedron_back_edges
+            edges = visible_polyhedron_edges(p.vertices, p.faces, rot, edge_mode)
+            for a, b, has_front in edges:
+                if not has_front and back_mode == "hide":
+                    continue
                 uv = self.camera.project(np.array([p.vertices[a], p.vertices[b]]))
-                mid_cam_z = float(np.mean([cam_vertices[a][2], cam_vertices[b][2]]))
-                is_front = mid_cam_z >= 0
-                alpha = 0.45 if is_front else 0.22
-                lw = max(0.35, p.edge_width * (0.9 if is_front else 0.55))
+                alpha = self.theme.polyhedron_edge_opacity * (1.0 if has_front else 0.35)
+                lw = max(0.35, p.edge_width * (0.9 if has_front else 0.55))
                 edge_rgba = self._to_rgba(p.edge_color or p.color, alpha)
-                ax.plot(uv[:, 0], uv[:, 1], color=edge_rgba, linewidth=lw, solid_capstyle="round")
+                linestyle = "--" if not has_front and back_mode == "dashed" else "-"
+                ax.plot(uv[:, 0], uv[:, 1], color=edge_rgba, linewidth=lw,
+                        linestyle=linestyle, solid_capstyle="round")
         elif isinstance(p, Poly):
             if len(p.points) < 3:
                 return

@@ -58,7 +58,7 @@ def generate_baseline():
         camera = Camera(elevation=25.0, azimuth=45.0, auto_fit=True, padding=0.12)
         figure = CrystalFigure(structure)
         figure.camera = camera
-        figure.show_unit_cell().add_bonds("cutoff", cutoff=cutoff or 2.5)
+        figure.show_unit_cell().boundary_mode("connected").add_bonds("cutoff", cutoff=cutoff or 2.5)
         figure.export(BASELINE_DIR / f"{name}.png", width=89.0, transparent=True)
         figure.export(BASELINE_DIR / f"{name}.svg", width=89.0, transparent=True)
 
@@ -127,9 +127,64 @@ def generate_baseline():
     )
 
 
+def generate_pyvista_baseline():
+    """Render the six reference structures with the optional true-3D backend."""
+    from PIL import Image, ImageDraw
+
+    from crystalfig.exceptions import OptionalDependencyError
+    from crystalfig.neighbors.strategies import CutoffStrategy
+
+    output_dir = GALLERY_DIR / "pyvista"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    structures = [
+        ("nacl", rocksalt_structure(), "Na", 3.0, False),
+        ("si", diamond_structure(), "Si", 2.6, False),
+        ("batio3", perovskite_structure(a=3.95, c=4.05), "Ti", 2.5, True),
+        ("rutile_tio2", rutile_structure(), "Ti", 2.1, True),
+        ("zno", wurtzite_structure(), "Zn", 2.2, False),
+        ("mos2", mos2_structure(), "Mo", 2.8, False),
+    ]
+    for name, structure, center, cutoff, polyhedra in structures:
+        figure = (
+            CrystalFigure(structure)
+            .show_unit_cell()
+            .boundary_mode("connected")
+            .add_bonds("cutoff", cutoff=cutoff)
+        )
+        if polyhedra:
+            figure.style("polyhedra_clean").add_polyhedra(
+                center, strategy=CutoffStrategy(cutoff=cutoff)
+            )
+        else:
+            figure.style("layered_clean" if name == "mos2" else "ballstick_clean")
+        view = "layer_oblique" if name == "mos2" else "polyhedron_focus" if polyhedra else "auto"
+        figure.view_preset(view)
+        try:
+            figure.export(
+                output_dir / f"{name}.png", backend="pyvista", width=89, dpi=600,
+                transparent=True,
+            )
+        except OptionalDependencyError:
+            print("Skipping PyVista reference images: install crystalfig[render3d].")
+            return
+
+    names = [item[0] for item in structures]
+    contact = Image.new("RGB", (900, 1080), "#eeeeee")
+    draw = ImageDraw.Draw(contact)
+    for index, name in enumerate(names):
+        with Image.open(output_dir / f"{name}.png") as source:
+            panel = source.convert("RGB")
+        panel.thumbnail((440, 320))
+        column, row = index % 2, index // 2
+        contact.paste(panel, (column * 450 + (440 - panel.width) // 2, row * 360 + 4))
+        draw.text((column * 450 + 8, row * 360 + 325), name, fill="black")
+    contact.save(output_dir / "contact_sheet.png")
+
+
 def main():
     GALLERY_DIR.mkdir(exist_ok=True)
     generate_baseline()
+    generate_pyvista_baseline()
 
     # Publication defaults: no legend, no axes unless needed.
     def _pub(fig):

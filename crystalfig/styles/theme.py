@@ -21,6 +21,7 @@ class FigureTheme:
     title_size: float = 8.0  # pt
     background: str = "white"  # white, transparent, or color
     atom_style: str = "shaded"  # shaded, flat, space_filling
+    atom_material: str = "matte"  # matte, glossy, flat
     atom_radius_scale: float = 0.28  # multiplier for covalent radii in ball-stick mode
     atom_radius_scale_polyhedron: float = 0.24  # vertex atoms in polyhedron mode
     atom_radius_scale_polyhedron_center: float = 0.11  # central cation in polyhedron mode
@@ -32,6 +33,13 @@ class FigureTheme:
     cell_back_style: str = "dashed"
     polyhedron_opacity: float = 0.22
     polyhedron_edge_width: float = 0.5
+    polyhedron_face_opacity: float = 0.55
+    polyhedron_back_opacity: float = 0.18
+    polyhedron_edge_opacity: float = 0.55
+    polyhedron_edge_mode: str = "silhouette"
+    polyhedron_back_edges: str = "faint"  # hide, faint, dashed
+    cell_style: str = "light"  # none, light, full
+    camera_preset: str = "auto"
     vector_scale: float = 1.0
     vector_head_size: float = 0.15
     show_legend: bool = False
@@ -66,6 +74,44 @@ class FigureTheme:
                 bond_width=0.03,
                 cell_edge_width=0.45,
             ),
+            "ballstick_clean": cls(
+                name="ballstick_clean",
+                palette=get_palette("publication"),
+                atom_material="matte",
+                atom_radius_scale=0.28,
+                bond_width=0.045,
+                cell_style="light",
+                camera_preset="auto",
+            ),
+            "polyhedra_clean": cls(
+                name="polyhedra_clean",
+                palette=get_palette("publication"),
+                atom_radius_scale=0.24,
+                atom_radius_scale_polyhedron=0.22,
+                atom_radius_scale_polyhedron_center=0.08,
+                polyhedron_opacity=0.35,
+                polyhedron_face_opacity=0.52,
+                polyhedron_back_opacity=0.12,
+                polyhedron_edge_width=0.45,
+                polyhedron_edge_mode="visible",
+                cell_style="light",
+            ),
+            "layered_clean": cls(
+                name="layered_clean",
+                palette=get_palette("publication"),
+                atom_radius_scale=0.25,
+                bond_width=0.04,
+                cell_style="light",
+                camera_preset="layer_oblique",
+            ),
+            "overview_minimal": cls(
+                name="overview_minimal",
+                palette=get_palette("publication"),
+                atom_radius_scale=0.20,
+                bond_width=0.03,
+                cell_style="none",
+                show_legend=False,
+            ),
             "one_column": cls(name="one_column", figure_width=89.0),
             "two_column": cls(name="two_column", figure_width=183.0),
             "square": cls(name="square", figure_width=120.0, figure_height=120.0),
@@ -88,13 +134,25 @@ class FigureTheme:
             "title_size": self.title_size,
             "background": self.background,
             "atom_style": self.atom_style,
+            "atom_material": self.atom_material,
+            "atom_radius_scale": self.atom_radius_scale,
+            "atom_radius_scale_polyhedron": self.atom_radius_scale_polyhedron,
+            "atom_radius_scale_polyhedron_center": self.atom_radius_scale_polyhedron_center,
             "bond_width": self.bond_width,
             "bond_color": self.bond_color,
+            "bond_color_mode": self.bond_color_mode,
             "cell_edge_width": self.cell_edge_width,
             "cell_front_style": self.cell_front_style,
             "cell_back_style": self.cell_back_style,
             "polyhedron_opacity": self.polyhedron_opacity,
             "polyhedron_edge_width": self.polyhedron_edge_width,
+            "polyhedron_face_opacity": self.polyhedron_face_opacity,
+            "polyhedron_back_opacity": self.polyhedron_back_opacity,
+            "polyhedron_edge_opacity": self.polyhedron_edge_opacity,
+            "polyhedron_edge_mode": self.polyhedron_edge_mode,
+            "polyhedron_back_edges": self.polyhedron_back_edges,
+            "cell_style": self.cell_style,
+            "camera_preset": self.camera_preset,
             "vector_scale": self.vector_scale,
             "vector_head_size": self.vector_head_size,
             "show_legend": self.show_legend,

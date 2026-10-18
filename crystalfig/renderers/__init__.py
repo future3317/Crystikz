@@ -3,6 +3,7 @@
 from crystalfig.renderers.base import Renderer, RenderOptions
 from crystalfig.renderers.matplotlib_3d_renderer import Matplotlib3DRenderer
 from crystalfig.renderers.matplotlib_renderer import MatplotlibRenderer
+from crystalfig.renderers.pyvista_renderer import PyVistaRenderer
 from crystalfig.renderers.svg_renderer import SvgRenderer
 from crystalfig.renderers.tikz_renderer import TikzRenderer
 
@@ -13,4 +14,5 @@ __all__ = [
     "SvgRenderer",
     "TikzRenderer",
     "Matplotlib3DRenderer",
+    "PyVistaRenderer",
 ]

@@ -24,14 +24,18 @@ from crystalfig.styles.theme import FigureTheme
 
 class TestMatplotlibRenderer:
     def test_export_pdf(self):
+        import matplotlib
+
         fig = CrystalFigure(rocksalt_structure()).show_unit_cell().add_bonds("covalent")
         scene = fig.build_scene()
         renderer = MatplotlibRenderer(camera=Camera())
+        fonttypes = (matplotlib.rcParams["pdf.fonttype"], matplotlib.rcParams["ps.fonttype"])
         with tempfile.TemporaryDirectory() as tmpdir:
             out = Path(tmpdir) / "test.pdf"
             renderer.export(scene, str(out), fig.theme, RenderOptions(width=80.0))
             assert out.exists()
             assert out.stat().st_size > 0
+        assert (matplotlib.rcParams["pdf.fonttype"], matplotlib.rcParams["ps.fonttype"]) == fonttypes
 
     def test_export_png(self):
         fig = CrystalFigure(rocksalt_structure()).show_unit_cell()
@@ -54,16 +58,49 @@ class TestMatplotlibRenderer:
         assert ax.figure is not None
         plt.close(ax.figure)
 
+    def test_public_export_keeps_legacy_positions_and_explicit_backend(self, tmp_path):
+        figure = CrystalFigure(rocksalt_structure())
+        svg_path = tmp_path / "legacy.svg"
+        result = figure.export(svg_path, "svg", 89.0, True)
+        assert result.vector_status == "pure"
+        assert 'width="89.000mm"' in svg_path.read_text(encoding="utf-8")
+
+    def test_semantic_themes_are_isolated_and_serialize_render_fields(self):
+        figure = CrystalFigure(rocksalt_structure(), theme="ballstick_clean")
+        figure.theme.atom_radius_scale = 0.41
+        other = CrystalFigure(rocksalt_structure(), theme="ballstick_clean")
+        assert other.theme.atom_radius_scale == pytest.approx(0.28)
+        assert other.theme.as_dict()["bond_color_mode"] == "split_soft"
+
+    def test_view_accepts_fractional_direction(self):
+        figure = CrystalFigure(rocksalt_structure()).view([1, 1, 0])
+        assert figure.camera._rotation is not None
+
 
 class TestSvgRenderer:
-    def test_svg_contains_gradients_for_glossy_atoms(self):
+    def test_svg_uses_radial_gradients_with_stable_ids(self):
         fig = CrystalFigure(rocksalt_structure()).show_unit_cell()
         scene = fig.build_scene()
         renderer = SvgRenderer(camera=Camera())
         svg = renderer.render(scene, fig.theme, RenderOptions(width=80.0))
         assert "<svg" in svg
-        # Glossy shaded spheres emit clipPath defs for radial shading.
-        assert "<clipPath" in svg
+        assert "<radialGradient" in svg
+        assert "clipPath" not in svg
+        assert "id=\"gsphere_000" in svg
+        assert svg == renderer.render(scene, fig.theme, RenderOptions(width=80.0))
+
+    def test_svg_explicit_dimensions_preserve_geometry_aspect(self):
+        scene = Scene([
+            Sphere(position=[0, 0, 0], radius=0.2),
+            Sphere(position=[1, 2, 0], radius=0.2),
+        ])
+        svg = SvgRenderer(camera=Camera()).render(
+            scene, FigureTheme(), RenderOptions(width=89, height=89)
+        )
+        viewbox = re.search(r'viewBox="([^"]+)"', svg)
+        assert viewbox is not None
+        _, _, dx, dy = map(float, viewbox.group(1).split())
+        assert dx == pytest.approx(dy)
 
     @pytest.mark.parametrize("renderer_type", [MatplotlibRenderer, SvgRenderer, TikzRenderer])
     def test_unknown_primitive_raises_render_error(self, renderer_type):
@@ -127,13 +164,17 @@ class TestMatplotlib3DRenderer:
             assert out.stat().st_size > 0
 
     def test_export_pdf(self):
+        import matplotlib
+
         fig = CrystalFigure(rocksalt_structure(conventional=True)).show_unit_cell()
         scene = fig.build_scene()
         renderer = Matplotlib3DRenderer(camera=Camera())
+        fonttypes = (matplotlib.rcParams["pdf.fonttype"], matplotlib.rcParams["ps.fonttype"])
         with tempfile.TemporaryDirectory() as tmpdir:
             out = Path(tmpdir) / "test_3d.pdf"
             renderer.export(scene, str(out), fig.theme, RenderOptions(width=80.0), fmt="pdf")
             assert out.exists()
+        assert (matplotlib.rcParams["pdf.fonttype"], matplotlib.rcParams["ps.fonttype"]) == fonttypes
 
 
 class TestTikzRenderer:

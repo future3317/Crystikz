@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "crystalfig"
 version = "0.1.0"
-description = "Publication-grade crystal structure visualization toolkit for materials science and equivariant geometric deep learning."
+description = "Publication-oriented crystal structure visualization with vector and optional 3D renderers."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -13,7 +13,7 @@ requires-python = ">=3.10"
 authors = [
     {name = "AI4Materials Group"}
 ]
-keywords = ["crystallography", "materials-science", "visualization", "tikz", "matplotlib", "geometric-deep-learning"]
+keywords = ["crystallography", "materials-science", "crystal-structure", "visualization", "matplotlib", "pyvista"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -40,10 +40,11 @@ dependencies = [
 ase = ["ase>=3.22.0"]
 reciprocal = ["seekpath>=2.0.0"]
 latex = ["pdf2image>=1.16.0"]
+render3d = ["pyvista>=0.43"]
 dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.1.0", "build>=1.0.0"]
 test = ["pytest>=7.0", "pytest-cov"]
 docs = ["sphinx", "sphinx-rtd-theme"]
-all = ["ase>=3.22.0", "seekpath>=2.0.0", "pdf2image>=1.16.0"]
+all = ["ase>=3.22.0", "seekpath>=2.0.0", "pdf2image>=1.16.0", "pyvista>=0.43"]
 
 [project.scripts]
 crystalfig = "crystalfig.cli.main:main"

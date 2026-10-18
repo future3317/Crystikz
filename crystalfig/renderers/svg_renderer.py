@@ -8,6 +8,7 @@ from xml.sax.saxutils import escape
 import numpy as np
 
 from crystalfig.exceptions import RenderError
+from crystalfig.geometry.polyhedra import visible_polyhedron_edges
 from crystalfig.renderers.base import RenderOptions
 from crystalfig.scene.primitives import (
     Arrow,
@@ -67,13 +68,16 @@ class SvgRenderer:
         dy = max(ymax - ymin, 1e-6)
 
         self.theme = theme
+        self._primitive_indices = {id(p): i for i, p in enumerate(scene.all_primitives())}
         width_mm = options.width
-        if options.height:
-            height_mm = options.height
-        else:
-            aspect = dy / dx
-            aspect = max(0.35, min(aspect, 2.8))
-            height_mm = width_mm * aspect
+        height_mm = options.height or width_mm * dy / dx
+
+        # Match physical and viewBox aspect ratios without distorting crystals.
+        units_per_mm = max(dx / width_mm, dy / height_mm)
+        dx, dy = units_per_mm * width_mm, units_per_mm * height_mm
+        xmid, ymid = (xmin + xmax) / 2, (ymin + ymax) / 2
+        xmin, xmax = xmid - dx / 2, xmid + dx / 2
+        ymin, ymax = ymid - dy / 2, ymid + dy / 2
 
         self._user_units_per_mm = dx / width_mm
         self._user_units_per_point = self._user_units_per_mm * 25.4 / 72.0
@@ -227,41 +231,42 @@ class SvgRenderer:
         defs = []
         atom_ids = set()
         bond_ids = set()
-        for p in scene.all_primitives():
+        for primitive_index, p in enumerate(scene.all_primitives()):
             if isinstance(p, Sphere) and p.render_style != "flat" and p.render_style != "wireframe":
-                sid = self._sphere_grad_id(p)
+                sid = self._sphere_grad_id(primitive_index)
                 if sid not in atom_ids:
                     atom_ids.add(sid)
                     defs.extend(self._sphere_gradient_def(p, sid))
             elif isinstance(p, Bond):
                 mode = getattr(self.theme, "bond_color_mode", "uniform")
                 if mode in ("split", "split_soft"):
-                    bid = self._bond_grad_id(p)
+                    bid = self._bond_grad_id(primitive_index)
                     if bid not in bond_ids:
                         bond_ids.add(bid)
                         defs.extend(self._bond_gradient_def(p, bid, mode))
         return defs
 
-    def _sphere_grad_id(self, p: Sphere) -> str:
-        base = self._color_to_hex(p.color).lstrip("#")
-        return f"gsphere_{base}_{id(p) & 0xFFFFFF}"
+    def _sphere_grad_id(self, p_or_index) -> str:
+        index = p_or_index if isinstance(p_or_index, int) else self._primitive_indices[id(p_or_index)]
+        return f"gsphere_{index:04d}"
 
     def _sphere_gradient_def(self, p: Sphere, grad_id: str) -> list[str]:
-        """Define the clip path used by glossy atom shading."""
-        r = p.radius * self.camera.scale
-        # We do not emit a true radialGradient because the crescent/highlight
-        # are offset circles; instead we use the gradient id as a marker and
-        # draw the shading with explicit clipPath below.
-        cid = f"cp_{grad_id}"
-        uv = self._project_uv(p.position)
+        """Define a restrained radial material gradient for a sphere."""
+        base = self._color_to_hex(p.color)
+        matte = self.theme.atom_material != "glossy"
+        light = self._color_to_hex(self._blend_colors(base, "white", 0.24 if matte else 0.48))
+        shade = self._color_to_hex(self._darken(base, 0.18 if matte else 0.28))
         return [
-            f'    <clipPath id="{cid}">',
-            f'      <circle cx="{uv[0]:.4f}" cy="{uv[1]:.4f}" r="{r:.4f}"/>',
-            '    </clipPath>',
+            f'    <radialGradient id="{grad_id}" cx="34%" cy="30%" r="76%">',
+            f'      <stop offset="0%" stop-color="{light}"/>',
+            f'      <stop offset="62%" stop-color="{base}"/>',
+            f'      <stop offset="100%" stop-color="{shade}"/>',
+            '    </radialGradient>',
         ]
 
-    def _bond_grad_id(self, p: Bond) -> str:
-        return f"gbond_{id(p) & 0xFFFFFF}"
+    def _bond_grad_id(self, p_or_index) -> str:
+        index = p_or_index if isinstance(p_or_index, int) else self._primitive_indices[id(p_or_index)]
+        return f"gbond_{index:04d}"
 
     def _bond_gradient_def(self, p: Bond, grad_id: str, mode: str) -> list[str]:
         color_i = self._atom_color_at(p.site_i, (0, 0, 0))
@@ -341,7 +346,7 @@ class SvgRenderer:
             )
             return elements
 
-        if p.render_style == "flat":
+        if p.render_style == "flat" or self.theme.atom_material == "flat":
             elements.append(
                 f'  <circle cx="{cx:.4f}" cy="{cy:.4f}" r="{r:.4f}" '
                 f'fill="{base_hex}" fill-opacity="{p.opacity:.3f}"/>'
@@ -349,43 +354,10 @@ class SvgRenderer:
             return elements
 
         grad_id = self._sphere_grad_id(p)
-        cid = f"cp_{grad_id}"
-
-        # Base disk.
         elements.append(
             f'  <circle cx="{cx:.4f}" cy="{cy:.4f}" r="{r:.4f}" '
-            f'fill="{base_hex}" fill-opacity="{p.opacity:.3f}"/>'
+            f'fill="url(#{grad_id})" fill-opacity="{p.opacity:.3f}"/>'
         )
-
-        # Subtle darker rim.
-        rim = self._darken(p.color, 0.25)
-        elements.append(
-            f'  <circle cx="{cx:.4f}" cy="{cy:.4f}" r="{r:.4f}" '
-            f'fill="none" stroke="{self._color_to_hex(rim)}" '
-                f'stroke-width="{self._pt_to_user(0.6):.4f}" stroke-opacity="{0.35 * p.opacity:.3f}"/>'
-        )
-
-        # Soft lower-right crescent (diffuse shadow).
-        crescent_r = 0.72 * r
-        crescent_cx = cx + 0.28 * r
-        crescent_cy = cy + 0.28 * r
-        crescent_color = self._color_to_hex(self._darken(p.color, 0.30))
-        elements.append(
-            f'  <circle cx="{crescent_cx:.4f}" cy="{crescent_cy:.4f}" r="{crescent_r:.4f}" '
-            f'fill="{crescent_color}" fill-opacity="{0.14 * p.opacity:.3f}" '
-            f'clip-path="url(#{cid})"/>'
-        )
-
-        # Soft upper-left highlight.
-        hi_r = 0.38 * r
-        hi_cx = cx - 0.30 * r
-        hi_cy = cy - 0.30 * r
-        elements.append(
-            f'  <circle cx="{hi_cx:.4f}" cy="{hi_cy:.4f}" r="{hi_r:.4f}" '
-            f'fill="white" fill-opacity="{0.22 * p.opacity:.3f}" '
-            f'clip-path="url(#{cid})"/>'
-        )
-
         return elements
 
     def _draw_bond(self, p: Bond) -> list[str]:
@@ -450,12 +422,19 @@ class SvgRenderer:
         color = self._color_to_hex(p.color)
         lw = self._pt_to_user(getattr(p, "linewidth", 0.5))
         alpha = p.opacity
+        dash = ""
         if isinstance(p, CellEdge) and p.is_back:
-            alpha *= 0.5
+            style = self.theme.cell_back_style
+            if style == "hide":
+                return []
+            if style == "faint":
+                alpha *= 0.45
+            elif style == "dashed":
+                dash = ' stroke-dasharray="3,2"'
         return [
             f'  <line x1="{uv1[0]:.4f}" y1="{uv1[1]:.4f}" x2="{uv2[0]:.4f}" y2="{uv2[1]:.4f}" '
             f'stroke="{color}" stroke-width="{lw:.3f}" stroke-opacity="{alpha:.3f}" '
-            f'stroke-linecap="round"/>'
+            f'stroke-linecap="round"{dash}/>'
         ]
 
     def _draw_polyhedron(self, p: Polyhedron) -> list[str]:
@@ -483,52 +462,33 @@ class SvgRenderer:
         for _, face, nz in face_data:
             pts = np.array([p.vertices[i] for i in face])
             uv = self._project_uv(pts)
-            alpha = p.opacity * (0.18 if nz < 0 else 0.55)
+            alpha = p.opacity * (
+                self.theme.polyhedron_back_opacity
+                if nz < 0
+                else self.theme.polyhedron_face_opacity
+            )
             points_str = " ".join(f"{x:.4f},{y:.4f}" for x, y in uv)
             elements.append(
                 f'  <polygon points="{points_str}" fill="{fill_hex}" '
                 f'fill-opacity="{alpha:.3f}" stroke="none"/>'
             )
 
-        # True hull edges: keep non-coplanar adjacent face edges and boundary edges.
-        edge_faces: dict[tuple[int, int], list[tuple[np.ndarray, float]]] = {}
-        for _, face, nz in face_data:
-            m = len(face)
-            pts = np.array([cam_vertices[i] for i in face])
-            n = np.zeros(3)
-            for k in range(m):
-                v0 = pts[k]
-                v1 = pts[(k + 1) % m]
-                n[0] += (v0[1] - v1[1]) * (v0[2] + v1[2])
-                n[1] += (v0[2] - v1[2]) * (v0[0] + v1[0])
-                n[2] += (v0[0] - v1[0]) * (v0[1] + v1[1])
-            n = n / (np.linalg.norm(n) + 1e-12)
-            for k in range(m):
-                a, b = face[k], face[(k + 1) % m]
-                key = (min(a, b), max(a, b))
-                edge_faces.setdefault(key, []).append((n, nz))
-
-        visible_edges: set[tuple[int, int]] = set()
-        for key, faces in edge_faces.items():
-            if len(faces) == 1:
-                visible_edges.add(key)
-            else:
-                n1 = faces[0][0]
-                n2 = faces[1][0]
-                if abs(np.dot(n1, n2)) < 0.985:
-                    visible_edges.add(key)
-
         edge_hex = self._color_to_hex(p.edge_color or p.color)
-        for a, b in visible_edges:
+        edge_mode = p.edge_mode or self.theme.polyhedron_edge_mode
+        back_mode = p.back_edges or self.theme.polyhedron_back_edges
+        for a, b, has_front in visible_polyhedron_edges(
+            p.vertices, p.faces, rot, edge_mode
+        ):
+            if not has_front and back_mode == "hide":
+                continue
             uv = self._project_uv(np.array([p.vertices[a], p.vertices[b]]))
-            mid_cam_z = float(np.mean([cam_vertices[a][2], cam_vertices[b][2]]))
-            is_front = mid_cam_z >= 0
-            alpha = 0.45 if is_front else 0.22
-            lw = self._pt_to_user(max(0.35, p.edge_width * (0.9 if is_front else 0.55)))
+            alpha = self.theme.polyhedron_edge_opacity * (1.0 if has_front else 0.35)
+            lw = self._pt_to_user(max(0.35, p.edge_width * (0.9 if has_front else 0.55)))
+            dash = ' stroke-dasharray="3,2"' if not has_front and back_mode == "dashed" else ""
             elements.append(
                 f'  <line x1="{uv[0,0]:.4f}" y1="{uv[0,1]:.4f}" x2="{uv[1,0]:.4f}" y2="{uv[1,1]:.4f}" '
                 f'stroke="{edge_hex}" stroke-width="{lw:.3f}" stroke-opacity="{alpha:.3f}" '
-                f'stroke-linecap="round"/>'
+                f'stroke-linecap="round"{dash}/>'
             )
 
         return elements

@@ -540,11 +540,16 @@ class SceneBuilder:
                     edge_color=edge_color,
                     opacity=opacity,
                     edge_width=edge_width,
+                    edge_mode=self.theme.polyhedron_edge_mode,
+                    back_edges=self.theme.polyhedron_back_edges,
                     vertex_metadata=vertex_metadata,
                 ))
         return polyhedra
 
     def _cell_edges(self, structure: CrystalStructure) -> list[CellEdge]:
+        style = getattr(self.theme, "cell_style", "light")
+        if style == "none":
+            return []
         corners = structure.lattice.unit_cell_corners()
         edges = [
             (0, 1), (1, 2), (2, 3), (3, 0),
@@ -558,12 +563,18 @@ class SceneBuilder:
         lines = []
         for i, j in edges:
             is_back = (depths[i] + depths[j]) / 2.0 < center_depth
+            if style == "full":
+                opacity = 0.62 if is_back else 0.88
+                width_scale = 1.0
+            else:
+                opacity = 0.22 if is_back else 0.48
+                width_scale = 0.72
             lines.append(CellEdge(
                 start=corners[i],
                 end=corners[j],
                 color=self.palette.hex("gray"),
-                linewidth=self.theme.cell_edge_width * (0.55 if is_back else 1.0),
-                opacity=0.35 if is_back else 0.70,
+                linewidth=self.theme.cell_edge_width * width_scale * (0.75 if is_back else 1.0),
+                opacity=opacity,
                 is_back=is_back,
                 layer="background",
             ))
