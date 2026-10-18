@@ -1551,95 +1551,94 @@
         3.4283,
         5.137
       ],
-      "camera_used": "principal_1_roll90",
+      "camera_used": "tilt_direct_b_plane_c_roll90",
       "view_dir_cartesian": [
-        -0.328792150677846,
-        0.0007535115445373389,
-        0.9444020086133812
+        0.11726615967115306,
+        0.7071067811865475,
+        0.6973153144711364
       ],
       "projection": "orthographic",
       "roll": 90.0,
-      "selected_intent": "coordination",
-      "intent_confidence": 0.78,
+      "selected_intent": "network",
+      "intent_confidence": 0.72,
       "display_window": [
         2,
         2,
         2
       ],
       "coordination_shell_policy": "complete",
-      "image_atom_policy": "connected_motif",
-      "cell_frame_policy": "hide",
-      "num_real_polyhedra": 4,
+      "image_atom_policy": "finite_supercell",
+      "cell_frame_policy": "subtle",
+      "num_real_polyhedra": 0,
       "num_clipped_polyhedra": 0,
       "recommended_camera_candidates": [
         {
-          "label": "principal_1_roll90",
+          "label": "tilt_direct_b_plane_c_roll90",
           "direction_cartesian": [
-            -0.328792150677846,
-            0.0007535115445373389,
-            0.9444020086133812
+            0.11726615967115304,
+            0.7071067811865474,
+            0.6973153144711363
           ],
           "roll_degrees": 90.0,
-          "score": 1.3574245802462888,
+          "score": 1.2505651218660558,
           "atom_overlap_fraction": 0.0,
-          "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.0051673897602735755,
-          "polyhedron_depth_ratio": 0.9632901075137681,
-          "polyhedron_overlap_fraction": 0.006880470960542576,
-          "projected_aspect": 1.4228262687447395
+          "bond_visibility": 0.8022682356795852,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.4591579281270306
         },
         {
-          "label": "principal_1",
+          "label": "lattice_+-+_roll90",
           "direction_cartesian": [
-            -0.328792150677846,
-            0.0007535115445373389,
-            0.9444020086133812
-          ],
-          "roll_degrees": 0.0,
-          "score": 1.3554245802462888,
-          "atom_overlap_fraction": 0.0,
-          "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.005167389760273574,
-          "polyhedron_depth_ratio": 0.9632901075137681,
-          "polyhedron_overlap_fraction": 0.006880470960542632,
-          "projected_aspect": 0.702826495382483
-        },
-        {
-          "label": "lattice_+0-_roll90",
-          "direction_cartesian": [
-            0.38622347116357897,
-            0.0,
-            -0.9224052419204674
+            0.7673102665802527,
+            -0.5684376503095583,
+            0.29683933787672107
           ],
           "roll_degrees": 90.0,
-          "score": 1.354590868476126,
+          "score": 1.2503075885845198,
           "atom_overlap_fraction": 0.0,
-          "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.010135230780597778,
-          "polyhedron_depth_ratio": 0.9663027545734837,
-          "polyhedron_overlap_fraction": 0.01423333333333345,
-          "projected_aspect": 1.457504685211404
+          "bond_visibility": 0.7961703232915183,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.425325640258827
         },
         {
-          "label": "lattice_+0-",
+          "label": "lattice_+++_roll90",
           "direction_cartesian": [
-            0.38622347116357897,
-            0.0,
-            -0.9224052419204674
+            0.7673102665802527,
+            0.568437650309558,
+            0.296839337876721
+          ],
+          "roll_degrees": 90.0,
+          "score": 1.2498012931322113,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.7961703232915183,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.4343746930164978
+        },
+        {
+          "label": "tilt_direct_b_plane_c",
+          "direction_cartesian": [
+            0.11726615967115304,
+            0.7071067811865474,
+            0.6973153144711363
           ],
           "roll_degrees": 0.0,
-          "score": 1.352590868476126,
+          "score": 1.2485651218660558,
           "atom_overlap_fraction": 0.0,
-          "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.010135230780597781,
-          "polyhedron_depth_ratio": 0.9663027545734837,
-          "polyhedron_overlap_fraction": 0.014233333333333417,
-          "projected_aspect": 0.686104140965389
+          "bond_visibility": 0.802268235679585,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 0.6853267769881468
         }
       ],
       "diagnostics": [
-        "Bonds generated with crystalnn; verify coordination for the intended chemical interpretation.",
-        "Automatic centers require coordination 4\u20138 and a mean neighbor electronegativity at least 0.4 higher; verify the chemical interpretation."
+        "Bonds generated with crystalnn; verify coordination for the intended chemical interpretation."
       ],
       "exports": {
         "png": {
@@ -1651,7 +1650,7 @@
           "manual_visual_review_required": true,
           "size": [
             1051,
-            739
+            720
           ],
           "mode": "RGBA",
           "has_alpha": true,
@@ -1670,10 +1669,10 @@
           "warnings": [],
           "manual_visual_review_required": true,
           "svg_width": "89.000mm",
-          "svg_height": "62.552mm",
+          "svg_height": "60.994mm",
           "contains_raster_images": false,
           "page_width_mm": 89.0,
-          "page_height_mm": 62.552
+          "page_height_mm": 60.994
         },
         "pdf": {
           "path": "E:\\CODE\\Equivariant Geometric Deep Learning Workbench\\gallery\\showcase\\monoclinic_tenorite.pdf",
@@ -1684,14 +1683,14 @@
           "manual_visual_review_required": true,
           "page_size_points": [
             252.283,
-            177.312
+            172.897
           ],
           "fonts": [],
           "has_type3_fonts": false,
           "font_detection": "available",
           "contains_raster_objects": false,
           "page_width_mm": 88.9998361111111,
-          "page_height_mm": 62.55173333333333
+          "page_height_mm": 60.99421944444444
         }
       }
     },

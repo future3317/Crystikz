@@ -10,6 +10,15 @@ from scipy.spatial import ConvexHull
 from crystalfig.exceptions import GeometryError
 
 
+def coordination_shell_has_volume(vectors, relative_tolerance=0.05):
+    """Return whether neighbor vectors define a genuinely three-dimensional shell."""
+    vectors = np.asarray(vectors, dtype=float)
+    if vectors.ndim != 2 or vectors.shape[1] != 3 or len(vectors) < 4:
+        return False
+    singular_values = np.linalg.svd(vectors - vectors.mean(axis=0), compute_uv=False)
+    return singular_values[-1] > relative_tolerance * singular_values[0]
+
+
 def orient_faces_outward(vertices, faces):
     """Return convex-hull faces with a consistent outward winding."""
     vertices = np.asarray(vertices, dtype=float)

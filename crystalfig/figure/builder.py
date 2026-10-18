@@ -12,6 +12,7 @@ from scipy.spatial import ConvexHull, QhullError, cKDTree
 from crystalfig.exceptions import OptionalDependencyError, StructureParseError
 from crystalfig.export.exporter import Exporter, ExportResult, RenderOptions
 from crystalfig.geometry.planes import MillerPlane
+from crystalfig.geometry.polyhedra import coordination_shell_has_volume
 from crystalfig.io.loader import load_structure
 from crystalfig.io.pymatgen_adapter import from_pymatgen
 from crystalfig.model.structure import CrystalStructure
@@ -924,15 +925,31 @@ class CrystalFigure:
     def _automatic_center_candidates(self, bonds):
         neighbors = [[] for _ in range(self.structure.num_sites)]
         for bond in bonds:
-            neighbors[bond.i].append(bond.j)
-            neighbors[bond.j].append(bond.i)
+            neighbors[bond.i].append((bond.j, bond.jimage))
+            neighbors[bond.j].append((bond.i, tuple(-value for value in bond.jimage)))
         candidates = []
         for index, adjacent in enumerate(neighbors):
             if not 4 <= len(adjacent) <= 8:
                 continue
             center = self._electronegativity(self.structure.sites[index].dominant_element)
-            surrounding = [self._electronegativity(self.structure.sites[j].dominant_element) for j in adjacent]
-            if center is not None and all(value is not None for value in surrounding) and float(np.mean(surrounding)) - center >= 0.4:
+            surrounding = [
+                self._electronegativity(self.structure.sites[j].dominant_element)
+                for j, _ in adjacent
+            ]
+            vectors = [
+                self.structure.lattice.frac_to_cart(
+                    self.structure.sites[j].frac_coords
+                    + np.asarray(image)
+                    - self.structure.sites[index].frac_coords
+                )
+                for j, image in adjacent
+            ]
+            if (
+                center is not None
+                and all(value is not None for value in surrounding)
+                and float(np.mean(surrounding)) - center >= 0.4
+                and coordination_shell_has_volume(vectors)
+            ):
                 candidates.append(index)
         return candidates
 

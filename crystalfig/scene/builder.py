@@ -12,7 +12,11 @@ from pymatgen.core import Element
 from scipy.spatial import ConvexHull, QhullError
 
 from crystalfig.geometry.planes import MillerPlane
-from crystalfig.geometry.polyhedra import build_polyhedron, merge_coplanar_faces
+from crystalfig.geometry.polyhedra import (
+    build_polyhedron,
+    coordination_shell_has_volume,
+    merge_coplanar_faces,
+)
 from crystalfig.model.site import element_symbol
 from crystalfig.model.structure import CrystalStructure
 from crystalfig.neighbors.base import NeighborBond
@@ -677,10 +681,19 @@ class SceneBuilder:
                 continue
             center_x = Element(structure.sites[index].dominant_element).X
             neighbor_x = [Element(structure.sites[j].dominant_element).X for j, _ in neighbors]
+            vectors = [
+                structure.lattice.frac_to_cart(
+                    structure.sites[j].frac_coords
+                    + np.asarray(image)
+                    - structure.sites[index].frac_coords
+                )
+                for j, image in neighbors
+            ]
             if (
                 center_x is not None
                 and all(value is not None for value in neighbor_x)
                 and float(np.mean(neighbor_x)) - center_x >= 0.4
+                and coordination_shell_has_volume(vectors)
             ):
                 centers.append(index)
         return centers
