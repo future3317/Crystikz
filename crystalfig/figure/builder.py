@@ -1099,7 +1099,15 @@ class CrystalFigure:
             ).build()
         selected_view = None
         if self._auto_view:
-            selected_view, camera = self._scored_view_candidates(scene)[0]
+            candidates = self._scored_view_candidates(scene)
+            plan = getattr(self, "_display_plan", None)
+            layer_normal = self._periodic_layer_normal() if plan and plan.intent == "layered" else None
+            if layer_normal is not None:
+                candidates = [
+                    candidate for candidate in candidates
+                    if abs(float(np.dot(candidate[0]["direction_cartesian"], layer_normal))) <= 0.25
+                ]
+            selected_view, camera = candidates[0]
             self.camera = camera
             scene = SceneBuilder(
                 self.structure, self.theme, self.palette, scene_options, camera=self.camera
