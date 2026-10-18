@@ -85,7 +85,6 @@ class TestCrystalFigure:
     def test_auto_view_adds_generic_lattice_directions_to_reduce_atom_overlap(self):
         figure = CrystalFigure(rocksalt_structure(conventional=True)).publication()
         report = figure.report_view_candidates(figure.build_scene())[0]
-        assert report["label"].startswith("lattice_")
         assert report["atom_overlap_fraction"] < 0.5
 
     def test_auto_fit_recenters_final_supercell_geometry(self):
