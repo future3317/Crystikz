@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from itertools import product
 from pathlib import Path
 
 import numpy as np
@@ -180,6 +181,20 @@ class CrystalFigure:
             directions.append(np.asarray(vector, dtype=float))
             labels.append(label)
 
+        for coefficients in product((-1, 0, 1), repeat=3):
+            if sum(value != 0 for value in coefficients) < 2:
+                continue
+            first_nonzero = next(value for value in coefficients if value)
+            if first_nonzero < 0:
+                continue
+            direction = np.asarray(coefficients, dtype=float) @ self.structure.lattice.matrix
+            if np.linalg.norm(direction) > 1e-8:
+                directions.append(direction)
+                direction_label = "".join(
+                    "+" if value > 0 else "-" if value < 0 else "0" for value in coefficients
+                )
+                labels.append(f"lattice_{direction_label}")
+
         geometry_points = []
         for primitive in scene.all_primitives():
             if getattr(primitive, "layer", "geometry") == "annotation":
@@ -236,7 +251,7 @@ class CrystalFigure:
                 spheres = [p for p in scene.all_primitives() if p.__class__.__name__ == "Sphere"]
                 projected = camera.project(np.asarray([p.position for p in spheres])) if spheres else np.empty((0, 2))
                 radii = [float(p.radius) for p in spheres]
-                overlaps = 0
+                overlapping_atoms: set[int] = set()
                 if len(spheres) > 1:
                     candidate_pairs = cKDTree(projected).query_pairs(
                         1.56 * max(radii), output_type="ndarray"
@@ -244,8 +259,9 @@ class CrystalFigure:
                     for i, j in candidate_pairs:
                         if np.linalg.norm(spheres[i].position - spheres[j].position) < 1e-8:
                             continue
-                        overlaps += np.linalg.norm(projected[i] - projected[j]) < 0.78 * (radii[i] + radii[j])
-                atom_overlap = overlaps / max(len(spheres), 1)
+                        if np.linalg.norm(projected[i] - projected[j]) < 0.78 * (radii[i] + radii[j]):
+                            overlapping_atoms.update((int(i), int(j)))
+                atom_overlap = len(overlapping_atoms) / max(len(spheres), 1)
                 bonds = [p for p in scene.all_primitives() if isinstance(p, Bond)]
                 bond_visibility = float(np.mean([
                     min(np.linalg.norm(camera.project(b.end) - camera.project(b.start)) / max(b.distance, 1e-9), 1.0)

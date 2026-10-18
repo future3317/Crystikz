@@ -78,8 +78,15 @@ class TestCrystalFigure:
         assert reports == repeated
         assert reports[0]["score"] >= reports[-1]["score"]
         assert "atom_overlap_fraction" in reports[0]
+        assert all(0.0 <= report["atom_overlap_fraction"] <= 1.0 for report in reports)
         assert "bond_visibility" in reports[0]
         assert {report["roll_degrees"] for report in reports} == {0.0, 90.0}
+
+    def test_auto_view_adds_generic_lattice_directions_to_reduce_atom_overlap(self):
+        figure = CrystalFigure(rocksalt_structure(conventional=True)).publication()
+        report = figure.report_view_candidates(figure.build_scene())[0]
+        assert report["label"].startswith("lattice_")
+        assert report["atom_overlap_fraction"] < 0.5
 
     def test_auto_fit_recenters_final_supercell_geometry(self):
         fig = CrystalFigure(rocksalt_structure()).supercell((3, 1, 1)).view([1, 0, 0])

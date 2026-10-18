@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from crystalfig.examples.presets import perovskite_structure, rocksalt_structure
+from crystalfig.examples.presets import mos2_structure, perovskite_structure, rocksalt_structure
 from crystalfig.figure.builder import CrystalFigure
 from crystalfig.neighbors.strategies import CutoffStrategy
 from crystalfig.scene.camera import Camera
@@ -32,6 +32,50 @@ class TestCamera:
 
 
 class TestScene:
+    def test_periodically_equivalent_coordinates_render_in_the_display_cell(self):
+        structure = mos2_structure()
+        original_coords = structure.frac_coords.copy()
+        figure = (
+            CrystalFigure(structure)
+            .boundary_mode("connected")
+            .add_bonds("cutoff", cutoff=2.5)
+        )
+        scene = figure.build_scene()
+
+        atoms = scene.get_group("atoms").primitives
+        assert np.allclose(structure.frac_coords, original_coords)
+        atom_frac = np.array([structure.lattice.cart_to_frac(atom.position) for atom in atoms])
+        assert np.all((atom_frac >= 0.0) & (atom_frac < 1.0))
+
+        for bond in scene.get_group("bonds").primitives:
+            assert np.linalg.norm(bond.end - bond.start) == pytest.approx(bond.distance)
+
+        image_atoms = scene.get_group("image_atoms")
+        assert image_atoms is not None
+        for atom in image_atoms.primitives:
+            site = structure.sites[atom.metadata["site_index"]]
+            expected = site.frac_coords % 1.0 + np.asarray(atom.metadata["image_offset"])
+            assert np.allclose(structure.lattice.cart_to_frac(atom.position), expected)
+
+    def test_periodic_polyhedron_vertices_keep_neighbor_distances_after_folding(self):
+        structure = mos2_structure()
+        figure = CrystalFigure(structure).add_polyhedra("Mo", strategy="cutoff")
+        scene = figure.build_scene()
+        polyhedra = scene.get_group("polyhedra").primitives
+        assert polyhedra
+        bonds = CutoffStrategy(cutoff=2.5).get_bonds(structure)
+        for poly in polyhedra:
+            center = structure.lattice.frac_to_cart(
+                structure.frac_coords[poly.center_site] % 1.0
+            )
+            expected = [
+                bond.distance
+                for bond in bonds
+                if bond.i == poly.center_site or bond.j == poly.center_site
+            ]
+            actual = [np.linalg.norm(vertex - center) for vertex in poly.vertices]
+            assert np.sort(actual) == pytest.approx(np.sort(expected))
+
     def test_add_and_all_primitives(self):
         scene = Scene()
         scene.add(Sphere(position=np.array([0, 0, 0]), radius=0.2))

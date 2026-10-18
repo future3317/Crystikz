@@ -253,7 +253,8 @@ class SceneBuilder:
     ) -> Sphere:
         """Create a sphere for a site, optionally at a periodic image position."""
         site = structure.sites[site_index]
-        pos = site.cart_coords(structure.lattice) + structure.lattice.frac_to_cart(np.array(image_offset, dtype=float))
+        frac, _ = self._fold_to_unit_cell(site.frac_coords)
+        pos = structure.lattice.frac_to_cart(frac + np.asarray(image_offset, dtype=float))
         element = site.dominant_element
         color = self.palette.hex(element)
         radius = self._atom_radius(element, radius_factor)
@@ -344,12 +345,14 @@ class SceneBuilder:
 
         if mode == "connected":
             for bond in bonds:
-                if any(bond.jimage):
-                    images[(bond.j, bond.jimage)] = None
+                image = self._display_jimage(structure, bond.i, bond.j, bond.jimage)
+                if any(image):
+                    images[(bond.j, image)] = None
         elif mode == "polyhedra_complete":
             for bond in bonds:
-                if any(bond.jimage):
-                    images[(bond.j, bond.jimage)] = None
+                image = self._display_jimage(structure, bond.i, bond.j, bond.jimage)
+                if any(image):
+                    images[(bond.j, image)] = None
             for poly in polyhedra:
                 for meta in getattr(poly, "vertex_metadata", []):
                     offset = tuple(meta.get("image_offset", (0, 0, 0)))
@@ -378,6 +381,18 @@ class SceneBuilder:
         folded = frac - image
         return folded, tuple(image.tolist())
 
+    def _display_jimage(
+        self,
+        structure: CrystalStructure,
+        site_i: int,
+        site_j: int,
+        jimage: tuple[int, int, int],
+    ) -> tuple[int, int, int]:
+        """Translate a periodic bond image into the folded display cell."""
+        _, image_i = self._fold_to_unit_cell(structure.sites[site_i].frac_coords)
+        _, image_j = self._fold_to_unit_cell(structure.sites[site_j].frac_coords)
+        return tuple(jimage[axis] + image_j[axis] - image_i[axis] for axis in range(3))
+
     def _cell_complete_images(
         self,
         structure: CrystalStructure,
@@ -392,7 +407,7 @@ class SceneBuilder:
         images: dict[tuple[int, tuple[int, int, int]], None] = {}
         tol = 1e-6
         for i, site in enumerate(structure.sites):
-            frac = site.frac_coords
+            frac, _ = self._fold_to_unit_cell(site.frac_coords)
             ranges = []
             for f in frac:
                 f = float(f) % 1.0
@@ -420,20 +435,21 @@ class SceneBuilder:
         for bond_index, bond in enumerate(bonds):
             site_i = structure.sites[bond.i]
             site_j = structure.sites[bond.j]
-            start = site_i.cart_coords(structure.lattice)
+            image_offset = self._display_jimage(structure, bond.i, bond.j, bond.jimage)
+            frac_i, _ = self._fold_to_unit_cell(site_i.frac_coords)
+            frac_j, _ = self._fold_to_unit_cell(site_j.frac_coords)
+            start = structure.lattice.frac_to_cart(frac_i)
 
             # In cell_complete mode, only draw bonds whose partner lies inside or
             # on the boundary of the displayed [0,1]^3 cell.  This prevents bonds
             # from dangling at periodic images that have no displayed atom.
             if self.options.display_boundary == "cell_complete":
-                partner_frac = site_j.frac_coords + np.array(bond.jimage, dtype=float)
+                partner_frac = frac_j + np.array(image_offset, dtype=float)
                 if not all(-tol <= f <= 1.0 + tol for f in partner_frac):
                     continue
-                end = site_j.cart_coords(structure.lattice) + structure.lattice.frac_to_cart(np.array(bond.jimage))
-                image_offset = bond.jimage
+                end = structure.lattice.frac_to_cart(partner_frac)
             else:
-                end = site_j.cart_coords(structure.lattice) + structure.lattice.frac_to_cart(np.array(bond.jimage))
-                image_offset = bond.jimage
+                end = structure.lattice.frac_to_cart(frac_j + np.array(image_offset, dtype=float))
 
             color = self._bond_color(bond)
             width = self._bond_width(bond)
@@ -507,7 +523,8 @@ class SceneBuilder:
 
             for center_idx in centers:
                 center_site = structure.sites[center_idx]
-                center_pos = center_site.cart_coords(structure.lattice)
+                center_frac, _ = self._fold_to_unit_cell(center_site.frac_coords)
+                center_pos = structure.lattice.frac_to_cart(center_frac)
                 nbrs = adjacency.get(center_idx, [])
                 if not nbrs:
                     continue
@@ -515,11 +532,13 @@ class SceneBuilder:
                 vertex_indices = []
                 vertex_metadata = []
                 for j, jimage in nbrs:
-                    offset = np.array(jimage, dtype=float)
-                    vertex_frac = structure.sites[j].frac_coords + offset
+                    display_jimage = self._display_jimage(structure, center_idx, j, jimage)
+                    neighbor_frac, _ = self._fold_to_unit_cell(structure.sites[j].frac_coords)
+                    offset = np.array(display_jimage, dtype=float)
+                    vertex_frac = neighbor_frac + offset
                     vertex_positions.append(structure.lattice.frac_to_cart(vertex_frac))
                     vertex_indices.append(j)
-                    vertex_metadata.append({"site_index": j, "image_offset": jimage})
+                    vertex_metadata.append({"site_index": j, "image_offset": display_jimage})
                 if len(vertex_positions) < 4:
                     continue
                 try:
@@ -604,7 +623,8 @@ class SceneBuilder:
         arrows = []
         for site_idx, direction, color_key in (self.options.vectors or []):
             site = structure.sites[site_idx]
-            start = site.cart_coords(structure.lattice)
+            start, _ = self._fold_to_unit_cell(site.frac_coords)
+            start = structure.lattice.frac_to_cart(start)
             direction = np.asarray(direction, dtype=float)
             color = self.palette.hex(color_key) if color_key in self.palette.accents else color_key
             arrows.append(Arrow(
@@ -647,7 +667,7 @@ class SceneBuilder:
         for i in indices:
             site = structure.sites[i]
             spheres.append(Sphere(
-                position=site.cart_coords(structure.lattice),
+                position=structure.lattice.frac_to_cart(self._fold_to_unit_cell(site.frac_coords)[0]),
                 radius=self._atom_radius(site.dominant_element) * 1.2,
                 color=self.palette.hex("amber"),
                 opacity=0.4,
@@ -660,7 +680,7 @@ class SceneBuilder:
         for i in indices:
             site = structure.sites[i]
             spheres.append(Sphere(
-                position=site.cart_coords(structure.lattice),
+                position=structure.lattice.frac_to_cart(self._fold_to_unit_cell(site.frac_coords)[0]),
                 radius=self._atom_radius(site.dominant_element) * 1.1,
                 color=self.palette.hex("secondary"),
                 opacity=0.5,
@@ -687,7 +707,7 @@ class SceneBuilder:
                 if ann.site_index is None or ann.site_index >= len(structure.sites):
                     continue
                 site = structure.sites[ann.site_index]
-                pos = site.cart_coords(structure.lattice)
+                pos = structure.lattice.frac_to_cart(self._fold_to_unit_cell(site.frac_coords)[0])
                 texts.append(Text(
                     position=pos,
                     text=ann.text,
