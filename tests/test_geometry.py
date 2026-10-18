@@ -2,11 +2,18 @@
 
 import numpy as np
 import pytest
+from scipy.spatial import ConvexHull
 
 from crystalfig.exceptions import GeometryError
 from crystalfig.geometry.periodic import PeriodicImages, nearest_image, wrapped_frac
 from crystalfig.geometry.planes import MillerPlane
-from crystalfig.geometry.polyhedra import build_polyhedron, visible_polyhedron_edges
+from crystalfig.geometry.polyhedra import (
+    build_polyhedron,
+    merge_coplanar_faces,
+    orient_faces_outward,
+    validate_mesh_winding,
+    visible_polyhedron_edges,
+)
 from crystalfig.geometry.reciprocal import BrillouinZone
 from crystalfig.model.lattice import Lattice
 
@@ -91,6 +98,19 @@ class TestPeriodic:
 
 
 class TestPolyhedra:
+    @pytest.mark.parametrize("vertices", [
+        [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]],
+        [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]],
+        [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+         [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]],
+    ])
+    def test_faces_are_consistently_wound_outward(self, vertices):
+        hull = ConvexHull(np.asarray(vertices, dtype=float))
+        faces = orient_faces_outward(vertices, hull.simplices)
+        assert validate_mesh_winding(vertices, faces)
+        polyhedron = build_polyhedron(np.zeros(3), vertices)
+        assert validate_mesh_winding(polyhedron.vertex_positions, polyhedron.faces)
+
     def test_octahedron(self):
         center = np.zeros(3)
         vertices = [
@@ -99,6 +119,16 @@ class TestPolyhedra:
         poly = build_polyhedron(center, vertices)
         assert len(poly.faces) == 8  # octahedron has 8 triangular faces
         assert poly.volume > 0
+
+    def test_cube_hull_merges_triangle_pairs_into_physical_faces(self):
+        vertices = np.array([
+            [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+            [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1],
+        ], dtype=float)
+        faces = merge_coplanar_faces(vertices, ConvexHull(vertices).simplices)
+        assert len(faces) == 6
+        assert all(len(face) == 4 for face in faces)
+        assert validate_mesh_winding(vertices, faces)
 
     def test_tetrahedron(self):
         center = np.zeros(3)

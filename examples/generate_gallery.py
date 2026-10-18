@@ -21,6 +21,7 @@ from crystalfig.examples.presets import (
     zincblende_zns_structure,
 )
 from crystalfig.figure.builder import CrystalFigure
+from crystalfig.figure.grid import FigureGrid
 from crystalfig.geometry.reciprocal import BrillouinZone
 from crystalfig.io.loader import load_structure
 from crystalfig.scene.camera import Camera
@@ -133,7 +134,7 @@ def generate_baseline():
 
 
 def generate_pyvista_baseline():
-    """Render a material-agnostic 10-structure publication showcase."""
+    """Render a material-agnostic 14-structure publication showcase."""
     from PIL import Image, ImageDraw
 
     from crystalfig.export.preflight import preflight_export
@@ -155,15 +156,43 @@ def generate_pyvista_baseline():
             "monoclinic_tenorite",
             load_structure(Path(__file__).parent / "data" / "tenorite_amcsd_18822.cif"),
         ),
+        (
+            "blind_mg_al2o4_spinel",
+            load_structure(Path(__file__).parent / "data" / "visual_regression" / "mg_al2o4_normal_spinel.cif"),
+        ),
+        (
+            "blind_lifepo4",
+            load_structure(Path(__file__).parent / "data" / "visual_regression" / "li_fepo4_mp_workshop.cif"),
+        ),
+        (
+            "blind_alpha_quartz",
+            load_structure(Path(__file__).parent / "data" / "visual_regression" / "alpha_quartz_cod5000035.cif"),
+        ),
     ]
     manifest = {
         "width_mm": 89,
         "dpi": 300,
         "quality": "publication",
         "style": "nature",
-        "boundary": "cell",
+        "display_policy": "center selection window with complete real coordination shells",
         "polyhedra": "automatic geometric heuristic; validate coordination for chemical interpretation",
         "structure_sources": {
+            "blind_mg_al2o4_spinel": {
+                "record": "YIF27/Dataset-of-Spinel, CONTCAR-normal.json; computed normal-spinel structure",
+                "source_url": "https://github.com/YIF27/Dataset-of-Spinel/blob/main/dataset_MgAl2O4/CONTCAR-normal.json",
+                "conversion": "Pymatgen Structure JSON serialized as a P1 CIF without changing lattice or fractional coordinates.",
+            },
+            "blind_lifepo4": {
+                "record": "Materials Project Workshop LiFePO4 heterointerface lesson CIF",
+                "source_url": "https://github.com/materialsproject/workshop/blob/master/workshop/lessons/03_heterointerfaces/LiFePO4.cif",
+                "conversion": "Source CIF retained; it is a 28-site P1 representation.",
+            },
+            "blind_alpha_quartz": {
+                "record": "COD 5000035; Will et al., J. Appl. Crystallogr. 21 (1988), 182–191",
+                "source_url": "https://www.crystallography.net/cod/5000035.html",
+                "mirror_url": "https://github.com/cryos/avogadro/blob/master/crystals/oxides/SiO2-Quartz-alpha.cif",
+                "license": "COD public-domain data",
+            },
             "monoclinic_tenorite": {
                 "record": "American Mineralogist Crystal Structure Database 18822",
                 "record_url": "https://larixite.seescience.org/cifs/18822",
@@ -175,7 +204,7 @@ def generate_pyvista_baseline():
     panels = []
     for name, structure in structures:
         figure = CrystalFigure.from_structure(structure).publication(
-            style="nature", boundary="cell"
+            intent="auto", coordination_shell="complete", region="auto"
         ).quality("publication")
         outputs = {
             "png": figure.export(
@@ -192,11 +221,25 @@ def generate_pyvista_baseline():
             panel.alpha_composite(panel_image, ((450 - panel_image.width) // 2, 5))
             ImageDraw.Draw(panel).text((12, 315), f"{name} · {structure.formula}", fill="#263442")
             panels.append(panel.convert("RGB"))
+        scene = figure.build_scene()
+        recommended = figure.report_view_candidates(scene)[:4]
         manifest["structures"][name] = {
             "formula": structure.formula,
             "sites": structure.num_sites,
             "lattice_lengths_angstrom": [round(float(value), 5) for value in structure.lattice.lengths],
-            "selected_view": figure.report_view_candidates(figure.build_scene())[0],
+            "camera_used": scene.metadata.get("camera_used"),
+            "view_dir_cartesian": scene.metadata.get("view_dir_cartesian"),
+            "projection": scene.metadata.get("projection"),
+            "roll": scene.metadata.get("roll"),
+            "selected_intent": scene.metadata.get("selected_intent"),
+            "intent_confidence": scene.metadata.get("intent_confidence"),
+            "display_window": scene.metadata.get("display_window"),
+            "coordination_shell_policy": scene.metadata.get("coordination_shell_policy"),
+            "image_atom_policy": scene.metadata.get("image_atom_policy"),
+            "cell_frame_policy": scene.metadata.get("cell_frame_policy"),
+            "num_real_polyhedra": scene.metadata.get("num_real_polyhedra"),
+            "num_clipped_polyhedra": scene.metadata.get("num_clipped_polyhedra"),
+            "recommended_camera_candidates": recommended,
             "diagnostics": figure.diagnostics,
             "exports": {
                 suffix: preflight_export(
@@ -217,6 +260,30 @@ def generate_pyvista_baseline():
         contact.paste(panel, (x, row * 340))
     contact.save(output_dir / "contact_sheet.png")
     (output_dir / "metrics.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    panels = FigureGrid(
+        rows=1, cols=4, backend="hybrid", width_mm=183, height_mm=55,
+        panel_gap_mm=3, background="white",
+        legend_mode="panel", caption="Periodic replicas shown for display; input structures are unchanged.",
+    )
+    panels.add_structure(
+        perovskite_structure(a=3.95, c=4.05), 0, 0,
+        title="BaTiO₃ · coordination", intent="coordination",
+    )
+    panels.add_structure(
+        mos2_structure(), 0, 1,
+        title="MoS₂ · layered", intent="layered", coordination_shell="none",
+    )
+    panels.add_structure(
+        diamond_structure(conventional=True), 0, 2,
+        title="Si · covalent network", intent="network",
+    )
+    panels.add_structure(
+        rocksalt_structure(conventional=True), 0, 3,
+        title="NaCl · ionic framework", intent="ionic",
+    )
+    panels.save(output_dir / "paper_four_panel.png", dpi=600)
+    panels.save(output_dir / "paper_four_panel.pdf", dpi=600)
 
 
 def main(argv=None):

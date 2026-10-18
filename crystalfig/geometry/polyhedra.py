@@ -10,11 +10,89 @@ from scipy.spatial import ConvexHull
 from crystalfig.exceptions import GeometryError
 
 
+def orient_faces_outward(vertices, faces):
+    """Return convex-hull faces with a consistent outward winding."""
+    vertices = np.asarray(vertices, dtype=float)
+    interior = vertices.mean(axis=0)
+    oriented = []
+    for face in faces:
+        face = list(map(int, face))
+        points = vertices[face]
+        normal = np.cross(points[1] - points[0], points[2] - points[0])
+        if np.dot(normal, points.mean(axis=0) - interior) < 0:
+            face.reverse()
+        oriented.append(face)
+    return oriented
+
+
+def validate_mesh_winding(vertices, faces, tolerance=1e-8):
+    """Return whether every non-degenerate convex face points away from the interior."""
+    vertices = np.asarray(vertices, dtype=float)
+    interior = vertices.mean(axis=0)
+    for face in faces:
+        points = vertices[np.asarray(face, dtype=int)]
+        normal = np.cross(points[1] - points[0], points[2] - points[0])
+        if np.linalg.norm(normal) <= tolerance:
+            return False
+        if np.dot(normal, points.mean(axis=0) - interior) < -tolerance:
+            return False
+    return True
+
+
+def merge_coplanar_faces(vertices, faces, tolerance=1e-7):
+    """Collapse coplanar hull triangles into physical polygon faces."""
+    vertices = np.asarray(vertices, dtype=float)
+    faces = orient_faces_outward(vertices, faces)
+    groups = []
+    scale = max(float(np.ptp(vertices, axis=0).max()), 1.0)
+    for face in faces:
+        face = list(map(int, face))
+        points = vertices[face]
+        normal = np.cross(points[1] - points[0], points[2] - points[0])
+        norm = np.linalg.norm(normal)
+        if norm <= tolerance:
+            continue
+        normal /= norm
+        offset = float(np.dot(normal, points[0]))
+        for group in groups:
+            if np.dot(normal, group["normal"]) >= 1 - tolerance and abs(offset - group["offset"]) <= tolerance * scale:
+                group["faces"].append(face)
+                break
+        else:
+            groups.append({"normal": normal, "offset": offset, "faces": [face]})
+
+    polygons = []
+    for group in groups:
+        directed = {}
+        for face in group["faces"]:
+            for start, end in zip(face, face[1:] + face[:1], strict=True):
+                edge = (start, end)
+                reverse = (end, start)
+                if reverse in directed:
+                    del directed[reverse]
+                else:
+                    directed[edge] = end
+        if not directed:
+            continue
+        next_vertex = {edge[0]: edge[1] for edge in directed}
+        start = next(iter(next_vertex))
+        polygon = [start]
+        while len(polygon) <= len(next_vertex):
+            current = next_vertex.get(polygon[-1])
+            if current is None or current == start:
+                break
+            polygon.append(current)
+        if len(polygon) >= 3 and next_vertex.get(polygon[-1]) == start:
+            polygons.append(polygon)
+        else:
+            polygons.extend(group["faces"])
+    return orient_faces_outward(vertices, polygons)
+
+
 def visible_polyhedron_edges(vertices, faces, camera_rotation, edge_mode="silhouette"):
     """Classify convex-hull edges for a camera-facing 2D projection.
 
-    Returns ``(vertex_a, vertex_b, front_facing)`` edges. Coplanar triangle
-    diagonals are always omitted, so triangulation does not become visible.
+    Returns ``(vertex_a, vertex_b, front_facing)`` physical hull edges.
     """
     if edge_mode == "none":
         return []
@@ -64,13 +142,6 @@ class CoordinationPolyhedron:
     volume: float = 0.0
 
 
-def _triangulate_face(face: list[int]) -> list[list[int]]:
-    """Triangulate a polygonal face using a fan from the first vertex."""
-    if len(face) <= 3:
-        return [face]
-    return [[face[0], face[i], face[i + 1]] for i in range(1, len(face) - 1)]
-
-
 def build_polyhedron(
     center: np.ndarray,
     vertices: list[np.ndarray],
@@ -92,34 +163,21 @@ def build_polyhedron(
     except Exception as exc:
         raise GeometryError(f"ConvexHull failed: {exc}") from exc
 
-    # Collect faces, skipping those that include the center vertex (index 0)
-    raw_faces = []
-    for simp in hull.simplices:
-        if 0 in simp:
-            continue
-        # Shift indices by -1 to account for center at index 0
-        face = [int(v - 1) for v in simp if v != 0]
-        # Orient face outward
-        v0 = vertices[face[0]]
-        v1 = vertices[face[1]]
-        v2 = vertices[face[2]]
-        normal = np.cross(v1 - v0, v2 - v0)
-        to_center = center - v0
-        if np.dot(normal, to_center) > 0:
-            face = face[::-1]
-        raw_faces.append(face)
-
-    # Triangulate any non-triangular faces (ConvexHull gives triangles,
-    # but keep the step for robustness)
-    tri_faces: list[list[int]] = []
-    for face in raw_faces:
-        tri_faces.extend(_triangulate_face(face))
+    # The central atom is inside the ligand hull for ordinary coordination
+    # geometries. Exclude the center-incident facets, then orient the remaining
+    # ligand faces independently of Qhull's simplex ordering.
+    raw_faces = [
+        [int(vertex - 1) for vertex in face]
+        for face in hull.simplices
+        if 0 not in face
+    ]
+    raw_faces = merge_coplanar_faces(vertices, raw_faces)
 
     return CoordinationPolyhedron(
         center_index=center_index,
         center_position=np.asarray(center, dtype=float),
         vertex_indices=vertex_indices or list(range(len(vertices))),
         vertex_positions=vertices,
-        faces=tri_faces,
+        faces=raw_faces,
         volume=float(hull.volume),
     )

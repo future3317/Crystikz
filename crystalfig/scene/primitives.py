@@ -128,6 +128,7 @@ class Polyhedron(Primitive):
     back_edges: str | None = None
     # Per-vertex metadata: [{"site_index": int, "image_offset": (i,j,k)}, ...]
     vertex_metadata: list[dict[str, Any]] = field(default_factory=list)
+    face_metadata: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self):
         self.vertices = [np.asarray(v, dtype=float) for v in self.vertices]

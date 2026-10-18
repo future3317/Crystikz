@@ -70,7 +70,7 @@ class TestMatplotlibRenderer:
         figure.theme.atom_radius_scale = 0.41
         other = CrystalFigure(rocksalt_structure(), theme="ballstick_clean")
         assert other.theme.atom_radius_scale == pytest.approx(0.28)
-        assert other.theme.as_dict()["bond_color_mode"] == "split_soft"
+        assert other.theme.as_dict()["bond_color_mode"] == "uniform"
 
     def test_view_accepts_fractional_direction(self):
         figure = CrystalFigure(rocksalt_structure()).view([1, 1, 0])

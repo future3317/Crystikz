@@ -5,7 +5,9 @@ crystal structures into reusable ball-and-stick, coordination-polyhedron, layere
 visualizations. A shared structure and scene model feeds editable vector renderers and an optional
 depth-buffered 3D renderer.
 
-![Eleven-structure crystal rendering showcase](gallery/showcase/contact_sheet.png)
+![Four-panel publication-style crystal rendering showcase](gallery/showcase/paper_four_panel.png)
+
+[View the complete 14-structure regression gallery](gallery/showcase/contact_sheet.png) · [before/after visual review](gallery/showcase/visual_review_before_after.png)
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -64,59 +66,61 @@ figure.export("BaTiO3.svg", width=89)
 style and annotations before exporting. For example, `view([1, 1, 0])` sets a crystallographic
 view direction, while `supercell((2, 2, 1))` expands the displayed structure.
 
-For a material-agnostic publication starting point, let the scene select a view and report the
-neighbor model used for display:
+For an unknown structure, let the display planner choose a network, coordination, layered, ionic,
+or minimal view. It selects a finite periodic display window without changing the input structure,
+keeps coordination shells complete by default, and optimizes the camera for the resulting scene:
 
 ```python
-figure = CrystalFigure.from_file("unknown_material.cif").publication(mode="auto")
+figure = CrystalFigure.from_file("unknown_material.cif").publication(
+    intent="auto", region="auto", coordination_shell="complete", camera="optimize"
+)
 figure.export("structure.svg", backend="svg", width=89)
 figure.export("structure.png", backend="pyvista", width=89, dpi=600, transparent=True)
 ```
 
-`publication()` applies a general ball-and-stick style and `CrystalNN` candidate neighbors; it
-does not claim that automatic neighbor assignment is a unique chemical bond definition. Use
-`publication(mode="polyhedra", centers="Ti")` when the center species is part of your scientific
-question, or choose a different `strategy` explicitly.
+`publication()` uses `CrystalNN` candidate neighbors by default; automatic neighbors are a display
+model, not a unique chemical bond assignment. Override the general intent with `network`,
+`coordination`, `layered`, `ionic`, or `minimal`. Set `centers=[...]` to choose coordination sites
+explicitly. `coordination_shell="complete"` keeps real periodic ligand vertices even outside the
+displayed cell; `show_partial` opts into clipped geometry and marks its artificial cut faces.
 
-For a cell-bounded, polyhedron-led publication view, use the material-agnostic `nature` preset:
+Create a polyhedron-led view when coordination is the intended scientific message:
 
 ```python
 from crystalfig import CrystalFigure, FigureGrid
 
-figure = CrystalFigure.from_file("structure.cif").render(
-    style="nature",
-    boundary="cell",
-    polyhedra="auto",
+figure = CrystalFigure.from_file("structure.cif").publication(
+    intent="coordination",
+    coordination_shell="complete",
     palette="publication",
-    camera="isometric",
-    background="white",  # also "transparent" or "dark"
-    show_atoms=True,
-    show_bonds=False,
-    show_unit_cell=True,
+    camera="optimize",
+    background="white",
 )
 figure.save("structure.svg")  # PNG and PDF are also supported
 ```
 
-Automatic centers are a geometry heuristic based on the selected neighbor strategy, coordination
-from four to eight, and lower electronegativity than their neighbors; they are not a chemical
-assignment. The figure records the heuristic and neighbor strategy in `figure.diagnostics`. If no
-valid coordination hull can be built, the view falls back to atoms
-and the candidate bond network. Set `style="polyhedral"` with `centers=["Al", "Ti"]` to specify
-center elements explicitly. `boundary="cell"` clips periodic bonds and polyhedron hulls at the
-display cell. Use `supercell((2, 2, 1))` before `boundary="supercell"` to render a finite expanded
-cell. `boundary="connected"` keeps periodic coordination connections within one cell of padding.
+Automatic intent and center selection are geometry/chemistry heuristics, not a chemical assignment;
+the chosen strategy and any fallback are recorded in diagnostics and scene metadata. The scene
+metadata distinguishes the camera actually used from the recommended candidates. The legacy
+`boundary="cell"` option remains available for explicitly clipped views; the new complete-shell
+policy does not clip a coordination polyhedron to the cell.
 
 Compose multiple structures with a shared Matplotlib figure:
 
 ```python
-grid = FigureGrid(rows=1, cols=2, panel_labels=True)
-grid.add_structure(CrystalFigure.from_file("phase-a.cif"), 0, 0, title="Phase A")
-grid.add_structure(CrystalFigure.from_file("phase-b.cif"), 0, 1, title="Phase B")
+grid = FigureGrid(
+    rows=1, cols=2, panel_labels=True, backend="hybrid",
+    width_mm=183, height_mm=70, legend_mode="panel",
+)
+grid.add_structure(CrystalFigure.from_file("phase-a.cif"), 0, 0, title="Phase A", intent="auto")
+grid.add_structure(CrystalFigure.from_file("phase-b.cif"), 0, 1, title="Phase B", intent="auto")
 grid.save("phases.pdf", dpi=300)
 ```
 
-`FigureGrid` combines structure panels only; add curves and statistical plots using ordinary
-Matplotlib axes in the surrounding figure workflow.
+`FigureGrid` supports `vector`, `pyvista`, and `hybrid` structure panels. Hybrid panels rasterize
+the depth-buffered PyVista scene and keep panel labels, titles, legends, and captions as vector
+overlays in the fixed-size output. `grid.last_export_metadata["vector_status"]` reports whether
+the saved document is pure vector, hybrid, or raster.
 
 ## Choose an output backend
 
@@ -198,8 +202,8 @@ figures:
 - Style atoms, bonds and sites; add vectors and labels; draw into an existing Matplotlib axes.
 - Export at figure widths specified in millimetres, with configurable DPI and transparent
   backgrounds where supported by the selected renderer.
-- Inspect the generated examples and reproducible structure baseline in the
-  [11-structure publication showcase](gallery/showcase/contact_sheet.png), the
+- Inspect the curated [four-panel hybrid figure](gallery/showcase/paper_four_panel.png), the
+  [14-structure diagnostic showcase](gallery/showcase/contact_sheet.png), the
   [baseline diagnostic sheet](gallery/baseline/contact_sheet.png), and the
   [rendered format comparisons](gallery/showcase/).
 

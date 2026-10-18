@@ -293,13 +293,51 @@ class PyVistaRenderer:
                         [item for face in primitive.faces for item in (len(face), *face)], dtype=np.int64
                     )
                     mesh = pv.PolyData(np.asarray(primitive.vertices), packed_faces)
-                    plotter.add_mesh(
-                        mesh,
-                        color=primitive.fill_color or primitive.color,
-                        opacity=primitive.opacity,
-                        smooth_shading=True,
-                        show_edges=False,
-                    )
+                    face_roles = primitive.face_metadata
+                    if face_roles and any(face.get("kind") == "cut_face" for face in face_roles):
+                        mesh.cell_data["face_role"] = np.asarray(
+                            [1 if face.get("kind") == "cut_face" else 0 for face in face_roles],
+                            dtype=np.uint8,
+                        )
+                        plotter.add_mesh(
+                            mesh,
+                            scalars="face_role",
+                            cmap=[primitive.fill_color or primitive.color, "#cbd5df"],
+                            clim=(0, 1),
+                            preference="cell",
+                            opacity=primitive.opacity,
+                            smooth_shading=False,
+                            show_edges=False,
+                            show_scalar_bar=False,
+                        )
+                    else:
+                        camera_vertices = np.asarray(primitive.vertices) @ self.camera.rotation_matrix().T
+                        front_faces = []
+                        back_faces = []
+                        for face in primitive.faces:
+                            points = camera_vertices[np.asarray(face, dtype=int)]
+                            normal = np.zeros(3)
+                            for index in range(len(points)):
+                                normal += np.cross(points[index], points[(index + 1) % len(points)])
+                            (front_faces if normal[2] >= 0 else back_faces).append(face)
+                        for faces, opacity in (
+                            (back_faces, primitive.opacity * theme.polyhedron_back_opacity),
+                            (front_faces, primitive.opacity * theme.polyhedron_face_opacity),
+                        ):
+                            if not faces:
+                                continue
+                            packed = np.asarray(
+                                [item for face in faces for item in (len(face), *face)],
+                                dtype=np.int64,
+                            )
+                            face_mesh = pv.PolyData(np.asarray(primitive.vertices), packed)
+                            plotter.add_mesh(
+                                face_mesh,
+                                color=primitive.fill_color or primitive.color,
+                                opacity=opacity,
+                                smooth_shading=False,
+                                show_edges=False,
+                            )
                     edge_mode = primitive.edge_mode or theme.polyhedron_edge_mode
                     edges = visible_polyhedron_edges(
                         primitive.vertices, primitive.faces, self.camera.rotation_matrix(), edge_mode

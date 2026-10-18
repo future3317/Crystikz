@@ -80,3 +80,6 @@ gallery/showcase/*.pdf
 gallery/showcase/metrics.json
 gallery/showcase/scale_*.json
 !gallery/showcase/contact_sheet.png
+!gallery/showcase/paper_four_panel.png
+!gallery/showcase/metrics.json
+!gallery/showcase/visual_review_before_after.png

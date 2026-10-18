@@ -6,10 +6,19 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from crystalfig.examples.presets import perovskite_structure, rocksalt_structure, wurtzite_structure
+from crystalfig.examples.presets import (
+    diamond_structure,
+    graphite_structure,
+    mos2_structure,
+    perovskite_structure,
+    rocksalt_structure,
+    triclinic_structure,
+    wurtzite_structure,
+)
 from crystalfig.figure import FigureGrid
 from crystalfig.figure.builder import CrystalFigure
 from crystalfig.geometry.planes import MillerPlane
+from crystalfig.io.loader import load_structure
 from crystalfig.model.lattice import Lattice
 from crystalfig.model.site import Site
 from crystalfig.model.structure import CrystalStructure
@@ -17,6 +26,44 @@ from crystalfig.scene.camera import Camera
 
 
 class TestCrystalFigure:
+    @pytest.mark.parametrize(
+        "filename,formula,expected_intent",
+        [
+            ("mg_al2o4_normal_spinel.cif", "MgAl2O4", "coordination"),
+            ("li_fepo4_mp_workshop.cif", "LiFePO4", "network"),
+            ("alpha_quartz_cod5000035.cif", "SiO2", "network"),
+        ],
+    )
+    def test_blind_source_structures_build_publication_scenes(
+        self, filename, formula, expected_intent
+    ):
+        path = (
+            Path(__file__).parents[1]
+            / "examples"
+            / "data"
+            / "visual_regression"
+            / filename
+        )
+        structure = load_structure(path)
+        scene = CrystalFigure(structure).publication(intent="auto").build_scene()
+        assert structure.formula == formula
+        assert scene.metadata["selected_intent"] == expected_intent
+        assert scene.get_group("atoms").primitives
+
+    @pytest.mark.parametrize(
+        "structure,expected_intent",
+        [
+            (graphite_structure, "layered"),
+            (mos2_structure, "layered"),
+            (diamond_structure, "network"),
+            (perovskite_structure, "coordination"),
+            (rocksalt_structure, "ionic"),
+        ],
+    )
+    def test_auto_intent_uses_periodic_graph_topology(self, structure, expected_intent):
+        figure = CrystalFigure(structure()).publication(intent="auto")
+        assert figure._display_plan.intent == expected_intent
+
     def test_nature_render_auto_centers_colors_by_element_and_exports(self, tmp_path):
         figure = CrystalFigure(wurtzite_structure()).render(
             style="nature", strategy="cutoff", show_bonds=False
@@ -60,6 +107,31 @@ class TestCrystalFigure:
         assert any("no valid polyhedra" in message for message in figure.diagnostics)
         assert len(scene.get_group("atoms").primitives) == 1
 
+    def test_auto_minimal_keeps_cell_and_detected_bond_context(self):
+        figure = CrystalFigure(triclinic_structure()).publication(intent="auto")
+        scene = figure.build_scene()
+        assert scene.metadata["selected_intent"] == "minimal"
+        assert scene.get_group("cell")
+        assert scene.get_group("bonds")
+
+    def test_layered_camera_exposes_plane_and_layer_spacing(self):
+        figure = CrystalFigure(mos2_structure()).publication(intent="layered")
+        scene = figure.build_scene()
+        direction = np.asarray(scene.metadata["view_dir_cartesian"])
+        layer_normal = figure._periodic_layer_normal()
+        assert layer_normal is not None
+        cosine = abs(np.dot(direction, layer_normal) / np.linalg.norm(direction) / np.linalg.norm(layer_normal))
+        assert 0.3 <= cosine <= 0.8
+
+    def test_coordination_motif_retains_nearby_host_atoms(self):
+        figure = CrystalFigure(perovskite_structure()).publication(intent="coordination")
+        scene = figure.build_scene()
+        elements = {
+            atom.metadata["element"]
+            for atom in scene.get_group("atoms").primitives
+        }
+        assert {"Ba", "Ti", "O"} <= elements
+
     def test_figure_grid_saves_labeled_structure_panels(self, tmp_path):
         grid = FigureGrid(rows=1, cols=2)
         grid.add_structure(perovskite_structure(), 0, 0, strategy="cutoff", show_bonds=False)
@@ -67,6 +139,20 @@ class TestCrystalFigure:
         for suffix in ("png", "pdf", "svg"):
             path = grid.save(tmp_path / f"panels.{suffix}", dpi=120)
             assert path.is_file() and path.stat().st_size > 1000
+
+    def test_hybrid_figure_grid_renders_pyvista_scene_at_fixed_size(self, tmp_path):
+        pytest.importorskip("pyvista")
+        grid = FigureGrid(
+            rows=1, cols=1, backend="hybrid", width_mm=89, height_mm=70,
+        )
+        grid.add_structure(
+            perovskite_structure(a=3.95, c=4.05), 0, 0,
+            title="coordination", intent="coordination",
+        )
+        path = grid.save(tmp_path / "hybrid.png", dpi=120)
+        from PIL import Image
+        with Image.open(path) as image:
+            assert image.size == (420, 330)
 
     def test_from_pymatgen_structure(self):
         """Passing a pymatgen Structure directly must use the adapter."""
@@ -152,10 +238,11 @@ class TestCrystalFigure:
 
     def test_publication_api_uses_an_explicit_neighbor_model(self):
         fig = CrystalFigure(perovskite_structure()).publication()
-        assert fig.theme.name == "ballstick_clean"
+        assert fig.theme.name == "nature"
         assert fig.theme.render_quality == "publication"
         assert fig._scene_options.bond_strategy.__class__.__name__ == "CrystalNNStrategy"
-        assert "verify coordination" in fig.diagnostics[0]
+        assert fig._display_plan.intent == "coordination"
+        assert any("verify coordination" in message for message in fig.diagnostics)
 
     def test_quick_reports_its_cutoff_as_a_display_heuristic(self):
         fig = CrystalFigure(rocksalt_structure()).quick()

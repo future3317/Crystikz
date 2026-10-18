@@ -5,7 +5,8 @@ import pytest
 
 from crystalfig.examples.presets import mos2_structure, perovskite_structure, rocksalt_structure
 from crystalfig.figure.builder import CrystalFigure
-from crystalfig.neighbors.strategies import CutoffStrategy
+from crystalfig.geometry.polyhedra import validate_mesh_winding
+from crystalfig.neighbors.strategies import CrystalNNStrategy, CutoffStrategy
 from crystalfig.scene.camera import Camera
 from crystalfig.scene.primitives import Sphere
 from crystalfig.scene.scene import Scene
@@ -32,6 +33,27 @@ class TestCamera:
 
 
 class TestScene:
+    def test_auto_publication_selects_structure_intent_and_complete_motif(self):
+        figure = CrystalFigure(perovskite_structure(a=3.95, c=4.05)).publication()
+        scene = figure.build_scene()
+        assert scene.metadata["selected_intent"] == "coordination"
+        assert scene.metadata["display_window"] == [2, 2, 2]
+        polyhedra = scene.get_group("polyhedra").primitives
+        assert len(polyhedra) == 4
+        assert all(len(polyhedron.vertex_metadata) == 6 for polyhedron in polyhedra)
+        atoms = scene.get_group("atoms").primitives
+        visible_elements = {atom.metadata["element"] for atom in atoms}
+        assert "Ba" in visible_elements
+        assert sum(atom.metadata["element"] == "Ti" for atom in atoms) == len(polyhedra)
+        identities = [
+            (atom.metadata["site_index"], tuple(atom.metadata["image_offset"]))
+            for atom in atoms
+        ]
+        assert len(identities) == len(set(identities))
+        assert scene.metadata["camera_used"] != "isometric"
+        assert scene.metadata["num_real_polyhedra"] == 4
+        assert scene.metadata["num_clipped_polyhedra"] == 0
+
     def test_cell_clips_periodic_bonds_and_polyhedra_to_the_cell(self):
         structure = mos2_structure()
         figure = (
@@ -54,6 +76,10 @@ class TestScene:
         for poly in scene.get_group("polyhedra").primitives:
             frac = structure.lattice.cart_to_frac(np.asarray(poly.vertices))
             assert np.all(frac >= -1e-8) and np.all(frac <= 1.0 + 1e-8)
+            assert poly.metadata["clipped"] is True
+            assert any(vertex.get("kind") == "cut_vertex" for vertex in poly.vertex_metadata)
+            assert any(face.get("kind") == "cut_face" for face in poly.face_metadata)
+            assert validate_mesh_winding(poly.vertices, poly.faces)
 
     def test_connected_bonds_are_limited_to_one_cell_of_padding(self):
         structure = mos2_structure()
@@ -129,6 +155,57 @@ class TestScene:
             ]
             actual = [np.linalg.norm(vertex - center) for vertex in poly.vertices]
             assert np.sort(actual) == pytest.approx(np.sort(expected))
+
+    @pytest.mark.parametrize(
+        "factory,center_element,neighbor_element,repeats",
+        [
+            (lambda: perovskite_structure(a=3.95, c=4.05), "Ti", "O", (2, 2, 2)),
+            (mos2_structure, "Mo", "S", (2, 2, 1)),
+        ],
+    )
+    def test_publication_keeps_complete_periodic_coordination_shells(
+        self, factory, center_element, neighbor_element, repeats
+    ):
+        structure = factory()
+        figure = CrystalFigure(structure).publication(
+            intent="coordination", centers=center_element, region=repeats,
+            coordination_shell="complete", strategy="crystalnn",
+        )
+        scene = figure.build_scene()
+        supercell = structure.make_supercell(repeats)
+        neighbor_bonds = CrystalNNStrategy().get_bonds(supercell)
+        polyhedra = scene.get_group("polyhedra").primitives
+        assert polyhedra
+        assert scene.metadata["num_clipped_polyhedra"] == 0
+        normal = np.cross(supercell.lattice.matrix[0], supercell.lattice.matrix[1])
+        normal /= np.linalg.norm(normal)
+        for poly in polyhedra:
+            center = supercell.lattice.frac_to_cart(
+                supercell.frac_coords[poly.center_site] % 1.0
+            )
+            identities = [
+                (meta["site_index"], tuple(meta["image_offset"]))
+                for meta in poly.vertex_metadata
+            ]
+            assert len(identities) == len(set(identities)) == 6
+            assert all(
+                supercell.sites[site_index].dominant_element == neighbor_element
+                for site_index, _ in identities
+            )
+            distances = np.linalg.norm(np.asarray(poly.vertices) - center, axis=1)
+            assert np.all(distances > 0.1)
+            assert len(poly.vertices) == 6
+            expected = [
+                bond.distance for bond in neighbor_bonds
+                if bond.i == poly.center_site or bond.j == poly.center_site
+            ]
+            assert len(expected) == 6
+            assert np.sort(distances) == pytest.approx(np.sort(expected), abs=1e-5)
+            if center_element == "Mo":
+                heights = (np.asarray(poly.vertices) - center) @ normal
+                assert np.any(heights > 0.1) and np.any(heights < -0.1)
+        image_atoms = scene.get_group("image_atoms")
+        assert image_atoms is None or all(atom is not None for atom in image_atoms.primitives)
 
     def test_add_and_all_primitives(self):
         scene = Scene()

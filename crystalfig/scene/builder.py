@@ -12,7 +12,7 @@ from pymatgen.core import Element
 from scipy.spatial import ConvexHull, QhullError
 
 from crystalfig.geometry.planes import MillerPlane
-from crystalfig.geometry.polyhedra import build_polyhedron
+from crystalfig.geometry.polyhedra import build_polyhedron, merge_coplanar_faces
 from crystalfig.model.site import element_symbol
 from crystalfig.model.structure import CrystalStructure
 from crystalfig.neighbors.base import NeighborBond
@@ -156,6 +156,8 @@ class SceneOptions:
     vectors: list[tuple[int, np.ndarray, str]] | None = None
     miller_planes: list[MillerPlane] | None = None
     selected_sites: list[int] | None = None
+    center_region: tuple[float, float] | None = None
+    center_limit: int | None = None
     defect_sites: list[int] | None = None
     atom_overrides: list[AtomStyleOverride] = None  # type: ignore[assignment]
     bond_overrides: list[BondStyleOverride] = None  # type: ignore[assignment]
@@ -353,12 +355,37 @@ class SceneBuilder:
 
     def _atoms(self, structure: CrystalStructure, polyhedra: list[Polyhedron]) -> list[Sphere]:
         centers: set[int] = {poly.center_site for poly in polyhedra}
+        visible_images = None
+        if self.options.display_boundary == "polyhedra_complete" and polyhedra:
+            visible_images = {(poly.center_site, (0, 0, 0)) for poly in polyhedra}
+            visible_images.update(
+                (meta["site_index"], tuple(meta.get("image_offset", (0, 0, 0))))
+                for poly in polyhedra for meta in poly.vertex_metadata
+            )
+            center_positions = [
+                structure.lattice.frac_to_cart(structure.sites[poly.center_site].frac_coords)
+                for poly in polyhedra
+            ]
+            context_radius = 1.75 * max(
+                np.linalg.norm(np.asarray(poly.vertices) - center, axis=1).max()
+                for poly, center in zip(polyhedra, center_positions, strict=True)
+            )
+            visible_images.update(
+                (index, (0, 0, 0))
+                for index, site in enumerate(structure.sites)
+                if min(
+                    np.linalg.norm(structure.lattice.frac_to_cart(site.frac_coords) - center)
+                    for center in center_positions
+                ) <= context_radius
+            )
         for spec in self.options.polyhedra_specs:
             if spec.centers != "auto":
                 centers.update(self._resolve_centers(structure, spec.centers))
 
         spheres = []
         for i in range(len(structure.sites)):
+            if visible_images is not None and (i, (0, 0, 0)) not in visible_images:
+                continue
             if i in centers:
                 factor = getattr(self.theme, "atom_radius_scale_polyhedron_center", 0.10)
             else:
@@ -385,11 +412,6 @@ class SceneBuilder:
                 if any(image) and np.all(frac >= -1.0) and np.all(frac <= 2.0):
                     images[(bond.j, image)] = None
         elif mode == "polyhedra_complete":
-            for bond in bonds:
-                image = self._display_jimage(structure, bond.i, bond.j, bond.jimage)
-                frac = self._fold_to_unit_cell(structure.sites[bond.j].frac_coords)[0] + np.asarray(image)
-                if any(image) and np.all(frac >= -1.0) and np.all(frac <= 2.0):
-                    images[(bond.j, image)] = None
             for poly in polyhedra:
                 for meta in getattr(poly, "vertex_metadata", []):
                     offset = tuple(meta.get("image_offset", (0, 0, 0)))
@@ -402,7 +424,8 @@ class SceneBuilder:
             # so we do not pull extra image atoms from neighbouring cells here.
             images = self._cell_complete_images(structure)
 
-        return [self._make_sphere(structure, idx, offset) for (idx, offset) in images]
+        spheres = [self._make_sphere(structure, idx, offset) for idx, offset in images]
+        return [sphere for sphere in spheres if sphere is not None]
 
     def _fold_to_unit_cell(
         self,
@@ -566,6 +589,19 @@ class SceneBuilder:
                 centers = self._automatic_centers(structure, adjacency)
             else:
                 centers = self._resolve_centers(structure, spec.centers)
+            if self.options.center_region is not None:
+                lower, upper = self.options.center_region
+                centers = [
+                    index for index in centers
+                    if np.all(self._fold_to_unit_cell(structure.sites[index].frac_coords)[0] >= lower - 1e-8)
+                    and np.all(self._fold_to_unit_cell(structure.sites[index].frac_coords)[0] <= upper + 1e-8)
+                ]
+            if spec.centers == "auto" and self.options.center_limit is not None:
+                center_species = {
+                    structure.sites[index].dominant_element for index in centers
+                }
+                limit = max(self.options.center_limit, len(center_species))
+                centers = self._select_adjacent_centers(structure, centers, limit)
             fill_color = spec.fill_color or self.palette.hex("accent")
             opacity = spec.opacity if spec.opacity is not None else self.theme.polyhedron_opacity
             edge_width = spec.edge_width if spec.edge_width is not None else self.theme.polyhedron_edge_width
@@ -573,7 +609,7 @@ class SceneBuilder:
 
             for center_idx in centers:
                 center_site = structure.sites[center_idx]
-                center_color = self.palette.hex(center_site.dominant_element) if spec.color_by_center else fill_color
+                center_color = self._coordination_color(center_site.dominant_element) if spec.color_by_center else fill_color
                 center_frac, _ = self._fold_to_unit_cell(center_site.frac_coords)
                 center_pos = structure.lattice.frac_to_cart(center_frac)
                 nbrs = adjacency.get(center_idx, [])
@@ -616,7 +652,7 @@ class SceneBuilder:
                 )
                 if self.options.clip_polyhedra_to_cell:
                     poly = self._clip_polyhedron_to_box(structure, poly, 0.0, 1.0)
-                elif self.options.display_boundary in {"connected", "polyhedra_complete"}:
+                elif self.options.display_boundary == "connected":
                     poly = self._clip_polyhedron_to_box(structure, poly, -1.0, 2.0)
                 if poly is not None:
                     polyhedra.append(poly)
@@ -637,6 +673,44 @@ class SceneBuilder:
             ):
                 centers.append(index)
         return centers
+
+    @staticmethod
+    def _coordination_color(element: str) -> str:
+        colors = ("#43b7a4", "#8c70c7", "#e2a24c", "#4a91c2", "#d46d7a")
+        return colors[int(Element(element).Z) % len(colors)]
+
+    def _select_adjacent_centers(
+        self, structure: CrystalStructure, centers: list[int], limit: int
+    ) -> list[int]:
+        """Keep a compact connected motif from the candidate center sites."""
+        if len(centers) <= limit:
+            return centers
+        cartesian = {
+            index: structure.lattice.frac_to_cart(
+                self._fold_to_unit_cell(structure.sites[index].frac_coords)[0]
+            )
+            for index in centers
+        }
+        lower, upper = self.options.center_region or (0.0, 1.0)
+        target = structure.lattice.frac_to_cart(np.full(3, (lower + upper) / 2))
+        by_species: dict[str, list[int]] = {}
+        for index in centers:
+            by_species.setdefault(structure.sites[index].dominant_element, []).append(index)
+        selected = [
+            min(indices, key=lambda index: (np.linalg.norm(cartesian[index] - target), index))
+            for _, indices in sorted(by_species.items())
+        ][:limit]
+        while len(selected) < limit:
+            remaining = [index for index in centers if index not in selected]
+            next_center = min(
+                remaining,
+                key=lambda index: (
+                    min(np.linalg.norm(cartesian[index] - cartesian[chosen]) for chosen in selected),
+                    index,
+                ),
+            )
+            selected.append(next_center)
+        return selected
 
     def _clip_polyhedron_to_box(
         self, structure: CrystalStructure, poly: Polyhedron, lower: float, upper: float
@@ -678,16 +752,37 @@ class SceneBuilder:
         except QhullError:
             return None
         cart_vertices = structure.lattice.frac_to_cart(unique)
+        faces = merge_coplanar_faces(cart_vertices, hull.simplices)
+        original_metadata = {
+            tuple(np.round(frac, 10)): metadata
+            for frac, metadata in zip(frac_vertices, poly.vertex_metadata, strict=False)
+        }
+        vertex_metadata = [
+            original_metadata.get(tuple(frac), {"kind": "cut_vertex"})
+            for frac in unique
+        ]
+        face_metadata = []
+        for face in faces:
+            fractional_face = unique[np.asarray(face, dtype=int)]
+            on_box_plane = any(
+                np.all(np.abs(fractional_face[:, axis] - boundary) <= 1e-8)
+                for axis in range(3) for boundary in (lower, upper)
+            )
+            has_cut_vertices = sum(vertex_metadata[index].get("kind") == "cut_vertex" for index in face) >= 2
+            face_metadata.append({"kind": "cut_face" if on_box_plane and has_cut_vertices else "coordination_face"})
         return Polyhedron(
             center_site=poly.center_site,
             vertices=list(cart_vertices),
-            faces=[list(map(int, face)) for face in hull.simplices],
+            faces=faces,
             fill_color=poly.fill_color,
             edge_color=poly.edge_color,
             opacity=poly.opacity,
             edge_width=poly.edge_width,
             edge_mode=poly.edge_mode,
             back_edges=poly.back_edges,
+            vertex_metadata=vertex_metadata,
+            face_metadata=face_metadata,
+            metadata={**poly.metadata, "clipped": True},
         )
 
     def _cell_edges(self, structure: CrystalStructure) -> list[CellEdge]:

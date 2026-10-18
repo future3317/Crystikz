@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, replace
 from itertools import product
 from pathlib import Path
 
@@ -30,6 +31,49 @@ from crystalfig.scene.primitives import Bond, Polyhedron
 from crystalfig.scene.scene import Scene
 from crystalfig.styles.palette import get_palette
 from crystalfig.styles.theme import FigureTheme
+
+
+@dataclass(frozen=True)
+class DisplayPlan:
+    """Resolved publication display choices, kept separate from structure data."""
+
+    intent: str
+    confidence: float
+    repeat: tuple[int, int, int]
+    coordination_shell: str
+    image_atoms: str
+    cell_frame: str
+    center_window: tuple[float, float] | None
+
+
+def _convex_polygon_intersection_area(subject, clipper):
+    """Return the intersection area of two projected convex hull polygons."""
+    def cross2d(first, second):
+        return first[0] * second[1] - first[1] * second[0]
+
+    polygon = [np.asarray(point, dtype=float) for point in subject]
+    clipper = [np.asarray(point, dtype=float) for point in clipper]
+    for start, end in zip(clipper, clipper[1:] + clipper[:1], strict=True):
+        clipped = []
+        for current, following in zip(polygon, polygon[1:] + polygon[:1], strict=True):
+            edge = end - start
+            side_current = cross2d(edge, current - start)
+            side_following = cross2d(edge, following - start)
+            if side_current >= -1e-9:
+                clipped.append(current)
+            if (side_current >= 0) != (side_following >= 0):
+                direction = following - current
+                denominator = cross2d(edge, direction)
+                if abs(float(denominator)) > 1e-12:
+                    fraction = cross2d(edge, start - current) / denominator
+                    clipped.append(current + fraction * direction)
+        polygon = clipped
+        if not polygon:
+            return 0.0
+    points = np.asarray(polygon)
+    twice_area = np.dot(points[:, 0], np.roll(points[:, 1], -1))
+    twice_area -= np.dot(points[:, 1], np.roll(points[:, 0], -1))
+    return abs(float(twice_area)) / 2
 
 
 class CrystalFigure:
@@ -149,7 +193,7 @@ class CrystalFigure:
             "layer_oblique": [1, 1, 2],
             "polyhedron_focus": [1, 1, 1],
         }
-        if name == "auto":
+        if name in {"auto", "optimize"}:
             self._auto_view = True
             return self
         self._auto_view = False
@@ -184,8 +228,8 @@ class CrystalFigure:
             directions.append(np.asarray(vector, dtype=float))
             labels.append(label)
 
-        for coefficients in product((-1, 0, 1), repeat=3):
-            if sum(value != 0 for value in coefficients) < 2:
+        for coefficients in product((-2, -1, 0, 1, 2), repeat=3):
+            if not any(coefficients):
                 continue
             first_nonzero = next(value for value in coefficients if value)
             if first_nonzero < 0:
@@ -235,6 +279,11 @@ class CrystalFigure:
 
         scored = []
         settings = self.camera
+        layer_normal = (
+            self._periodic_layer_normal()
+            if getattr(self, "_display_plan", None) and self._display_plan.intent == "layered"
+            else None
+        )
         for label, direction, roll in camera_candidates:
             camera = Camera.along_direction(
                 direction, target=target, projection=settings.projection, roll=roll
@@ -249,6 +298,8 @@ class CrystalFigure:
                 bond_visibility = 0.0
                 atom_overlap = 0.0
                 polyhedron_area = 0.0
+                polyhedron_depth = 0.0
+                polyhedron_overlap = 0.0
             else:
                 diagonal = float(np.hypot(frame.width, frame.height))
                 spheres = [p for p in scene.all_primitives() if p.__class__.__name__ == "Sphere"]
@@ -272,18 +323,45 @@ class CrystalFigure:
                 ])) if bonds else 0.5
                 polyhedra = [p for p in scene.all_primitives() if isinstance(p, Polyhedron)]
                 polyhedron_area = 0.0
+                polyhedron_depth = 0.0
+                polyhedron_overlap = 0.0
                 if polyhedra:
                     areas = []
+                    depth_ratios = []
+                    projected_polygons = []
                     for poly in polyhedra:
+                        view_vertices = np.asarray(poly.vertices) @ camera.rotation_matrix().T
                         uv = camera.project(np.asarray(poly.vertices))
                         if len(uv) >= 3:
                             try:
-                                areas.append(float(ConvexHull(uv).volume))
+                                hull = ConvexHull(uv)
+                                areas.append(float(hull.volume))
+                                projected_polygons.append(uv[hull.vertices])
+                                projected_span = float(np.linalg.norm(np.ptp(uv, axis=0)))
+                                depth_ratios.append(
+                                    float(np.ptp(view_vertices[:, 2])) / max(projected_span, 1e-9)
+                                )
                             except QhullError:
                                 continue
                     polyhedron_area = min(float(np.mean(areas)) / max(diagonal * diagonal, 1e-9), 1.0) if areas else 0.0
+                    polyhedron_depth = min(float(np.mean(depth_ratios)), 1.0) if depth_ratios else 0.0
+                    overlaps = []
+                    for index, first in enumerate(projected_polygons):
+                        first_area = abs(float(ConvexHull(first).volume))
+                        for second in projected_polygons[index + 1:]:
+                            second_area = abs(float(ConvexHull(second).volume))
+                            intersection = _convex_polygon_intersection_area(first, second)
+                            overlaps.append(intersection / max(min(first_area, second_area), 1e-9))
+                    polyhedron_overlap = float(np.mean(overlaps)) if overlaps else 0.0
                 aspect_penalty = abs(np.log(frame.aspect)) + (0.025 if frame.aspect < 1 else 0.0)
-                score = 1.0 - atom_overlap + 0.35 * bond_visibility + 0.45 * polyhedron_area - 0.08 * aspect_penalty
+                score = (
+                    1.0 - atom_overlap + 0.35 * bond_visibility
+                    + 0.35 * polyhedron_area + 0.22 * polyhedron_depth
+                    - 0.45 * polyhedron_overlap - 0.08 * aspect_penalty
+                )
+                if layer_normal is not None:
+                    cosine = abs(float(np.dot(direction, layer_normal)))
+                    score += 2.5 * 4.0 * cosine * (1.0 - cosine)
             report = {
                 "label": label if roll == 0 else f"{label}_roll90",
                 "direction_cartesian": direction.tolist(),
@@ -292,6 +370,8 @@ class CrystalFigure:
                 "atom_overlap_fraction": float(atom_overlap),
                 "bond_visibility": float(bond_visibility),
                 "polyhedron_projected_area": float(polyhedron_area),
+                "polyhedron_depth_ratio": float(polyhedron_depth),
+                "polyhedron_overlap_fraction": float(polyhedron_overlap),
                 "projected_aspect": frame.aspect if frame is not None else None,
             }
             scored.append((report, camera))
@@ -616,36 +696,72 @@ class CrystalFigure:
         camera: str | Camera | None = None,
         show_atoms: bool = True,
         show_bonds: bool | None = None,
-        show_unit_cell: bool = True,
+        show_unit_cell: bool | None = None,
         show_legend: bool = False,
         background: str | None = None,
         palette: str | dict | None = None,
         polyhedron_alpha: float | None = None,
         polyhedron_edge_alpha: float | None = None,
         atom_scale: float | None = None,
+        intent: str = "auto",
+        region: str | tuple[int, int, int] = "auto",
+        coordination_shell: str = "complete",
     ) -> CrystalFigure:
-        """Apply a generic publication figure setup without material-specific rules.
+        """Plan a material-agnostic publication view from periodic structure features.
 
-        ``auto`` uses a ball-and-stick view; it reports the selected neighbor model
-        so the inferred bonds are not mistaken for a unique chemical assignment.
-        Use ``mode='polyhedra'`` with explicit ``centers`` when that geometry is
-        the figure's intended scientific emphasis.
+        ``intent='auto'`` chooses a display grammar and finite display window from
+        the selected neighbor model. Automatic neighbors and centers remain
+        visualization heuristics, not unique chemical assignments.
         """
+        selected_intent, intent_confidence = self._resolve_figure_intent(intent, strategy)
         selected_style = style or ("nature" if polyhedra is not None else mode)
         if selected_style in {"polyhedral", "nature"}:
             selected_style = "nature"
+        intent_styles = {
+            "network": "ballstick", "layered": "ballstick", "ionic": "ballstick",
+            "coordination": "nature", "minimal": "minimal",
+        }
+        if style is None and (intent != "auto" or mode == "auto"):
+            selected_style = intent_styles[selected_intent]
         if selected_style not in {"auto", "ballstick", "polyhedra", "minimal", "nature"}:
             raise ValueError("mode must be auto, ballstick, polyhedra, or minimal")
+        if coordination_shell not in {"complete", "show_partial", "none"}:
+            raise ValueError("coordination_shell must be complete, show_partial, or none")
+        if isinstance(region, str) and region not in {"auto", "cell"}:
+            raise ValueError("region must be 'auto', 'cell', or a three-integer repeat tuple")
         theme_by_style = {
             "nature": "nature",
             "polyhedra": "polyhedra_clean",
             "minimal": "overview_minimal",
         }
         theme = theme_by_style.get(selected_style, "ballstick_clean")
-        default_boundary = "cell" if selected_style == "nature" else "connected"
-        render_bonds = False if selected_style == "nature" and show_bonds is None else show_bonds
-        self.style(theme).quality("publication").show_unit_cell(show_unit_cell)
-        self.boundary_mode(boundary or default_boundary).view_preset(self.theme.camera_preset or "auto")
+        default_boundary = "polyhedra_complete" if selected_style == "nature" else "connected"
+        if selected_style == "polyhedra":
+            default_boundary = "polyhedra_complete"
+        render_bonds = selected_style not in {"nature", "polyhedra"} if show_bonds is None else show_bonds
+        repeats = self._publication_window(selected_intent, region)
+        show_cell_frame = (
+            show_unit_cell if show_unit_cell is not None
+            else not (selected_style in {"nature", "polyhedra"} and repeats != (1, 1, 1))
+        )
+        self.style(theme).quality("publication").show_unit_cell(show_cell_frame)
+        if repeats != (1, 1, 1):
+            self._scene_options.supercell = repeats
+            self._scene_options.center_region = (0.25, 0.75) if selected_style in {"nature", "polyhedra"} else None
+            self._scene_options.center_limit = 4 if selected_style in {"nature", "polyhedra"} else None
+        else:
+            self._scene_options.center_region = None
+            self._scene_options.center_limit = None
+        selected_boundary = boundary or (
+            "cell" if coordination_shell == "show_partial" else default_boundary
+        )
+        if coordination_shell == "none" and selected_style in {"nature", "polyhedra"}:
+            selected_style = "ballstick"
+            render_bonds = True if show_bonds is None else show_bonds
+            theme = "ballstick_clean"
+            self.style(theme)
+            selected_boundary = boundary or "connected"
+        self.boundary_mode(selected_boundary).view_preset(self.theme.camera_preset or "auto")
         if camera is not None:
             if isinstance(camera, Camera):
                 self.camera = camera
@@ -656,6 +772,16 @@ class CrystalFigure:
         self._nature_auto = False
         self._scene_options.show_atoms = show_atoms
         self._scene_options.show_legend = show_legend
+        self._scene_options.show_bonds = bool(render_bonds)
+        self._display_plan = DisplayPlan(
+            intent=selected_intent,
+            confidence=intent_confidence,
+            repeat=repeats,
+            coordination_shell=coordination_shell,
+            image_atoms="connected_motif" if selected_style == "nature" else "finite_supercell",
+            cell_frame="subtle" if show_cell_frame else "hide",
+            center_window=(0.25, 0.75) if selected_style in {"nature", "polyhedra"} and repeats != (1, 1, 1) else None,
+        )
         if background is not None:
             self.theme.background = "#20242c" if background == "dark" else background
             self.theme.transparent = background == "transparent"
@@ -678,14 +804,12 @@ class CrystalFigure:
             self.theme.polyhedron_opacity = polyhedron_alpha
         if polyhedron_edge_alpha is not None:
             self.theme.polyhedron_edge_opacity = polyhedron_edge_alpha
-        if selected_style != "minimal":
-            self.add_bonds(strategy=strategy)
-            if render_bonds is not None:
-                self._scene_options.show_bonds = render_bonds
-            self.diagnostics.append(
-                f"Bonds generated with {strategy}; verify coordination for the intended chemical interpretation."
-            )
-        if selected_style in {"nature", "polyhedra"}:
+        self.add_bonds(strategy=strategy)
+        self._scene_options.show_bonds = bool(render_bonds)
+        self.diagnostics.append(
+            f"Bonds generated with {strategy}; verify coordination for the intended chemical interpretation."
+        )
+        if selected_style in {"nature", "polyhedra"} and coordination_shell != "none":
             spec = polyhedra
             if isinstance(spec, dict):
                 centers = spec.get("centers", centers)
@@ -708,6 +832,131 @@ class CrystalFigure:
                 )
         return self
 
+    def _resolve_figure_intent(self, intent: str, strategy: str) -> tuple[str, float]:
+        """Choose a display grammar from periodic connectivity and local chemistry."""
+        allowed = {"auto", "network", "coordination", "layered", "ionic", "minimal"}
+        if intent not in allowed:
+            raise ValueError(f"intent must be one of {sorted(allowed)}")
+        if intent != "auto":
+            return intent, 1.0
+
+        bonds = self._make_bond_strategy(strategy).get_bonds(self.structure)
+        coordination = np.zeros(self.structure.num_sites, dtype=int)
+        contrasts = []
+        for bond in bonds:
+            coordination[bond.i] += 1
+            coordination[bond.j] += 1
+            x_first = self._electronegativity(self.structure.sites[bond.i].dominant_element)
+            x_second = self._electronegativity(self.structure.sites[bond.j].dominant_element)
+            if x_first is not None and x_second is not None:
+                contrasts.append(abs(x_first - x_second))
+        mean_contrast = float(np.mean(contrasts)) if contrasts else 0.0
+        periodic_dimension = self._periodic_connectivity_dimension(bonds)
+        if periodic_dimension == 2:
+            return "layered", 0.84
+        if mean_contrast >= 0.75 and np.median(coordination) >= 5 and np.std(coordination) < 1.0:
+            return "ionic", 0.82
+        centers = self._automatic_center_candidates(bonds)
+        center_species = {
+            self.structure.sites[index].dominant_element for index in centers
+        }
+        if centers and len(center_species) <= 2 and np.median(coordination) >= 3:
+            return "coordination", 0.78
+        if np.mean(coordination) >= 2.5:
+            return "network", 0.72
+        return "minimal", 0.58
+
+    def _periodic_translation_vectors(self, bonds) -> np.ndarray:
+        """Return Cartesian lattice translations generated by periodic graph cycles."""
+        adjacency = [[] for _ in self.structure.sites]
+        for bond in bonds:
+            image = np.asarray(bond.jimage, dtype=int)
+            adjacency[bond.i].append((bond.j, image))
+            adjacency[bond.j].append((bond.i, -image))
+
+        offsets: dict[int, np.ndarray] = {}
+        translations = []
+        for root in range(len(adjacency)):
+            if root in offsets:
+                continue
+            offsets[root] = np.zeros(3, dtype=int)
+            pending = [root]
+            while pending:
+                site = pending.pop()
+                for neighbor, image in adjacency[site]:
+                    candidate = offsets[site] + image
+                    if neighbor not in offsets:
+                        offsets[neighbor] = candidate
+                        pending.append(neighbor)
+                    else:
+                        translation = candidate - offsets[neighbor]
+                        if np.any(translation):
+                            translations.append(translation)
+        if not translations:
+            return np.empty((0, 3))
+        independent = []
+        for translation in translations:
+            if np.linalg.matrix_rank(np.asarray(independent + [translation])) > len(independent):
+                independent.append(translation)
+        return np.asarray(independent, dtype=float) @ self.structure.lattice.matrix
+
+    def _periodic_connectivity_dimension(self, bonds) -> int:
+        """Return the rank of lattice translations generated by graph cycles."""
+        translations = self._periodic_translation_vectors(bonds)
+        return int(np.linalg.matrix_rank(translations)) if len(translations) else 0
+
+    def _periodic_layer_normal(self) -> np.ndarray | None:
+        strategy = self._scene_options.bond_strategy
+        if strategy is None:
+            return None
+        translations = self._periodic_translation_vectors(strategy.get_bonds(self.structure))
+        if len(translations) != 2:
+            return None
+        normal = np.cross(translations[0], translations[1])
+        norm = np.linalg.norm(normal)
+        return normal / norm if norm > 1e-12 else None
+
+    @staticmethod
+    def _electronegativity(element: str) -> float | None:
+        from pymatgen.core import Element
+        return Element(element).X
+
+    def _automatic_center_candidates(self, bonds):
+        neighbors = [[] for _ in range(self.structure.num_sites)]
+        for bond in bonds:
+            neighbors[bond.i].append(bond.j)
+            neighbors[bond.j].append(bond.i)
+        candidates = []
+        for index, adjacent in enumerate(neighbors):
+            if not 4 <= len(adjacent) <= 8:
+                continue
+            center = self._electronegativity(self.structure.sites[index].dominant_element)
+            surrounding = [self._electronegativity(self.structure.sites[j].dominant_element) for j in adjacent]
+            if center is not None and all(value is not None for value in surrounding) and float(np.mean(surrounding)) - center >= 0.4:
+                candidates.append(index)
+        return candidates
+
+    def _publication_window(self, intent: str, region: str | tuple[int, int, int]):
+        if isinstance(region, tuple):
+            if len(region) != 3 or any(not isinstance(size, int) or size < 1 for size in region):
+                raise ValueError("region repeat tuple must contain three positive integers")
+            return region
+        if region == "cell":
+            return (1, 1, 1)
+        if self._scene_options.supercell is not None:
+            scaling = self._scene_options.supercell
+            matrix = np.asarray(scaling)
+            return tuple(int(value) for value in np.diag(matrix)) if matrix.shape == (3, 3) else (int(scaling),) * 3 if np.isscalar(scaling) else tuple(int(value) for value in scaling)
+        lengths = self.structure.lattice.lengths
+        if intent == "layered" or (
+            intent == "network" and np.max(lengths) > 1.7 * np.median(lengths)
+        ):
+            longest = int(np.argmax(lengths))
+            return tuple(1 if axis == longest else 2 for axis in range(3))
+        if intent == "ionic":
+            return (2, 2, 1)
+        return (2, 2, 2) if intent in {"network", "coordination"} else (1, 1, 1)
+
     def render(self, style: str = "nature", **kwargs) -> CrystalFigure:
         """Configure a deterministic publication render; call ``save`` to export."""
         return self.publication(style=style, **kwargs)
@@ -716,23 +965,46 @@ class CrystalFigure:
     # Build & export
     # ------------------------------------------------------------------
     def build_scene(self) -> Scene:
-        builder = SceneBuilder(self.structure, self.theme, self.palette, self._scene_options, camera=self.camera)
+        scene_options = self._scene_options
+        builder = SceneBuilder(self.structure, self.theme, self.palette, scene_options, camera=self.camera)
         scene = builder.build()
         poly_group = scene.get_group("polyhedra")
         if getattr(self, "_nature_auto", False) and (poly_group is None or not poly_group.primitives):
-            self._scene_options.show_bonds = True
             message = "Automatic coordination geometry produced no valid polyhedra; showing the bond network instead."
             if message not in self.diagnostics:
                 self.diagnostics.append(message)
-            scene = SceneBuilder(self.structure, self.theme, self.palette, self._scene_options, camera=self.camera).build()
+            scene_options = replace(self._scene_options, show_bonds=True)
+            scene = SceneBuilder(
+                self.structure, self.theme, self.palette,
+                scene_options, camera=self.camera,
+            ).build()
+        selected_view = None
         if self._auto_view:
-            _, camera = self._scored_view_candidates(scene)[0]
+            selected_view, camera = self._scored_view_candidates(scene)[0]
             self.camera = camera
             scene = SceneBuilder(
-                self.structure, self.theme, self.palette, self._scene_options, camera=self.camera
+                self.structure, self.theme, self.palette, scene_options, camera=self.camera
             ).build()
         if self.camera.auto_fit:
             self.camera.fit_to_scene(scene)
+        plan = getattr(self, "_display_plan", None)
+        if plan is not None:
+            scene.metadata.update({
+                "selected_intent": plan.intent,
+                "intent_confidence": plan.confidence,
+                "display_window": list(plan.repeat),
+                "coordination_shell_policy": plan.coordination_shell,
+                "image_atom_policy": plan.image_atoms,
+                "cell_frame_policy": plan.cell_frame,
+            })
+        scene.metadata["camera_used"] = selected_view["label"] if selected_view else "explicit"
+        scene.metadata["view_dir_cartesian"] = (-self.camera.rotation_matrix()[2]).tolist()
+        scene.metadata["projection"] = self.camera.projection
+        scene.metadata["roll"] = self.camera.roll
+        polyhedra = scene.get_group("polyhedra")
+        polys = polyhedra.primitives if polyhedra else []
+        scene.metadata["num_real_polyhedra"] = sum(not poly.metadata.get("clipped", False) for poly in polys)
+        scene.metadata["num_clipped_polyhedra"] = sum(bool(poly.metadata.get("clipped", False)) for poly in polys)
         return scene
 
     def draw(self, ax, options: RenderOptions | None = None) -> None:
