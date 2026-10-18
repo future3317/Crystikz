@@ -7,8 +7,7 @@ name = "crystalfig"
 version = "0.2.0"
 description = "Publication-oriented crystal structure visualization with vector and optional 3D renderers."
 readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
+license = {file = "LICENSE"}
 requires-python = ">=3.10"
 authors = [
     {name = "AI4Materials Group"}
@@ -52,6 +51,9 @@ crystalfig = "crystalfig.cli.main:main"
 [project.urls]
 Homepage = "https://github.com/future3317/Crystikz"
 Documentation = "https://github.com/future3317/Crystikz#readme"
+
+[tool.setuptools]
+license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -112,14 +112,19 @@ class FigureGrid:
                             height=panel_height_mm, dpi=dpi,
                             transparent=self.background == "transparent",
                         )
-                        ax.imshow(imread(image_path), interpolation="antialiased")
+                        ax.imshow(
+                            imread(image_path), interpolation="antialiased",
+                            extent=(0.03, 0.97, 0.12, 0.90), aspect="auto",
+                        )
+                        ax.set_xlim(0, 1)
+                        ax.set_ylim(0, 1)
                         ax.set_axis_off()
                         panel_label = label or chr(ord("a") + row * self.cols + col).upper()
                         if self.panel_labels:
-                            ax.text(0.015, 0.985, panel_label, transform=ax.transAxes, va="top", ha="left",
-                                    fontsize=crystal.theme.title_size, fontweight="bold", color="#20242c")
+                            ax.text(0.025, 0.975, panel_label, transform=ax.transAxes, va="top", ha="left",
+                                    fontsize=7.5, fontweight="bold", color="#20242c")
                         if title:
-                            ax.text(0.015, 0.91, title, transform=ax.transAxes, va="top", ha="left",
+                            ax.text(0.5, 0.975, title, transform=ax.transAxes, va="top", ha="center",
                                     fontsize=self.font_size_pt, color="#303842")
                     if self.legend_mode == "panel":
                         from matplotlib.lines import Line2D
@@ -136,7 +141,7 @@ class FigureGrid:
                             for element in elements
                         ]
                         ax.legend(
-                            handles=handles, loc="lower center", bbox_to_anchor=(0.5, 0.015),
+                            handles=handles, loc="lower center", bbox_to_anchor=(0.5, 0.005),
                             ncol=min(len(handles), 4), frameon=False, fontsize=self.font_size_pt,
                             handletextpad=0.25, columnspacing=0.65, borderaxespad=0,
                         )

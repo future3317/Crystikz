@@ -612,11 +612,26 @@ class SceneBuilder:
                     and np.all(self._fold_to_unit_cell(structure.sites[index].frac_coords)[0] <= upper + 1e-8)
                 ]
             if spec.centers == "auto" and self.options.center_limit is not None:
-                center_species = {
-                    structure.sites[index].dominant_element for index in centers
-                }
-                limit = max(self.options.center_limit, len(center_species))
-                centers = self._select_adjacent_centers(structure, centers, limit)
+                centers = self._select_adjacent_centers(
+                    structure, centers, self.options.center_limit, adjacency
+                )
+            environment_keys = {
+                (
+                    structure.sites[index].dominant_element,
+                    len(adjacency.get(index, [])),
+                    tuple(sorted({structure.sites[j].dominant_element for j, _ in adjacency.get(index, [])})),
+                )
+                for index in centers
+            }
+            role_colors = (
+                ("#557f98", "#a77d59", "#728b70", "#88749a", "#a56e73", "#5c8986")
+                if self.theme.name == "journal_clean"
+                else ("#176b94", "#c95f24", "#328457", "#8651a0", "#ae3e50", "#277f7d", "#7f6a25", "#545d9b")
+            )
+            environment_colors = {
+                key: role_colors[index % len(role_colors)]
+                for index, key in enumerate(sorted(environment_keys))
+            }
             fill_color = spec.fill_color or self.palette.hex("accent")
             opacity = spec.opacity if spec.opacity is not None else self.theme.polyhedron_opacity
             edge_width = spec.edge_width if spec.edge_width is not None else self.theme.polyhedron_edge_width
@@ -624,12 +639,17 @@ class SceneBuilder:
 
             for center_idx in centers:
                 center_site = structure.sites[center_idx]
-                center_color = self._coordination_color(center_site.dominant_element) if spec.color_by_center else fill_color
-                center_frac, _ = self._fold_to_unit_cell(center_site.frac_coords)
-                center_pos = structure.lattice.frac_to_cart(center_frac)
                 nbrs = adjacency.get(center_idx, [])
                 if not nbrs:
                     continue
+                environment = (
+                    center_site.dominant_element,
+                    len(nbrs),
+                    tuple(sorted({structure.sites[j].dominant_element for j, _ in nbrs})),
+                )
+                center_color = environment_colors[environment] if spec.color_by_center else fill_color
+                center_frac, _ = self._fold_to_unit_cell(center_site.frac_coords)
+                center_pos = structure.lattice.frac_to_cart(center_frac)
                 vertex_positions = []
                 vertex_indices = []
                 vertex_metadata = []
@@ -698,17 +718,11 @@ class SceneBuilder:
                 centers.append(index)
         return centers
 
-    @staticmethod
-    def _coordination_color(element: str) -> str:
-        colors = ("#43b7a4", "#8c70c7", "#e2a24c", "#4a91c2", "#d46d7a")
-        return colors[int(Element(element).Z) % len(colors)]
-
     def _select_adjacent_centers(
-        self, structure: CrystalStructure, centers: list[int], limit: int
+        self, structure: CrystalStructure, centers: list[int], limit: int,
+        adjacency: dict[int, list] | None = None,
     ) -> list[int]:
-        """Keep a compact connected motif from the candidate center sites."""
-        if len(centers) <= limit:
-            return centers
+        """Cover distinct coordination environments, then grow a compact motif."""
         cartesian = {
             index: structure.lattice.frac_to_cart(
                 self._fold_to_unit_cell(structure.sites[index].frac_coords)[0]
@@ -717,18 +731,30 @@ class SceneBuilder:
         }
         lower, upper = self.options.center_region or (0.0, 1.0)
         target = structure.lattice.frac_to_cart(np.full(3, (lower + upper) / 2))
-        by_species: dict[str, list[int]] = {}
+        environments = {}
+        ligand_instances = {}
         for index in centers:
-            by_species.setdefault(structure.sites[index].dominant_element, []).append(index)
-        selected = [
-            min(indices, key=lambda index: (np.linalg.norm(cartesian[index] - target), index))
-            for _, indices in sorted(by_species.items())
-        ][:limit]
+            neighbors = (adjacency or {}).get(index, [])
+            ligand_species = tuple(sorted({structure.sites[j].dominant_element for j, _ in neighbors}))
+            environments[index] = (structure.sites[index].dominant_element, len(neighbors), ligand_species)
+            ligand_instances[index] = {
+                (j, self._display_jimage(structure, index, j, image))
+                for j, image in neighbors
+            }
+        # Show at least a pair for local motif context, then one complete
+        # representative per environment. The user budget caps both cases.
+        limit = min(limit, max(2, len(set(environments.values()))))
+        if len(centers) <= limit:
+            return centers
+        selected = [min(centers, key=lambda index: (np.linalg.norm(cartesian[index] - target), index))]
         while len(selected) < limit:
             remaining = [index for index in centers if index not in selected]
+            represented = {environments[index] for index in selected}
             next_center = min(
                 remaining,
                 key=lambda index: (
+                    -int(environments[index] not in represented),
+                    -sum(len(ligand_instances[index] & ligand_instances[chosen]) for chosen in selected),
                     min(np.linalg.norm(cartesian[index] - cartesian[chosen]) for chosen in selected),
                     index,
                 ),

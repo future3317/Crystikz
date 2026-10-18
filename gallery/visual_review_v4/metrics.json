@@ -1,0 +1,1737 @@
+{
+  "render": {
+    "backend": "pyvista",
+    "width_mm": 89,
+    "dpi": 450
+  },
+  "structures": {
+    "BaTiO3": {
+      "formula": "BaTiO3",
+      "styles": {
+        "old": {
+          "path": "BaTiO3_old.png",
+          "intent": "hybrid",
+          "repeat": [
+            2,
+            2,
+            1
+          ],
+          "camera": "lattice_+++_roll90",
+          "camera_score": 1.3373812292615417,
+          "camera_score_components": {
+            "label": "lattice_+++_roll90",
+            "direction_cartesian": [
+              0.6666666666666667,
+              0.33333333333333337,
+              0.6666666666666666
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.3373812292615417,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.5,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.10402741632140161,
+            "polyhedron_depth_ratio": 0.5725983343138685,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.0000000000000002,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              3.95,
+              1.9749999999999999,
+              1.975
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 90.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.6666666666666667,
+            0.33333333333333337,
+            0.6666666666666666
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {
+            "Ti6": 2
+          },
+          "polyhedron_count": 2,
+          "render_quality": "publication"
+        },
+        "journal_clean": {
+          "path": "BaTiO3_journal_clean.png",
+          "intent": "hybrid",
+          "repeat": [
+            2,
+            2,
+            1
+          ],
+          "camera": "lattice_+++_roll90",
+          "camera_score": 1.3373812292615417,
+          "camera_score_components": {
+            "label": "lattice_+++_roll90",
+            "direction_cartesian": [
+              0.6666666666666667,
+              0.33333333333333337,
+              0.6666666666666666
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.3373812292615417,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.5,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.10402741632140161,
+            "polyhedron_depth_ratio": 0.5725983343138685,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.0000000000000002,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              3.95,
+              1.9749999999999999,
+              1.975
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 90.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.6666666666666667,
+            0.33333333333333337,
+            0.6666666666666666
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {
+            "Ti6": 2
+          },
+          "polyhedron_count": 2,
+          "render_quality": "publication"
+        },
+        "journal_vivid": {
+          "path": "BaTiO3_journal_vivid.png",
+          "intent": "hybrid",
+          "repeat": [
+            2,
+            2,
+            1
+          ],
+          "camera": "lattice_+++_roll90",
+          "camera_score": 1.3373812292615417,
+          "camera_score_components": {
+            "label": "lattice_+++_roll90",
+            "direction_cartesian": [
+              0.6666666666666667,
+              0.33333333333333337,
+              0.6666666666666666
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.3373812292615417,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.5,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.10402741632140161,
+            "polyhedron_depth_ratio": 0.5725983343138685,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.0000000000000002,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              3.95,
+              1.9749999999999999,
+              1.975
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 90.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.6666666666666667,
+            0.33333333333333337,
+            0.6666666666666666
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {
+            "Ti6": 2
+          },
+          "polyhedron_count": 2,
+          "render_quality": "publication"
+        }
+      },
+      "candidate_views": [
+        {
+          "label": "lattice_+++_roll90",
+          "direction_cartesian": [
+            0.6666666666666667,
+            0.33333333333333337,
+            0.6666666666666666
+          ],
+          "roll_degrees": 90.0,
+          "score": 1.3373812292615417,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.10402741632140161,
+          "polyhedron_depth_ratio": 0.5725983343138685,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.0000000000000002,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "BaTiO3_candidate_1.png"
+        },
+        {
+          "label": "lattice_++-",
+          "direction_cartesian": [
+            0.6666666666666666,
+            0.3333333333333333,
+            -0.6666666666666667
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.3373812292615417,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.10402741632140158,
+          "polyhedron_depth_ratio": 0.5725983343138682,
+          "polyhedron_overlap_fraction": 8.419915464217374e-49,
+          "projected_aspect": 1.0,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "BaTiO3_candidate_2.png"
+        },
+        {
+          "label": "lattice_++-_roll90",
+          "direction_cartesian": [
+            0.6666666666666666,
+            0.3333333333333333,
+            -0.6666666666666667
+          ],
+          "roll_degrees": 90.0,
+          "score": 1.3373812292615417,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.10402741632140161,
+          "polyhedron_depth_ratio": 0.5725983343138682,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.0,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "BaTiO3_candidate_3.png"
+        }
+      ]
+    },
+    "MoS2": {
+      "formula": "MoS2",
+      "styles": {
+        "old": {
+          "path": "MoS2_old.png",
+          "intent": "layered",
+          "repeat": [
+            2,
+            4,
+            1
+          ],
+          "camera": "tilt_direct_a_plane_b",
+          "camera_score": 2.9476400833009415,
+          "camera_score_components": {
+            "label": "tilt_direct_a_plane_b",
+            "direction_cartesian": [
+              0.7071067811865475,
+              0.7071067811865475,
+              -7.499399432609231e-17
+            ],
+            "roll_degrees": 0.0,
+            "score": 2.9476400833009415,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.8355012867500284,
+            "projected_bond_crossing_fraction": 0.4166666666666667,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.3688255940990801,
+            "layer_separation": 1.0,
+            "layer_spacing_angstrom": 1.58,
+            "projected_layer_spacing_fraction": 0.07577614506774587
+          },
+          "camera_parameters": {
+            "target": [
+              2.220446049250313e-15,
+              5.5252420761447185,
+              6.15
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 0.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.7071067811865476,
+            0.7071067811865476,
+            -7.499399432609232e-17
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {},
+          "polyhedron_count": 0,
+          "render_quality": "publication"
+        },
+        "journal_clean": {
+          "path": "MoS2_journal_clean.png",
+          "intent": "layered",
+          "repeat": [
+            2,
+            4,
+            1
+          ],
+          "camera": "tilt_direct_a_plane_b",
+          "camera_score": 2.9476400833009415,
+          "camera_score_components": {
+            "label": "tilt_direct_a_plane_b",
+            "direction_cartesian": [
+              0.7071067811865475,
+              0.7071067811865475,
+              -7.499399432609231e-17
+            ],
+            "roll_degrees": 0.0,
+            "score": 2.9476400833009415,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.8355012867500284,
+            "projected_bond_crossing_fraction": 0.4166666666666667,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.3688255940990801,
+            "layer_separation": 1.0,
+            "layer_spacing_angstrom": 1.58,
+            "projected_layer_spacing_fraction": 0.07577614506774587
+          },
+          "camera_parameters": {
+            "target": [
+              2.220446049250313e-15,
+              5.5252420761447185,
+              6.15
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 0.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.7071067811865476,
+            0.7071067811865476,
+            -7.499399432609232e-17
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {},
+          "polyhedron_count": 0,
+          "render_quality": "publication"
+        },
+        "journal_vivid": {
+          "path": "MoS2_journal_vivid.png",
+          "intent": "layered",
+          "repeat": [
+            2,
+            4,
+            1
+          ],
+          "camera": "tilt_direct_a_plane_b",
+          "camera_score": 2.9476400833009415,
+          "camera_score_components": {
+            "label": "tilt_direct_a_plane_b",
+            "direction_cartesian": [
+              0.7071067811865475,
+              0.7071067811865475,
+              -7.499399432609231e-17
+            ],
+            "roll_degrees": 0.0,
+            "score": 2.9476400833009415,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.8355012867500284,
+            "projected_bond_crossing_fraction": 0.4166666666666667,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.3688255940990801,
+            "layer_separation": 1.0,
+            "layer_spacing_angstrom": 1.58,
+            "projected_layer_spacing_fraction": 0.07577614506774587
+          },
+          "camera_parameters": {
+            "target": [
+              2.220446049250313e-15,
+              5.5252420761447185,
+              6.15
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 0.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.7071067811865476,
+            0.7071067811865476,
+            -7.499399432609232e-17
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {},
+          "polyhedron_count": 0,
+          "render_quality": "publication"
+        }
+      },
+      "candidate_views": [
+        {
+          "label": "tilt_direct_a_plane_b",
+          "direction_cartesian": [
+            0.7071067811865475,
+            0.7071067811865475,
+            -7.499399432609231e-17
+          ],
+          "roll_degrees": 0.0,
+          "score": 2.9476400833009415,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.8355012867500284,
+          "projected_bond_crossing_fraction": 0.4166666666666667,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.3688255940990801,
+          "layer_separation": 1.0,
+          "layer_spacing_angstrom": 1.58,
+          "projected_layer_spacing_fraction": 0.07577614506774587,
+          "path": "MoS2_candidate_1.png"
+        },
+        {
+          "label": "tilt_direct_a_plane_b_roll90",
+          "direction_cartesian": [
+            0.7071067811865475,
+            0.7071067811865475,
+            -7.499399432609231e-17
+          ],
+          "roll_degrees": 90.0,
+          "score": 2.9456400833009417,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.8355012867500284,
+          "projected_bond_crossing_fraction": 0.4166666666666667,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 0.730553259897343,
+          "layer_separation": 1.0,
+          "layer_spacing_angstrom": 1.58,
+          "projected_layer_spacing_fraction": 0.07577614506774587,
+          "path": "MoS2_candidate_2.png"
+        },
+        {
+          "label": "principal_3",
+          "direction_cartesian": [
+            0.7948924063417709,
+            0.5609623996542222,
+            -0.23122986077573476
+          ],
+          "roll_degrees": 0.0,
+          "score": 2.903459481864022,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.8221045820574471,
+          "projected_bond_crossing_fraction": 0.3541666666666667,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.2333632817639815,
+          "layer_separation": 0.9728991476435953,
+          "layer_spacing_angstrom": 1.58,
+          "projected_layer_spacing_fraction": 0.07203185469744754,
+          "path": "MoS2_candidate_3.png"
+        }
+      ],
+      "layered_side": {
+        "path": "MoS2_layered_side.png",
+        "camera": "layered_side"
+      },
+      "layered_oblique": {
+        "path": "MoS2_layered_oblique.png",
+        "camera": "layered_oblique"
+      }
+    },
+    "Si": {
+      "formula": "Si",
+      "styles": {
+        "old": {
+          "path": "Si_old.png",
+          "intent": "network",
+          "repeat": [
+            3,
+            2,
+            1
+          ],
+          "camera": "lattice_++-",
+          "camera_score": 1.1802028565103,
+          "camera_score_components": {
+            "label": "lattice_++-",
+            "direction_cartesian": [
+              0.3333333333333333,
+              0.6666666666666666,
+              -0.6666666666666666
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.1802028565103,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.7628189084385668,
+            "projected_bond_crossing_fraction": 0.052083333333333336,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.1892688240456004,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              7.401591352691484,
+              4.969417669086435,
+              2.2220883454321774
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 0.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.33333333333333337,
+            0.6666666666666667,
+            -0.6666666666666667
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {},
+          "polyhedron_count": 0,
+          "render_quality": "publication"
+        },
+        "journal_clean": {
+          "path": "Si_journal_clean.png",
+          "intent": "network",
+          "repeat": [
+            3,
+            2,
+            1
+          ],
+          "camera": "lattice_++-",
+          "camera_score": 1.1802028565103,
+          "camera_score_components": {
+            "label": "lattice_++-",
+            "direction_cartesian": [
+              0.3333333333333333,
+              0.6666666666666666,
+              -0.6666666666666666
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.1802028565103,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.7628189084385668,
+            "projected_bond_crossing_fraction": 0.052083333333333336,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.1892688240456004,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              7.421447636331681,
+              4.97189970454146,
+              2.2344985227073013
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 0.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.33333333333333337,
+            0.6666666666666667,
+            -0.6666666666666667
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {},
+          "polyhedron_count": 0,
+          "render_quality": "publication"
+        },
+        "journal_vivid": {
+          "path": "Si_journal_vivid.png",
+          "intent": "network",
+          "repeat": [
+            3,
+            2,
+            1
+          ],
+          "camera": "lattice_++-",
+          "camera_score": 1.1802028565103,
+          "camera_score_components": {
+            "label": "lattice_++-",
+            "direction_cartesian": [
+              0.3333333333333333,
+              0.6666666666666666,
+              -0.6666666666666666
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.1802028565103,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.7628189084385668,
+            "projected_bond_crossing_fraction": 0.052083333333333336,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.1892688240456004,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              7.421447636331681,
+              4.97189970454146,
+              2.2344985227073013
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 0.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.33333333333333337,
+            0.6666666666666667,
+            -0.6666666666666667
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {},
+          "polyhedron_count": 0,
+          "render_quality": "publication"
+        }
+      },
+      "candidate_views": [
+        {
+          "label": "lattice_++-",
+          "direction_cartesian": [
+            0.3333333333333333,
+            0.6666666666666666,
+            -0.6666666666666666
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.180178028746503,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.7628189084385668,
+          "projected_bond_crossing_fraction": 0.052083333333333336,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.189637967392092,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "Si_candidate_1.png"
+        },
+        {
+          "label": "lattice_++-_roll90",
+          "direction_cartesian": [
+            0.3333333333333333,
+            0.6666666666666666,
+            -0.6666666666666666
+          ],
+          "roll_degrees": 90.0,
+          "score": 1.1781780287465031,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.7628189084385668,
+          "projected_bond_crossing_fraction": 0.052083333333333336,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 0.8405918669460308,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "Si_candidate_2.png"
+        },
+        {
+          "label": "lattice_++-_roll90",
+          "direction_cartesian": [
+            0.6666666666666666,
+            0.33333333333333326,
+            -0.6666666666666666
+          ],
+          "roll_degrees": 90.0,
+          "score": 1.175945092130102,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.7628189084385668,
+          "projected_bond_crossing_fraction": 0.0625,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.0452635690405814,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "Si_candidate_3.png"
+        }
+      ]
+    },
+    "NaCl": {
+      "formula": "NaCl",
+      "styles": {
+        "old": {
+          "path": "NaCl_old.png",
+          "intent": "ionic",
+          "repeat": [
+            2,
+            2,
+            1
+          ],
+          "camera": "lattice_++-",
+          "camera_score": 1.0950526333903132,
+          "camera_score_components": {
+            "label": "lattice_++-",
+            "direction_cartesian": [
+              0.33333333333333337,
+              0.6666666666666667,
+              -0.6666666666666667
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.0950526333903132,
+            "atom_overlap_fraction": 0.1875,
+            "bond_visibility": 0.8111736755273077,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.017121839816218,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              4.563425265708403,
+              4.896850531416807,
+              2.243563164271011
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 0.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.33333333333333337,
+            0.6666666666666667,
+            -0.6666666666666667
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {},
+          "polyhedron_count": 0,
+          "render_quality": "publication"
+        },
+        "journal_clean": {
+          "path": "NaCl_journal_clean.png",
+          "intent": "ionic",
+          "repeat": [
+            2,
+            2,
+            1
+          ],
+          "camera": "lattice_++-",
+          "camera_score": 1.0950526333903132,
+          "camera_score_components": {
+            "label": "lattice_++-",
+            "direction_cartesian": [
+              0.33333333333333337,
+              0.6666666666666667,
+              -0.6666666666666667
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.0950526333903132,
+            "atom_overlap_fraction": 0.1875,
+            "bond_visibility": 0.8111736755273077,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.017121839816218,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              4.567986844382503,
+              4.905973688765005,
+              2.254967110956259
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 0.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.33333333333333337,
+            0.6666666666666667,
+            -0.6666666666666667
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {},
+          "polyhedron_count": 0,
+          "render_quality": "publication"
+        },
+        "journal_vivid": {
+          "path": "NaCl_journal_vivid.png",
+          "intent": "ionic",
+          "repeat": [
+            2,
+            2,
+            1
+          ],
+          "camera": "lattice_++-",
+          "camera_score": 1.0950526333903132,
+          "camera_score_components": {
+            "label": "lattice_++-",
+            "direction_cartesian": [
+              0.33333333333333337,
+              0.6666666666666667,
+              -0.6666666666666667
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.0950526333903132,
+            "atom_overlap_fraction": 0.1875,
+            "bond_visibility": 0.8111736755273077,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.017121839816218,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              4.567986844382503,
+              4.905973688765005,
+              2.254967110956259
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 0.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.33333333333333337,
+            0.6666666666666667,
+            -0.6666666666666667
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {},
+          "polyhedron_count": 0,
+          "render_quality": "publication"
+        }
+      },
+      "candidate_views": [
+        {
+          "label": "lattice_++-",
+          "direction_cartesian": [
+            0.33333333333333337,
+            0.6666666666666667,
+            -0.6666666666666667
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.0951948380140157,
+          "atom_overlap_fraction": 0.1875,
+          "bond_visibility": 0.8111736755273077,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.0153154529142852,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "NaCl_candidate_1.png"
+        },
+        {
+          "label": "lattice_++-",
+          "direction_cartesian": [
+            0.6666666666666667,
+            0.3333333333333333,
+            -0.6666666666666667
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.0951948380140157,
+          "atom_overlap_fraction": 0.1875,
+          "bond_visibility": 0.8111736755273077,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.0153154529142852,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "NaCl_candidate_2.png"
+        },
+        {
+          "label": "lattice_++-_roll90",
+          "direction_cartesian": [
+            0.33333333333333337,
+            0.6666666666666667,
+            -0.6666666666666667
+          ],
+          "roll_degrees": 90.0,
+          "score": 1.0931948380140157,
+          "atom_overlap_fraction": 0.1875,
+          "bond_visibility": 0.8111736755273077,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 0.9849155719335059,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "NaCl_candidate_3.png"
+        }
+      ]
+    },
+    "MgAl2O4": {
+      "formula": "MgAl2O4",
+      "styles": {
+        "old": {
+          "path": "MgAl2O4_old.png",
+          "intent": "hybrid",
+          "repeat": [
+            1,
+            1,
+            1
+          ],
+          "camera": "lattice_+-+_roll90",
+          "camera_score": 1.3782187409762696,
+          "camera_score_components": {
+            "label": "lattice_+-+_roll90",
+            "direction_cartesian": [
+              0.4082482904638629,
+              -0.408248290463863,
+              0.816496580927726
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.3782187409762696,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.5,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.10876182347436843,
+            "polyhedron_depth_ratio": 0.7676334004328513,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.0476929608527106,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              2.4749648295166677,
+              4.784242916883334,
+              4.729014043683334
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 90.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.40824829046386296,
+            -0.4082482904638631,
+            0.8164965809277261
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {
+            "Mg4": 1,
+            "Al6": 1
+          },
+          "polyhedron_count": 2,
+          "render_quality": "publication"
+        },
+        "journal_clean": {
+          "path": "MgAl2O4_journal_clean.png",
+          "intent": "hybrid",
+          "repeat": [
+            1,
+            1,
+            1
+          ],
+          "camera": "lattice_+-+_roll90",
+          "camera_score": 1.3782187409762696,
+          "camera_score_components": {
+            "label": "lattice_+-+_roll90",
+            "direction_cartesian": [
+              0.4082482904638629,
+              -0.408248290463863,
+              0.816496580927726
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.3782187409762696,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.5,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.10876182347436843,
+            "polyhedron_depth_ratio": 0.7676334004328513,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.0476929608527106,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              2.4749648295166677,
+              4.784242916883334,
+              4.729014043683334
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 90.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.40824829046386296,
+            -0.4082482904638631,
+            0.8164965809277261
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {
+            "Mg4": 1,
+            "Al6": 1
+          },
+          "polyhedron_count": 2,
+          "render_quality": "publication"
+        },
+        "journal_vivid": {
+          "path": "MgAl2O4_journal_vivid.png",
+          "intent": "hybrid",
+          "repeat": [
+            1,
+            1,
+            1
+          ],
+          "camera": "lattice_+-+_roll90",
+          "camera_score": 1.3782187409762696,
+          "camera_score_components": {
+            "label": "lattice_+-+_roll90",
+            "direction_cartesian": [
+              0.4082482904638629,
+              -0.408248290463863,
+              0.816496580927726
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.3782187409762696,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.5,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.10876182347436843,
+            "polyhedron_depth_ratio": 0.7676334004328513,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.0476929608527106,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              2.4749648295166677,
+              4.784242916883334,
+              4.729014043683334
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 90.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.40824829046386296,
+            -0.4082482904638631,
+            0.8164965809277261
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {
+            "Mg4": 1,
+            "Al6": 1
+          },
+          "polyhedron_count": 2,
+          "render_quality": "publication"
+        }
+      },
+      "candidate_views": [
+        {
+          "label": "lattice_+-+_roll90",
+          "direction_cartesian": [
+            0.4082482904638629,
+            -0.408248290463863,
+            0.816496580927726
+          ],
+          "roll_degrees": 90.0,
+          "score": 1.3782187409762696,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.10876182347436843,
+          "polyhedron_depth_ratio": 0.7676334004328513,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.0476929608527106,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "MgAl2O4_candidate_1.png"
+        },
+        {
+          "label": "lattice_+-+",
+          "direction_cartesian": [
+            0.4082482904638629,
+            -0.408248290463863,
+            0.816496580927726
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.3762187409762696,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.1087618234743684,
+          "polyhedron_depth_ratio": 0.7676334004328513,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 0.9544781127345806,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "MgAl2O4_candidate_2.png"
+        },
+        {
+          "label": "lattice_+--_roll90",
+          "direction_cartesian": [
+            0.4082482904638629,
+            -0.408248290463863,
+            -0.816496580927726
+          ],
+          "roll_degrees": 90.0,
+          "score": 1.3752058543133387,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.10590276035239908,
+          "polyhedron_depth_ratio": 0.7676334004328513,
+          "polyhedron_overlap_fraction": 1.417668564757583e-09,
+          "projected_aspect": 1.0743794518818615,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "MgAl2O4_candidate_3.png"
+        }
+      ]
+    },
+    "LiFePO4": {
+      "formula": "LiFePO4",
+      "styles": {
+        "old": {
+          "path": "LiFePO4_old.png",
+          "intent": "hybrid",
+          "repeat": [
+            1,
+            1,
+            1
+          ],
+          "camera": "lattice_0+-_roll90",
+          "camera_score": 1.3743321973306688,
+          "camera_score_components": {
+            "label": "lattice_0+-_roll90",
+            "direction_cartesian": [
+              1.220812186360403e-16,
+              0.7591536544839322,
+              -0.6509114600955267
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.3743321973306688,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.5,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.08628756908968586,
+            "polyhedron_depth_ratio": 0.8278054444332815,
+            "polyhedron_overlap_fraction": 0.004069803832744706,
+            "projected_aspect": 1.1496160002253761,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              1.10373739014,
+              2.123189943238343,
+              3.959729674688726
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 90.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            1.220812186360403e-16,
+            0.7591536544839322,
+            -0.6509114600955267
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {
+            "P4": 1,
+            "Li6": 1,
+            "Fe6": 1
+          },
+          "polyhedron_count": 3,
+          "render_quality": "publication"
+        },
+        "journal_clean": {
+          "path": "LiFePO4_journal_clean.png",
+          "intent": "hybrid",
+          "repeat": [
+            1,
+            1,
+            1
+          ],
+          "camera": "lattice_0+-_roll90",
+          "camera_score": 1.3743321973306688,
+          "camera_score_components": {
+            "label": "lattice_0+-_roll90",
+            "direction_cartesian": [
+              1.220812186360403e-16,
+              0.7591536544839322,
+              -0.6509114600955267
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.3743321973306688,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.5,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.08628756908968586,
+            "polyhedron_depth_ratio": 0.8278054444332815,
+            "polyhedron_overlap_fraction": 0.004069803832744706,
+            "projected_aspect": 1.1496160002253761,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              1.10373739014,
+              2.123189943238343,
+              3.959729674688726
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 90.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            1.220812186360403e-16,
+            0.7591536544839322,
+            -0.6509114600955267
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {
+            "P4": 1,
+            "Li6": 1,
+            "Fe6": 1
+          },
+          "polyhedron_count": 3,
+          "render_quality": "publication"
+        },
+        "journal_vivid": {
+          "path": "LiFePO4_journal_vivid.png",
+          "intent": "hybrid",
+          "repeat": [
+            1,
+            1,
+            1
+          ],
+          "camera": "lattice_0+-_roll90",
+          "camera_score": 1.3743321973306688,
+          "camera_score_components": {
+            "label": "lattice_0+-_roll90",
+            "direction_cartesian": [
+              1.220812186360403e-16,
+              0.7591536544839322,
+              -0.6509114600955267
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.3743321973306688,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.5,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.08628756908968586,
+            "polyhedron_depth_ratio": 0.8278054444332815,
+            "polyhedron_overlap_fraction": 0.004069803832744706,
+            "projected_aspect": 1.1496160002253761,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              1.10373739014,
+              2.123189943238343,
+              3.959729674688726
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 90.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            1.220812186360403e-16,
+            0.7591536544839322,
+            -0.6509114600955267
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {
+            "P4": 1,
+            "Li6": 1,
+            "Fe6": 1
+          },
+          "polyhedron_count": 3,
+          "render_quality": "publication"
+        }
+      },
+      "candidate_views": [
+        {
+          "label": "lattice_0+-_roll90",
+          "direction_cartesian": [
+            1.220812186360403e-16,
+            0.7591536544839322,
+            -0.6509114600955267
+          ],
+          "roll_degrees": 90.0,
+          "score": 1.3743321973306688,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.08628756908968586,
+          "polyhedron_depth_ratio": 0.8278054444332815,
+          "polyhedron_overlap_fraction": 0.004069803832744706,
+          "projected_aspect": 1.1496160002253761,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "LiFePO4_candidate_1.png"
+        },
+        {
+          "label": "lattice_0+-",
+          "direction_cartesian": [
+            1.220812186360403e-16,
+            0.7591536544839322,
+            -0.6509114600955267
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.3723321973306688,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.08628756908968582,
+          "polyhedron_depth_ratio": 0.8278054444332815,
+          "polyhedron_overlap_fraction": 0.00406980383274465,
+          "projected_aspect": 0.8698556733761146,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "LiFePO4_candidate_2.png"
+        },
+        {
+          "label": "lattice_++0",
+          "direction_cartesian": [
+            0.36308397120127,
+            0.931756421956251,
+            7.928610714435291e-17
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.3576718552205134,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.07671898064098391,
+          "polyhedron_depth_ratio": 0.724407727354588,
+          "polyhedron_overlap_fraction": 1.3042335330252221e-17,
+          "projected_aspect": 1.045367606667335,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "LiFePO4_candidate_3.png"
+        }
+      ]
+    },
+    "alpha_SiO2": {
+      "formula": "SiO2",
+      "styles": {
+        "old": {
+          "path": "alpha_SiO2_old.png",
+          "intent": "hybrid",
+          "repeat": [
+            3,
+            2,
+            1
+          ],
+          "camera": "plane_b_roll90",
+          "camera_score": 1.3654587113339833,
+          "camera_score_components": {
+            "label": "plane_b_roll90",
+            "direction_cartesian": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.3654587113339833,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.5,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.08687775457973686,
+            "polyhedron_depth_ratio": 0.7518569490668019,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.069255802215737,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              5.749092826749999,
+              5.243794137741436,
+              2.701925000000001
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 90.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {
+            "Si4": 2
+          },
+          "polyhedron_count": 2,
+          "render_quality": "publication"
+        },
+        "journal_clean": {
+          "path": "alpha_SiO2_journal_clean.png",
+          "intent": "hybrid",
+          "repeat": [
+            3,
+            2,
+            1
+          ],
+          "camera": "plane_b_roll90",
+          "camera_score": 1.3654587113339833,
+          "camera_score_components": {
+            "label": "plane_b_roll90",
+            "direction_cartesian": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.3654587113339833,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.5,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.08687775457973686,
+            "polyhedron_depth_ratio": 0.7518569490668019,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.069255802215737,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              5.749092826749999,
+              5.243794137741436,
+              2.701925000000001
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 90.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {
+            "Si4": 2
+          },
+          "polyhedron_count": 2,
+          "render_quality": "publication"
+        },
+        "journal_vivid": {
+          "path": "alpha_SiO2_journal_vivid.png",
+          "intent": "hybrid",
+          "repeat": [
+            3,
+            2,
+            1
+          ],
+          "camera": "plane_b_roll90",
+          "camera_score": 1.3654587113339833,
+          "camera_score_components": {
+            "label": "plane_b_roll90",
+            "direction_cartesian": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.3654587113339833,
+            "atom_overlap_fraction": 0.0,
+            "bond_visibility": 0.5,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.08687775457973686,
+            "polyhedron_depth_ratio": 0.7518569490668019,
+            "polyhedron_overlap_fraction": 0.0,
+            "projected_aspect": 1.069255802215737,
+            "layer_separation": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "camera_parameters": {
+            "target": [
+              5.749092826749999,
+              5.243794137741436,
+              2.701925000000001
+            ],
+            "distance": 10.0,
+            "elevation": 25.0,
+            "azimuth": 45.0,
+            "roll": 90.0,
+            "projection": "orthographic",
+            "padding": 0.1
+          },
+          "camera_direction": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "display_budget": {
+            "max_atoms": 60,
+            "max_polyhedra": 8,
+            "max_bonds": 200
+          },
+          "coordination_environments": {
+            "Si4": 2
+          },
+          "polyhedron_count": 2,
+          "render_quality": "publication"
+        }
+      },
+      "candidate_views": [
+        {
+          "label": "plane_b_roll90",
+          "direction_cartesian": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "roll_degrees": 90.0,
+          "score": 1.3654587113339833,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.08687775457973686,
+          "polyhedron_depth_ratio": 0.7518569490668019,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.069255802215737,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "alpha_SiO2_candidate_1.png"
+        },
+        {
+          "label": "plane_b",
+          "direction_cartesian": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.3634587113339833,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.08687775457973687,
+          "polyhedron_depth_ratio": 0.7518569490668019,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 0.9352299028237924,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "alpha_SiO2_candidate_2.png"
+        },
+        {
+          "label": "direct_c_roll90",
+          "direction_cartesian": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "roll_degrees": 90.0,
+          "score": 1.3572122815854388,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.08709540665405656,
+          "polyhedron_depth_ratio": 0.7250585034859384,
+          "polyhedron_overlap_fraction": 2.1157651118449993e-18,
+          "projected_aspect": 1.102190726583249,
+          "layer_separation": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0,
+          "path": "alpha_SiO2_candidate_3.png"
+        }
+      ]
+    }
+  }
+}

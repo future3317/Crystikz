@@ -6,6 +6,20 @@ import pytest
 
 from crystalfig.styles.palette import PUBLICATION, get_palette
 from crystalfig.styles.radii import COVALENT, get_radius
+from crystalfig.styles.theme import FigureTheme
+
+
+def test_journal_themes_separate_atom_and_coordination_visual_roles():
+    clean = FigureTheme.from_preset("journal_clean")
+    vivid = FigureTheme.from_preset("journal_vivid")
+    assert clean.polyhedron_opacity * clean.polyhedron_face_opacity < (
+        vivid.polyhedron_opacity * vivid.polyhedron_face_opacity
+    )
+    vivid_front_alpha = vivid.polyhedron_opacity * vivid.polyhedron_face_opacity
+    assert 0.35 <= vivid_front_alpha <= 0.55
+    assert vivid.polyhedron_back_opacity < vivid.polyhedron_face_opacity
+    assert clean.name == "journal_clean"
+    assert vivid.name == "journal_vivid"
 
 
 class TestColorPalette:

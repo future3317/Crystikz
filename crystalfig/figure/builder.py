@@ -77,6 +77,44 @@ def _convex_polygon_intersection_area(subject, clipper):
     return abs(float(twice_area)) / 2
 
 
+def _projected_bond_crossing_fraction(bonds, camera) -> float:
+    """Estimate non-topological crossings between projected bond segments."""
+    if len(bonds) < 2:
+        return 0.0
+    starts = np.asarray([bond.start for bond in bonds])
+    ends = np.asarray([bond.end for bond in bonds])
+    projected = camera.project(np.concatenate((starts, ends), axis=0))
+    count = len(bonds)
+    starts_2d, ends_2d = projected[:count], projected[count:]
+    vectors = ends_2d - starts_2d
+    lengths = np.linalg.norm(vectors, axis=1)
+    positive = lengths[lengths > 1e-9]
+    if not len(positive):
+        return 0.0
+    midpoints = (starts_2d + ends_2d) / 2
+    pairs = cKDTree(midpoints).query_pairs(float(np.median(positive)), output_type="ndarray")
+    crossings = 0
+    for first, second in pairs:
+        if min(
+            np.linalg.norm(starts[first] - starts[second]),
+            np.linalg.norm(starts[first] - ends[second]),
+            np.linalg.norm(ends[first] - starts[second]),
+            np.linalg.norm(ends[first] - ends[second]),
+        ) < 1e-7:
+            continue
+        p, r = starts_2d[first], vectors[first]
+        q, s = starts_2d[second], vectors[second]
+        denominator = r[0] * s[1] - r[1] * s[0]
+        if abs(float(denominator)) < 1e-10:
+            continue
+        offset = q - p
+        t = (offset[0] * s[1] - offset[1] * s[0]) / denominator
+        u = (offset[0] * r[1] - offset[1] * r[0]) / denominator
+        if 0.08 < t < 0.92 and 0.08 < u < 0.92:
+            crossings += 1
+    return float(crossings / count)
+
+
 class CrystalFigure:
     """Fluent high-level API for building publication crystal figures."""
 
@@ -285,7 +323,26 @@ class CrystalFigure:
             if getattr(self, "_display_plan", None) and self._display_plan.intent == "layered"
             else None
         )
+        layer_translations = (
+            self._periodic_translation_vectors(self._scene_options.bond_strategy.get_bonds(self.structure))
+            if layer_normal is not None and self._scene_options.bond_strategy is not None
+            else np.empty((0, 3))
+        )
+        if layer_normal is not None and len(layer_translations) >= 2:
+            in_plane = layer_translations[0] + 0.37 * layer_translations[1]
+            in_plane /= np.linalg.norm(in_plane)
+            side = in_plane - np.dot(in_plane, layer_normal) * layer_normal
+            side /= max(np.linalg.norm(side), 1e-12)
+            for label, direction in (
+                ("layered_side", side),
+                ("layered_oblique", side + 0.55 * layer_normal),
+            ):
+                direction = direction / np.linalg.norm(direction)
+                camera_candidates.extend((label, direction, roll) for roll in (0.0, 90.0))
         for label, direction, roll in camera_candidates:
+            layer_separation = 0.0
+            projected_layer_spacing = 0.0
+            layer_spacing_angstrom = 0.0
             camera = Camera.along_direction(
                 direction, target=target, projection=settings.projection, roll=roll
             )
@@ -301,6 +358,8 @@ class CrystalFigure:
                 polyhedron_area = 0.0
                 polyhedron_depth = 0.0
                 polyhedron_overlap = 0.0
+                layer_separation = 0.0
+                bond_crossings = 0.0
             else:
                 diagonal = float(np.hypot(frame.width, frame.height))
                 spheres = [p for p in scene.all_primitives() if p.__class__.__name__ == "Sphere"]
@@ -322,6 +381,7 @@ class CrystalFigure:
                     min(np.linalg.norm(camera.project(b.end) - camera.project(b.start)) / max(b.distance, 1e-9), 1.0)
                     for b in bonds
                 ])) if bonds else 0.5
+                bond_crossings = _projected_bond_crossing_fraction(bonds, camera)
                 polyhedra = [p for p in scene.all_primitives() if isinstance(p, Polyhedron)]
                 polyhedron_area = 0.0
                 polyhedron_depth = 0.0
@@ -359,10 +419,20 @@ class CrystalFigure:
                     1.0 - atom_overlap + 0.35 * bond_visibility
                     + 0.35 * polyhedron_area + 0.22 * polyhedron_depth
                     - 0.45 * polyhedron_overlap - 0.08 * aspect_penalty
+                    - 1.4 * bond_crossings
                 )
-                if layer_normal is not None:
+                if layer_normal is not None and frame is not None:
                     cosine = abs(float(np.dot(direction, layer_normal)))
-                    score += 2.5 * 4.0 * cosine * (1.0 - cosine)
+                    layer_separation = float(np.sqrt(max(0.0, 1.0 - cosine * cosine)))
+                    positions = np.asarray([sphere.position for sphere in spheres])
+                    heights = np.unique(np.round(positions @ layer_normal, 2)) if len(positions) else np.empty(0)
+                    gaps = np.diff(heights)
+                    gaps = gaps[gaps > 0.05]
+                    layer_spacing_angstrom = float(np.min(gaps)) if len(gaps) else 0.0
+                    projected_layer_spacing = min(
+                        layer_spacing_angstrom * layer_separation / max(diagonal, 1e-9), 1.0
+                    )
+                    score += 1.8 * layer_separation + 0.35 * (1.0 - cosine) + 1.5 * projected_layer_spacing
             report = {
                 "label": label if roll == 0 else f"{label}_roll90",
                 "direction_cartesian": direction.tolist(),
@@ -370,10 +440,14 @@ class CrystalFigure:
                 "score": float(score),
                 "atom_overlap_fraction": float(atom_overlap),
                 "bond_visibility": float(bond_visibility),
+                "projected_bond_crossing_fraction": float(bond_crossings),
                 "polyhedron_projected_area": float(polyhedron_area),
                 "polyhedron_depth_ratio": float(polyhedron_depth),
                 "polyhedron_overlap_fraction": float(polyhedron_overlap),
                 "projected_aspect": frame.aspect if frame is not None else None,
+                "layer_separation": float(layer_separation),
+                "layer_spacing_angstrom": float(layer_spacing_angstrom),
+                "projected_layer_spacing_fraction": float(projected_layer_spacing),
             }
             scored.append((report, camera))
         return sorted(scored, key=lambda item: (-item[0]["score"], item[0]["label"]))
@@ -707,6 +781,7 @@ class CrystalFigure:
         intent: str = "auto",
         region: str | tuple[int, int, int] = "auto",
         coordination_shell: str = "complete",
+        display_budget: dict[str, int | float] | None = None,
     ) -> CrystalFigure:
         """Plan a material-agnostic publication view from periodic structure features.
 
@@ -715,13 +790,17 @@ class CrystalFigure:
         visualization heuristics, not unique chemical assignments.
         """
         selected_intent, intent_confidence = self._resolve_figure_intent(intent, strategy)
-        selected_style = style or ("nature" if polyhedra is not None else mode)
+        requested_style = style or ("nature" if polyhedra is not None else mode)
+        theme_style = requested_style if requested_style in {"journal_clean", "journal_vivid"} else None
+        selected_style = "nature" if theme_style else requested_style
         if selected_style in {"polyhedral", "nature"}:
             selected_style = "nature"
         intent_styles = {
             "network": "ballstick", "layered": "ballstick", "ionic": "ballstick",
-            "coordination": "nature", "minimal": "minimal",
+            "coordination": "nature", "hybrid": "nature", "minimal": "minimal",
         }
+        if theme_style:
+            selected_style = intent_styles[selected_intent]
         if style is None and (intent != "auto" or mode == "auto"):
             selected_style = intent_styles[selected_intent]
         if selected_style not in {"auto", "ballstick", "polyhedra", "minimal", "nature"}:
@@ -735,24 +814,43 @@ class CrystalFigure:
             "polyhedra": "polyhedra_clean",
             "minimal": "overview_minimal",
         }
-        theme = theme_by_style.get(selected_style, "ballstick_clean")
+        theme = theme_style or theme_by_style.get(selected_style, "ballstick_clean")
         default_boundary = "polyhedra_complete" if selected_style == "nature" else "connected"
         if selected_style == "polyhedra":
             default_boundary = "polyhedra_complete"
         render_bonds = selected_style not in {"nature", "polyhedra"} if show_bonds is None else show_bonds
-        repeats = self._publication_window(selected_intent, region)
+        budget = {"max_atoms": 60, "max_polyhedra": 8, "max_bonds": 200}
+        if display_budget:
+            unknown = set(display_budget) - set(budget)
+            if unknown:
+                raise ValueError(f"Unknown display_budget keys: {sorted(unknown)}")
+            budget.update(display_budget)
+        if any(float(value) <= 0 for value in budget.values()):
+            raise ValueError("display_budget values must be positive")
+        estimated_degree = max(
+            1.0,
+            2.0 * len(self._make_bond_strategy(strategy).get_bonds(self.structure))
+            / max(self.structure.num_sites, 1),
+        )
+        atom_cap = min(int(budget["max_atoms"]), int(budget["max_bonds"] / estimated_degree))
+        repeats = self._publication_window(selected_intent, region, max_atoms=max(atom_cap, self.structure.num_sites))
         show_cell_frame = (
             show_unit_cell if show_unit_cell is not None
-            else not (selected_style in {"nature", "polyhedra"} and repeats != (1, 1, 1))
+            else not (
+                selected_style in {"nature", "polyhedra"}
+                and selected_intent in {"coordination", "hybrid"}
+            )
         )
         self.style(theme).quality("publication").show_unit_cell(show_cell_frame)
         if repeats != (1, 1, 1):
             self._scene_options.supercell = repeats
             self._scene_options.center_region = (0.25, 0.75) if selected_style in {"nature", "polyhedra"} else None
-            self._scene_options.center_limit = 4 if selected_style in {"nature", "polyhedra"} else None
         else:
             self._scene_options.center_region = None
-            self._scene_options.center_limit = None
+        self._scene_options.center_limit = (
+            int(budget["max_polyhedra"])
+            if selected_style in {"nature", "polyhedra"} else None
+        )
         selected_boundary = boundary or (
             "cell" if coordination_shell == "show_partial" else default_boundary
         )
@@ -783,6 +881,7 @@ class CrystalFigure:
             cell_frame="subtle" if show_cell_frame else "hide",
             center_window=(0.25, 0.75) if selected_style in {"nature", "polyhedra"} and repeats != (1, 1, 1) else None,
         )
+        self._display_budget = budget
         if background is not None:
             self.theme.background = "#20242c" if background == "dark" else background
             self.theme.transparent = background == "transparent"
@@ -829,7 +928,7 @@ class CrystalFigure:
             if centers == "auto":
                 self._nature_auto = True
                 self.diagnostics.append(
-                    "Automatic centers require coordination 4–8 and a mean neighbor electronegativity at least 0.4 higher; verify the chemical interpretation."
+                "Automatic coordination candidates are inferred from periodic neighbors and geometry; verify their chemical interpretation."
                 )
         return self
 
@@ -853,16 +952,13 @@ class CrystalFigure:
                 contrasts.append(abs(x_first - x_second))
         mean_contrast = float(np.mean(contrasts)) if contrasts else 0.0
         periodic_dimension = self._periodic_connectivity_dimension(bonds)
+        centers = self._automatic_center_candidates(bonds)
         if periodic_dimension == 2:
             return "layered", 0.84
         if mean_contrast >= 0.75 and np.median(coordination) >= 5 and np.std(coordination) < 1.0:
             return "ionic", 0.82
-        centers = self._automatic_center_candidates(bonds)
-        center_species = {
-            self.structure.sites[index].dominant_element for index in centers
-        }
-        if centers and len(center_species) <= 2 and np.median(coordination) >= 3:
-            return "coordination", 0.78
+        if centers:
+            return "hybrid", 0.80
         if np.mean(coordination) >= 2.5:
             return "network", 0.72
         return "minimal", 0.58
@@ -953,7 +1049,7 @@ class CrystalFigure:
                 candidates.append(index)
         return candidates
 
-    def _publication_window(self, intent: str, region: str | tuple[int, int, int]):
+    def _publication_window(self, intent: str, region: str | tuple[int, int, int], max_atoms: int = 220):
         if isinstance(region, tuple):
             if len(region) != 3 or any(not isinstance(size, int) or size < 1 for size in region):
                 raise ValueError("region repeat tuple must contain three positive integers")
@@ -964,15 +1060,21 @@ class CrystalFigure:
             scaling = self._scene_options.supercell
             matrix = np.asarray(scaling)
             return tuple(int(value) for value in np.diag(matrix)) if matrix.shape == (3, 3) else (int(scaling),) * 3 if np.isscalar(scaling) else tuple(int(value) for value in scaling)
-        lengths = self.structure.lattice.lengths
-        if intent == "layered" or (
-            intent == "network" and np.max(lengths) > 1.7 * np.median(lengths)
-        ):
-            longest = int(np.argmax(lengths))
-            return tuple(1 if axis == longest else 2 for axis in range(3))
-        if intent == "ionic":
-            return (2, 2, 1)
-        return (2, 2, 2) if intent in {"network", "coordination"} else (1, 1, 1)
+        # Grow a compact periodic region only while it fits the atom budget.
+        # The shortest current physical extent is expanded first; this avoids
+        # fixed repeat recipes and keeps large low-symmetry cells bounded.
+        repeats = np.ones(3, dtype=int)
+        lengths = np.asarray(self.structure.lattice.lengths, dtype=float)
+        while self.structure.num_sites * int(np.prod(repeats)) < max_atoms:
+            candidates = [axis for axis in range(3) if self.structure.num_sites * int(np.prod(repeats)) * (repeats[axis] + 1) / repeats[axis] <= max_atoms]
+            if not candidates:
+                break
+            axis = min(candidates, key=lambda item: (lengths[item] * repeats[item], item))
+            repeats[axis] += 1
+        # A molecular/isolated graph has no periodic motif to extend.
+        if intent == "minimal" or self.structure.num_sites >= max_atoms:
+            repeats[:] = 1
+        return tuple(int(value) for value in repeats)
 
     def render(self, style: str = "nature", **kwargs) -> CrystalFigure:
         """Configure a deterministic publication render; call ``save`` to export."""
@@ -1015,6 +1117,8 @@ class CrystalFigure:
                 "cell_frame_policy": plan.cell_frame,
             })
         scene.metadata["camera_used"] = selected_view["label"] if selected_view else "explicit"
+        scene.metadata["camera_score"] = selected_view["score"] if selected_view else None
+        scene.metadata["camera_score_components"] = selected_view if selected_view else None
         scene.metadata["view_dir_cartesian"] = (-self.camera.rotation_matrix()[2]).tolist()
         scene.metadata["projection"] = self.camera.projection
         scene.metadata["roll"] = self.camera.roll

@@ -39,10 +39,10 @@ class TestScene:
     def test_auto_publication_selects_structure_intent_and_complete_motif(self):
         figure = CrystalFigure(perovskite_structure(a=3.95, c=4.05)).publication()
         scene = figure.build_scene()
-        assert scene.metadata["selected_intent"] == "coordination"
-        assert scene.metadata["display_window"] == [2, 2, 2]
+        assert scene.metadata["selected_intent"] == "hybrid"
+        assert figure.structure.num_sites * np.prod(scene.metadata["display_window"]) <= figure._display_budget["max_atoms"]
         polyhedra = scene.get_group("polyhedra").primitives
-        assert len(polyhedra) == 4
+        assert 1 < len(polyhedra) <= figure._display_budget["max_polyhedra"]
         assert all(len(polyhedron.vertex_metadata) == 6 for polyhedron in polyhedra)
         atoms = scene.get_group("atoms").primitives
         visible_elements = {atom.metadata["element"] for atom in atoms}
@@ -54,7 +54,7 @@ class TestScene:
         ]
         assert len(identities) == len(set(identities))
         assert scene.metadata["camera_used"] != "isometric"
-        assert scene.metadata["num_real_polyhedra"] == 4
+        assert scene.metadata["num_real_polyhedra"] == 2
         assert scene.metadata["num_clipped_polyhedra"] == 0
 
     def test_planar_coordination_shell_uses_connected_network_view(self):

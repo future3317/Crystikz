@@ -29,9 +29,9 @@ class TestCrystalFigure:
     @pytest.mark.parametrize(
         "filename,formula,expected_intent",
         [
-            ("mg_al2o4_normal_spinel.cif", "MgAl2O4", "coordination"),
-            ("li_fepo4_mp_workshop.cif", "LiFePO4", "network"),
-            ("alpha_quartz_cod5000035.cif", "SiO2", "network"),
+            ("mg_al2o4_normal_spinel.cif", "MgAl2O4", "hybrid"),
+            ("li_fepo4_mp_workshop.cif", "LiFePO4", "hybrid"),
+            ("alpha_quartz_cod5000035.cif", "SiO2", "hybrid"),
         ],
     )
     def test_blind_source_structures_build_publication_scenes(
@@ -56,7 +56,7 @@ class TestCrystalFigure:
             (graphite_structure, "layered"),
             (mos2_structure, "layered"),
             (diamond_structure, "network"),
-            (perovskite_structure, "coordination"),
+            (perovskite_structure, "hybrid"),
             (rocksalt_structure, "ionic"),
         ],
     )
@@ -121,7 +121,7 @@ class TestCrystalFigure:
         layer_normal = figure._periodic_layer_normal()
         assert layer_normal is not None
         cosine = abs(np.dot(direction, layer_normal) / np.linalg.norm(direction) / np.linalg.norm(layer_normal))
-        assert 0.3 <= cosine <= 0.8
+        assert cosine <= 0.25
 
     def test_coordination_motif_retains_nearby_host_atoms(self):
         figure = CrystalFigure(perovskite_structure()).publication(intent="coordination")
@@ -241,7 +241,7 @@ class TestCrystalFigure:
         assert fig.theme.name == "nature"
         assert fig.theme.render_quality == "publication"
         assert fig._scene_options.bond_strategy.__class__.__name__ == "CrystalNNStrategy"
-        assert fig._display_plan.intent == "coordination"
+        assert fig._display_plan.intent == "hybrid"
         assert any("verify coordination" in message for message in fig.diagnostics)
 
     def test_quick_reports_its_cutoff_as_a_display_heuristic(self):
