@@ -36,7 +36,7 @@ def main() -> int:
         smoke.write_text(
             """import sys
 from pathlib import Path
-from crystalfig import CrystalFigure, __version__
+from crystalfig import CrystalFigure, FigureGrid, __version__
 from crystalfig.examples.presets import rocksalt_structure
 from crystalfig.io.pymatgen_adapter import to_pymatgen
 
@@ -48,7 +48,11 @@ figure = CrystalFigure.from_structure(structure).publication()
 figure.export(out / 'figure.pdf', width=89, dpi=300)
 figure.export(out / 'figure.svg', backend='svg', width=89)
 figure.export(out / 'figure.png', backend='matplotlib', width=89, dpi=300, transparent=True)
+nature = CrystalFigure.from_structure(structure).render(style='nature', strategy='cutoff')
+nature.save(out / 'nature.svg')
+FigureGrid(rows=1, cols=1).add_structure(structure, 0, 0, strategy='cutoff').save(out / 'grid.pdf')
 assert __version__ == '0.2.0'
+assert (out / 'nature.svg').is_file() and (out / 'grid.pdf').is_file()
 """,
             encoding="utf-8",
         )

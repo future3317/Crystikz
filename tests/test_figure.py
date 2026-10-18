@@ -6,13 +6,68 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from crystalfig.examples.presets import perovskite_structure, rocksalt_structure
+from crystalfig.examples.presets import perovskite_structure, rocksalt_structure, wurtzite_structure
+from crystalfig.figure import FigureGrid
 from crystalfig.figure.builder import CrystalFigure
 from crystalfig.geometry.planes import MillerPlane
+from crystalfig.model.lattice import Lattice
+from crystalfig.model.site import Site
+from crystalfig.model.structure import CrystalStructure
 from crystalfig.scene.camera import Camera
 
 
 class TestCrystalFigure:
+    def test_nature_render_auto_centers_colors_by_element_and_exports(self, tmp_path):
+        figure = CrystalFigure(wurtzite_structure()).render(
+            style="nature", strategy="cutoff", show_bonds=False
+        )
+        scene = figure.build_scene()
+        polyhedra = scene.get_group("polyhedra").primitives
+        assert polyhedra
+        assert scene.get_group("bonds") is None
+        explicit = CrystalFigure(wurtzite_structure()).render(
+            style="nature", strategy="cutoff", centers=["Zn", "O"], show_bonds=False
+        ).build_scene()
+        assert len({poly.fill_color for poly in explicit.get_group("polyhedra").primitives}) == 2
+        path = tmp_path / "nature.svg"
+        figure.save(path)
+        assert "<svg" in path.read_text(encoding="utf-8")[:500]
+        figure.save(tmp_path / "nature.pdf")
+        figure.save(tmp_path / "nature.png", dpi=80)
+        assert (tmp_path / "nature.pdf").stat().st_size > 1000
+        assert (tmp_path / "nature.png").stat().st_size > 1000
+
+    def test_nature_can_export_dark_and_transparent_backgrounds(self, tmp_path):
+        from PIL import Image
+
+        structure = wurtzite_structure()
+        images = {}
+        for background in ("dark", "transparent"):
+            path = tmp_path / f"{background}.png"
+            CrystalFigure(structure).render(
+                style="nature", strategy="cutoff", background=background
+            ).save(path, dpi=80)
+            assert path.is_file() and path.stat().st_size > 1000
+            images[background] = Image.open(path).convert("RGBA")
+        assert images["dark"].getpixel((0, 0))[:3] == (32, 36, 44)
+        assert 0 in images["transparent"].getchannel("A").getextrema()
+
+    def test_nature_reports_ballstick_fallback_for_single_atom(self):
+        structure = CrystalStructure(Lattice.cubic(4.0), [Site([0, 0, 0], "He")])
+        figure = CrystalFigure(structure).render(style="nature", strategy="cutoff", show_bonds=False)
+        scene = figure.build_scene()
+        assert not scene.get_group("polyhedra")
+        assert any("no valid polyhedra" in message for message in figure.diagnostics)
+        assert len(scene.get_group("atoms").primitives) == 1
+
+    def test_figure_grid_saves_labeled_structure_panels(self, tmp_path):
+        grid = FigureGrid(rows=1, cols=2)
+        grid.add_structure(perovskite_structure(), 0, 0, strategy="cutoff", show_bonds=False)
+        grid.add_structure(rocksalt_structure(), 0, 1, style="ballstick", strategy="cutoff")
+        for suffix in ("png", "pdf", "svg"):
+            path = grid.save(tmp_path / f"panels.{suffix}", dpi=120)
+            assert path.is_file() and path.stat().st_size > 1000
+
     def test_from_pymatgen_structure(self):
         """Passing a pymatgen Structure directly must use the adapter."""
         from pymatgen.core import Lattice as PmgLattice

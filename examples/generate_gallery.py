@@ -160,6 +160,9 @@ def generate_pyvista_baseline():
         "width_mm": 89,
         "dpi": 300,
         "quality": "publication",
+        "style": "nature",
+        "boundary": "cell",
+        "polyhedra": "automatic geometric heuristic; validate coordination for chemical interpretation",
         "structure_sources": {
             "monoclinic_tenorite": {
                 "record": "American Mineralogist Crystal Structure Database 18822",
@@ -171,7 +174,9 @@ def generate_pyvista_baseline():
     }
     panels = []
     for name, structure in structures:
-        figure = CrystalFigure.from_structure(structure).publication().quality("publication")
+        figure = CrystalFigure.from_structure(structure).publication(
+            style="nature", boundary="cell"
+        ).quality("publication")
         outputs = {
             "png": figure.export(
                 output_dir / f"{name}.png", backend="pyvista", width=89, dpi=300, transparent=True

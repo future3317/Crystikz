@@ -5,8 +5,11 @@ from __future__ import annotations
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
+from itertools import product
 
 import numpy as np
+from pymatgen.core import Element
+from scipy.spatial import ConvexHull, QhullError
 
 from crystalfig.geometry.planes import MillerPlane
 from crystalfig.geometry.polyhedra import build_polyhedron
@@ -31,6 +34,26 @@ from crystalfig.styles.radii import get_radius
 from crystalfig.styles.theme import FigureTheme
 
 _DISORDERED_WARNED: set[tuple[int, tuple[int, int, int]]] = set()
+
+
+def _clip_segment_box(start: np.ndarray, end: np.ndarray, lower: float, upper: float):
+    """Clip a fractional-coordinate segment to an axis-aligned display box."""
+    start = np.asarray(start, dtype=float)
+    end = np.asarray(end, dtype=float)
+    direction = end - start
+    t_min, t_max = 0.0, 1.0
+    for axis in range(3):
+        if abs(direction[axis]) < 1e-12:
+            if start[axis] < lower or start[axis] > upper:
+                return None
+            continue
+        t0 = (lower - start[axis]) / direction[axis]
+        t1 = (upper - start[axis]) / direction[axis]
+        t_min = max(t_min, min(t0, t1))
+        t_max = min(t_max, max(t0, t1))
+        if t_min > t_max:
+            return None
+    return start + t_min * direction, start + t_max * direction
 
 
 @dataclass
@@ -89,13 +112,14 @@ class BondStyleOverride:
 class PolyhedraSpec:
     """Specification for one set of coordination polyhedra."""
 
-    centers: list[int] | str
+    centers: list[int | str] | str
     strategy: Callable | None = None
     fill_color: str | None = None
     opacity: float | None = None
     edge_width: float | None = None
     edge_color: str | None = None
     show_bonds: bool | None = None
+    color_by_center: bool = False
 
 
 @dataclass
@@ -125,6 +149,7 @@ class SceneOptions:
     atom_style: str = "shaded"
     supercell: int | tuple[int, int, int] | np.ndarray | None = None
     display_boundary: str = "cell_complete"  # cell_complete, connected, polyhedra_complete
+    clip_polyhedra_to_cell: bool = False
     bonds: list[NeighborBond] | None = None
     bond_strategy: Callable | None = None
     polyhedra_specs: list[PolyhedraSpec] = None  # type: ignore[assignment]
@@ -196,7 +221,7 @@ class SceneBuilder:
             scene.extend(self._bonds(structure, bonds), group="bonds")
 
         if self.options.show_atoms:
-            scene.extend(self._atoms(structure), group="atoms")
+            scene.extend(self._atoms(structure, polyhedra), group="atoms")
             scene.extend(
                 self._expand_image_atoms(structure, bonds or [], polyhedra),
                 group="image_atoms",
@@ -225,7 +250,7 @@ class SceneBuilder:
 
         return scene
 
-    def _resolve_centers(self, structure: CrystalStructure, centers: list[int] | str) -> list[int]:
+    def _resolve_centers(self, structure: CrystalStructure, centers: list[int | str] | str) -> list[int]:
         """Resolve a center spec to site indices, allowing element strings."""
         if isinstance(centers, str):
             indices = structure.indices_of_species(centers)
@@ -242,7 +267,16 @@ class SceneBuilder:
                         stacklevel=2,
                     )
             return indices
-        return list(centers)
+        indices = []
+        for center in centers:
+            if isinstance(center, int):
+                indices.append(center)
+            else:
+                matches = structure.indices_of_species(center) or structure.indices_of_element(center)
+                if not matches:
+                    warnings.warn(f"No sites match species/element '{center}'.", stacklevel=2)
+                indices.extend(matches)
+        return list(dict.fromkeys(indices))
 
     def _make_sphere(
         self,
@@ -317,10 +351,11 @@ class SceneBuilder:
         # Clamp very large radii so A-sites do not swallow the cage.
         return min(base * factor, max_radius)
 
-    def _atoms(self, structure: CrystalStructure) -> list[Sphere]:
-        centers: set[int] = set()
+    def _atoms(self, structure: CrystalStructure, polyhedra: list[Polyhedron]) -> list[Sphere]:
+        centers: set[int] = {poly.center_site for poly in polyhedra}
         for spec in self.options.polyhedra_specs:
-            centers.update(self._resolve_centers(structure, spec.centers))
+            if spec.centers != "auto":
+                centers.update(self._resolve_centers(structure, spec.centers))
 
         spheres = []
         for i in range(len(structure.sites)):
@@ -346,17 +381,20 @@ class SceneBuilder:
         if mode == "connected":
             for bond in bonds:
                 image = self._display_jimage(structure, bond.i, bond.j, bond.jimage)
-                if any(image):
+                frac = self._fold_to_unit_cell(structure.sites[bond.j].frac_coords)[0] + np.asarray(image)
+                if any(image) and np.all(frac >= -1.0) and np.all(frac <= 2.0):
                     images[(bond.j, image)] = None
         elif mode == "polyhedra_complete":
             for bond in bonds:
                 image = self._display_jimage(structure, bond.i, bond.j, bond.jimage)
-                if any(image):
+                frac = self._fold_to_unit_cell(structure.sites[bond.j].frac_coords)[0] + np.asarray(image)
+                if any(image) and np.all(frac >= -1.0) and np.all(frac <= 2.0):
                     images[(bond.j, image)] = None
             for poly in polyhedra:
                 for meta in getattr(poly, "vertex_metadata", []):
                     offset = tuple(meta.get("image_offset", (0, 0, 0)))
-                    if any(offset):
+                    frac = self._fold_to_unit_cell(structure.sites[meta["site_index"]].frac_coords)[0] + np.asarray(offset)
+                    if any(offset) and np.all(frac >= -1.0) and np.all(frac <= 2.0):
                         images[(meta["site_index"], offset)] = None
         else:  # cell_complete (default)
             # Strictly display the closure of the canonical cell.  Cross-cell
@@ -431,7 +469,6 @@ class SceneBuilder:
 
     def _bonds(self, structure: CrystalStructure, bonds: list[NeighborBond]) -> list[Bond]:
         cylinders = []
-        tol = 1e-6
         for bond_index, bond in enumerate(bonds):
             site_i = structure.sites[bond.i]
             site_j = structure.sites[bond.j]
@@ -440,14 +477,24 @@ class SceneBuilder:
             frac_j, _ = self._fold_to_unit_cell(site_j.frac_coords)
             start = structure.lattice.frac_to_cart(frac_i)
 
-            # In cell_complete mode, only draw bonds whose partner lies inside or
-            # on the boundary of the displayed [0,1]^3 cell.  This prevents bonds
-            # from dangling at periodic images that have no displayed atom.
+            # Clip periodic bonds to the visible cell/padding instead of dropping
+            # cell-crossing bonds or drawing their endpoints arbitrarily far away.
             if self.options.display_boundary == "cell_complete":
                 partner_frac = frac_j + np.array(image_offset, dtype=float)
-                if not all(-tol <= f <= 1.0 + tol for f in partner_frac):
+                clipped = _clip_segment_box(start=frac_i, end=partner_frac, lower=0.0, upper=1.0)
+                if clipped is None:
                     continue
-                end = structure.lattice.frac_to_cart(partner_frac)
+                clipped_start, clipped_end = clipped
+                start = structure.lattice.frac_to_cart(clipped_start)
+                end = structure.lattice.frac_to_cart(clipped_end)
+            elif self.options.display_boundary in ("connected", "polyhedra_complete"):
+                partner_frac = frac_j + np.array(image_offset, dtype=float)
+                clipped = _clip_segment_box(start=frac_i, end=partner_frac, lower=-1.0, upper=2.0)
+                if clipped is None:
+                    continue
+                clipped_start, clipped_end = clipped
+                start = structure.lattice.frac_to_cart(clipped_start)
+                end = structure.lattice.frac_to_cart(clipped_end)
             else:
                 end = structure.lattice.frac_to_cart(frac_j + np.array(image_offset, dtype=float))
 
@@ -515,7 +562,10 @@ class SceneBuilder:
                 spec_bonds = spec.strategy.get_bonds(structure)
                 adjacency = make_adjacency(spec_bonds)
 
-            centers = self._resolve_centers(structure, spec.centers)
+            if spec.centers == "auto":
+                centers = self._automatic_centers(structure, adjacency)
+            else:
+                centers = self._resolve_centers(structure, spec.centers)
             fill_color = spec.fill_color or self.palette.hex("accent")
             opacity = spec.opacity if spec.opacity is not None else self.theme.polyhedron_opacity
             edge_width = spec.edge_width if spec.edge_width is not None else self.theme.polyhedron_edge_width
@@ -523,6 +573,7 @@ class SceneBuilder:
 
             for center_idx in centers:
                 center_site = structure.sites[center_idx]
+                center_color = self.palette.hex(center_site.dominant_element) if spec.color_by_center else fill_color
                 center_frac, _ = self._fold_to_unit_cell(center_site.frac_coords)
                 center_pos = structure.lattice.frac_to_cart(center_frac)
                 nbrs = adjacency.get(center_idx, [])
@@ -551,19 +602,93 @@ class SceneBuilder:
                         stacklevel=2,
                     )
                     continue
-                polyhedra.append(Polyhedron(
+                poly = Polyhedron(
                     center_site=center_idx,
                     vertices=cp.vertex_positions,
                     faces=cp.faces,
-                    fill_color=fill_color,
+                    fill_color=center_color,
                     edge_color=edge_color,
                     opacity=opacity,
                     edge_width=edge_width,
                     edge_mode=self.theme.polyhedron_edge_mode,
                     back_edges=self.theme.polyhedron_back_edges,
                     vertex_metadata=vertex_metadata,
-                ))
+                )
+                if self.options.clip_polyhedra_to_cell:
+                    poly = self._clip_polyhedron_to_box(structure, poly, 0.0, 1.0)
+                elif self.options.display_boundary in {"connected", "polyhedra_complete"}:
+                    poly = self._clip_polyhedron_to_box(structure, poly, -1.0, 2.0)
+                if poly is not None:
+                    polyhedra.append(poly)
         return polyhedra
+
+    def _automatic_centers(self, structure: CrystalStructure, adjacency: dict[int, list]) -> list[int]:
+        """Select geometrically coordinated sites that are less electronegative than their neighbors."""
+        centers = []
+        for index, neighbors in adjacency.items():
+            if not 4 <= len(neighbors) <= 8:
+                continue
+            center_x = Element(structure.sites[index].dominant_element).X
+            neighbor_x = [Element(structure.sites[j].dominant_element).X for j, _ in neighbors]
+            if (
+                center_x is not None
+                and all(value is not None for value in neighbor_x)
+                and float(np.mean(neighbor_x)) - center_x >= 0.4
+            ):
+                centers.append(index)
+        return centers
+
+    def _clip_polyhedron_to_box(
+        self, structure: CrystalStructure, poly: Polyhedron, lower: float, upper: float
+    ) -> Polyhedron | None:
+        """Clip a convex coordination hull to the fractional display box."""
+        frac_vertices = structure.lattice.cart_to_frac(np.asarray(poly.vertices))
+        points = [
+            point for point in frac_vertices
+            if np.all(point >= lower - 1e-8) and np.all(point <= upper + 1e-8)
+        ]
+        edges = {
+            tuple(sorted((face[i], face[(i + 1) % len(face)])))
+            for face in poly.faces for i in range(len(face))
+        }
+        for i, j in edges:
+            a, b = frac_vertices[i], frac_vertices[j]
+            for axis in range(3):
+                if abs(b[axis] - a[axis]) < 1e-12:
+                    continue
+                for boundary in (lower, upper):
+                    t = (boundary - a[axis]) / (b[axis] - a[axis])
+                    if 0.0 <= t <= 1.0:
+                        point = a + t * (b - a)
+                        if np.all(point >= lower - 1e-8) and np.all(point <= upper + 1e-8):
+                            points.append(point)
+        try:
+            source_hull = ConvexHull(frac_vertices)
+        except QhullError:
+            return None
+        for corner in product((lower, upper), repeat=3):
+            corner = np.asarray(corner)
+            if np.all(source_hull.equations[:, :3] @ corner + source_hull.equations[:, 3] <= 1e-8):
+                points.append(corner)
+        if len(points) < 4:
+            return None
+        unique = np.unique(np.round(points, decimals=10), axis=0)
+        try:
+            hull = ConvexHull(unique)
+        except QhullError:
+            return None
+        cart_vertices = structure.lattice.frac_to_cart(unique)
+        return Polyhedron(
+            center_site=poly.center_site,
+            vertices=list(cart_vertices),
+            faces=[list(map(int, face)) for face in hull.simplices],
+            fill_color=poly.fill_color,
+            edge_color=poly.edge_color,
+            opacity=poly.opacity,
+            edge_width=poly.edge_width,
+            edge_mode=poly.edge_mode,
+            back_edges=poly.back_edges,
+        )
 
     def _cell_edges(self, structure: CrystalStructure) -> list[CellEdge]:
         style = getattr(self.theme, "cell_style", "light")

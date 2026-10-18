@@ -9,7 +9,7 @@ from crystalfig.exceptions import (
     RenderError,
     StructureParseError,
 )
-from crystalfig.figure.builder import CrystalFigure, plot_structure
+from crystalfig.figure import CrystalFigure, FigureGrid, plot_structure
 from crystalfig.model.lattice import Lattice
 from crystalfig.model.site import Site
 from crystalfig.model.structure import CrystalStructure
@@ -17,6 +17,7 @@ from crystalfig.model.structure import CrystalStructure
 __all__ = [
     "__version__",
     "CrystalFigure",
+    "FigureGrid",
     "plot_structure",
     "CrystalStructure",
     "Site",

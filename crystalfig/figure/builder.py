@@ -47,6 +47,7 @@ class CrystalFigure:
         self.camera = camera or Camera(elevation=25.0, azimuth=45.0)
         self._scene_options = SceneOptions()
         self._auto_view = False
+        self._nature_auto = False
         self.diagnostics: list[str] = []
         if camera is None:
             self.view_preset(self.theme.camera_preset)
@@ -139,6 +140,8 @@ class CrystalFigure:
         target = self._centroid()
         directions = {
             "isometric": [1, 1, 1],
+            "front": [0, 0, 1],
+            "side": [0, 1, 0],
             "along_a": [1, 0, 0],
             "along_b": [0, 1, 0],
             "along_c": [0, 0, 1],
@@ -150,7 +153,7 @@ class CrystalFigure:
             self._auto_view = True
             return self
         self._auto_view = False
-        if name == "layer_top":
+        if name in {"layer_top", "top"}:
             self.camera = Camera.normal_to_plane((0, 0, 1), self.structure.lattice, target=target)
             return self
         if name not in directions:
@@ -324,6 +327,8 @@ class CrystalFigure:
             connected: only show image atoms needed by visible bonds/polyhedra.
             polyhedra_complete: connected + guarantee every polyhedron vertex sphere.
         """
+        self._scene_options.clip_polyhedra_to_cell = mode in {"cell", "supercell"}
+        mode = {"cell": "cell_complete", "supercell": "cell_complete"}.get(mode, mode)
         if mode not in ("cell_complete", "connected", "polyhedra_complete"):
             raise ValueError(f"Unknown boundary mode: {mode}")
         self._scene_options.display_boundary = mode
@@ -369,13 +374,14 @@ class CrystalFigure:
 
     def add_polyhedra(
         self,
-        centers: str | list[int],
+        centers: str | list[int | str],
         strategy: str | object | None = "crystalnn",
         fill_color: str | None = None,
         opacity: float | None = None,
         edge_width: float | None = None,
         edge_color: str | None = None,
         show_bonds: bool | None = None,
+        color_by_center: bool = False,
     ) -> CrystalFigure:
         self._scene_options.show_polyhedra = True
 
@@ -398,6 +404,7 @@ class CrystalFigure:
             edge_width=edge_width,
             edge_color=edge_color,
             show_bonds=show_bonds,
+            color_by_center=color_by_center,
         ))
         return self
 
@@ -601,8 +608,21 @@ class CrystalFigure:
         self,
         mode: str = "auto",
         *,
-        centers: str | list[int] | None = None,
+        style: str | None = None,
+        boundary: str | None = None,
+        polyhedra: str | dict | None = None,
+        centers: str | list[int | str] | None = None,
         strategy: str = "crystalnn",
+        camera: str | Camera | None = None,
+        show_atoms: bool = True,
+        show_bonds: bool | None = None,
+        show_unit_cell: bool = True,
+        show_legend: bool = False,
+        background: str | None = None,
+        palette: str | dict | None = None,
+        polyhedron_alpha: float | None = None,
+        polyhedron_edge_alpha: float | None = None,
+        atom_scale: float | None = None,
     ) -> CrystalFigure:
         """Apply a generic publication figure setup without material-specific rules.
 
@@ -611,21 +631,86 @@ class CrystalFigure:
         Use ``mode='polyhedra'`` with explicit ``centers`` when that geometry is
         the figure's intended scientific emphasis.
         """
-        if mode not in {"auto", "ballstick", "polyhedra", "minimal"}:
+        selected_style = style or ("nature" if polyhedra is not None else mode)
+        if selected_style in {"polyhedral", "nature"}:
+            selected_style = "nature"
+        if selected_style not in {"auto", "ballstick", "polyhedra", "minimal", "nature"}:
             raise ValueError("mode must be auto, ballstick, polyhedra, or minimal")
-        theme = "polyhedra_clean" if mode == "polyhedra" else "overview_minimal" if mode == "minimal" else "ballstick_clean"
-        self.style(theme).quality("publication").show_unit_cell().boundary_mode("connected").view_preset("auto")
+        theme_by_style = {
+            "nature": "nature",
+            "polyhedra": "polyhedra_clean",
+            "minimal": "overview_minimal",
+        }
+        theme = theme_by_style.get(selected_style, "ballstick_clean")
+        default_boundary = "cell" if selected_style == "nature" else "connected"
+        render_bonds = False if selected_style == "nature" and show_bonds is None else show_bonds
+        self.style(theme).quality("publication").show_unit_cell(show_unit_cell)
+        self.boundary_mode(boundary or default_boundary).view_preset(self.theme.camera_preset or "auto")
+        if camera is not None:
+            if isinstance(camera, Camera):
+                self.camera = camera
+                self._auto_view = False
+            else:
+                self.view_preset(camera)
         self.diagnostics = []
-        if mode != "minimal":
+        self._nature_auto = False
+        self._scene_options.show_atoms = show_atoms
+        self._scene_options.show_legend = show_legend
+        if background is not None:
+            self.theme.background = "#20242c" if background == "dark" else background
+            self.theme.transparent = background == "transparent"
+        if isinstance(palette, str):
+            self.palette = get_palette(palette).copy()
+            self.theme.palette = self.palette
+        elif isinstance(palette, dict):
+            for element, value in palette.items():
+                if isinstance(value, str):
+                    from matplotlib.colors import to_rgb
+                    value = tuple(round(channel * 255) for channel in to_rgb(value))
+                elif max(value) <= 1:
+                    value = tuple(round(channel * 255) for channel in value)
+                self.palette.element_colors[element] = tuple(value)
+            self.theme.palette = self.palette
+        if atom_scale is not None:
+            self.theme.atom_radius_scale = atom_scale
+            self.theme.atom_radius_scale_polyhedron = atom_scale
+        if polyhedron_alpha is not None:
+            self.theme.polyhedron_opacity = polyhedron_alpha
+        if polyhedron_edge_alpha is not None:
+            self.theme.polyhedron_edge_opacity = polyhedron_edge_alpha
+        if selected_style != "minimal":
             self.add_bonds(strategy=strategy)
+            if render_bonds is not None:
+                self._scene_options.show_bonds = render_bonds
             self.diagnostics.append(
                 f"Bonds generated with {strategy}; verify coordination for the intended chemical interpretation."
             )
-        if mode == "polyhedra":
+        if selected_style in {"nature", "polyhedra"}:
+            spec = polyhedra
+            if isinstance(spec, dict):
+                centers = spec.get("centers", centers)
+                polyhedron_alpha = spec.get("alpha", polyhedron_alpha)
             if centers is None:
-                raise ValueError("centers is required when mode='polyhedra'.")
-            self.add_polyhedra(centers=centers, strategy=strategy)
+                centers = "auto" if selected_style == "nature" else None
+            if centers is None:
+                raise ValueError("centers is required when style='polyhedral'.")
+            self.add_polyhedra(
+                centers=centers,
+                strategy=strategy,
+                opacity=polyhedron_alpha,
+                color_by_center=selected_style == "nature",
+                show_bonds=render_bonds,
+            )
+            if centers == "auto":
+                self._nature_auto = True
+                self.diagnostics.append(
+                    "Automatic centers require coordination 4–8 and a mean neighbor electronegativity at least 0.4 higher; verify the chemical interpretation."
+                )
         return self
+
+    def render(self, style: str = "nature", **kwargs) -> CrystalFigure:
+        """Configure a deterministic publication render; call ``save`` to export."""
+        return self.publication(style=style, **kwargs)
 
     # ------------------------------------------------------------------
     # Build & export
@@ -633,6 +718,13 @@ class CrystalFigure:
     def build_scene(self) -> Scene:
         builder = SceneBuilder(self.structure, self.theme, self.palette, self._scene_options, camera=self.camera)
         scene = builder.build()
+        poly_group = scene.get_group("polyhedra")
+        if getattr(self, "_nature_auto", False) and (poly_group is None or not poly_group.primitives):
+            self._scene_options.show_bonds = True
+            message = "Automatic coordination geometry produced no valid polyhedra; showing the bond network instead."
+            if message not in self.diagnostics:
+                self.diagnostics.append(message)
+            scene = SceneBuilder(self.structure, self.theme, self.palette, self._scene_options, camera=self.camera).build()
         if self._auto_view:
             _, camera = self._scored_view_candidates(scene)[0]
             self.camera = camera
@@ -681,6 +773,10 @@ class CrystalFigure:
         )
         exporter = Exporter(scene, theme, camera=self.camera)
         return exporter.export(path, fmt=fmt, options=options, backend=backend)
+
+    def save(self, path: str, **kwargs) -> ExportResult:
+        """Save the current figure using the configured export backend."""
+        return self.export(path, **kwargs)
 
     def export_scene(self, scene: Scene, path: str, fmt: str | None = None, options=None) -> ExportResult:
         """Export a user-modified Scene directly."""

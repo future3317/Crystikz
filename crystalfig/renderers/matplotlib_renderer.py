@@ -66,19 +66,36 @@ class MatplotlibRenderer:
         width_inch, height_inch = self._figure_size(scene, options)
         fig, ax = plt.subplots(figsize=(width_inch, height_inch), dpi=options.dpi)
         self.draw(ax, scene, theme, options)
+        bg = options.background or theme.background
+        transparent = options.transparent or bg == "transparent"
+        if not transparent and bg:
+            fig.patch.set_facecolor(bg)
 
         if isinstance(path, str):
             if fmt in ("png", "tiff", "tif"):
-                bg = options.background or theme.background
-                transparent = options.transparent or bg == "transparent"
-                fig.savefig(path, dpi=options.dpi, transparent=transparent)
+                fig.savefig(
+                    path,
+                    dpi=options.dpi,
+                    transparent=transparent,
+                    facecolor="none" if transparent else bg,
+                )
             elif fmt in ("pdf", "svg", "eps", "pgf"):
                 with matplotlib.rc_context({"pdf.fonttype": 42, "ps.fonttype": 42}):
-                    fig.savefig(path, format=fmt)
+                    fig.savefig(
+                        path,
+                        format=fmt,
+                        transparent=transparent,
+                        facecolor="none" if transparent else bg,
+                    )
             else:
                 fig.savefig(path)
         else:
-            fig.savefig(path, format=fmt)
+            fig.savefig(
+                path,
+                format=fmt,
+                transparent=transparent,
+                facecolor="none" if transparent else bg,
+            )
         plt.close(fig)
 
     def draw(

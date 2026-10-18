@@ -78,6 +78,46 @@ does not claim that automatic neighbor assignment is a unique chemical bond defi
 `publication(mode="polyhedra", centers="Ti")` when the center species is part of your scientific
 question, or choose a different `strategy` explicitly.
 
+For a cell-bounded, polyhedron-led publication view, use the material-agnostic `nature` preset:
+
+```python
+from crystalfig import CrystalFigure, FigureGrid
+
+figure = CrystalFigure.from_file("structure.cif").render(
+    style="nature",
+    boundary="cell",
+    polyhedra="auto",
+    palette="publication",
+    camera="isometric",
+    background="white",  # also "transparent" or "dark"
+    show_atoms=True,
+    show_bonds=False,
+    show_unit_cell=True,
+)
+figure.save("structure.svg")  # PNG and PDF are also supported
+```
+
+Automatic centers are a geometry heuristic based on the selected neighbor strategy, coordination
+from four to eight, and lower electronegativity than their neighbors; they are not a chemical
+assignment. The figure records the heuristic and neighbor strategy in `figure.diagnostics`. If no
+valid coordination hull can be built, the view falls back to atoms
+and the candidate bond network. Set `style="polyhedral"` with `centers=["Al", "Ti"]` to specify
+center elements explicitly. `boundary="cell"` clips periodic bonds and polyhedron hulls at the
+display cell. Use `supercell((2, 2, 1))` before `boundary="supercell"` to render a finite expanded
+cell. `boundary="connected"` keeps periodic coordination connections within one cell of padding.
+
+Compose multiple structures with a shared Matplotlib figure:
+
+```python
+grid = FigureGrid(rows=1, cols=2, panel_labels=True)
+grid.add_structure(CrystalFigure.from_file("phase-a.cif"), 0, 0, title="Phase A")
+grid.add_structure(CrystalFigure.from_file("phase-b.cif"), 0, 1, title="Phase B")
+grid.save("phases.pdf", dpi=300)
+```
+
+`FigureGrid` combines structure panels only; add curves and statistical plots using ordinary
+Matplotlib axes in the surrounding figure workflow.
+
 ## Choose an output backend
 
 | Backend | Formats | Output | Use it for |
@@ -115,9 +155,9 @@ figure = (
 figure.export("MoS2.png", backend="pyvista", width=89, dpi=600)
 ```
 
-Themes: `ballstick_clean`, `polyhedra_clean`, `layered_clean`, `overview_minimal`, plus the
-`publication` family. View presets include `auto`, `isometric`, `along_a`, `along_b`, `along_c`,
-`layer_top`, `layer_oblique`, and `polyhedron_focus`. Presets are editable defaults; the final
+Themes: `nature`, `ballstick_clean`, `polyhedra_clean`, `layered_clean`, `overview_minimal`, plus
+the `publication` family. View presets include `auto`, `isometric`, `along_a`, `along_b`, `along_c`,
+`front`, `side`, `top`, `layer_top`, `layer_oblique`, and `polyhedron_focus`. Presets are editable defaults; the final
 figure still depends on the structure, selected neighbors, view, labels and export size.
 
 ## Command line

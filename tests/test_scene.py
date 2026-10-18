@@ -32,6 +32,60 @@ class TestCamera:
 
 
 class TestScene:
+    def test_cell_clips_periodic_bonds_and_polyhedra_to_the_cell(self):
+        structure = mos2_structure()
+        figure = (
+            CrystalFigure(structure)
+            .boundary_mode("cell")
+            .add_bonds("cutoff", cutoff=2.5)
+            .add_polyhedra("Mo", strategy="cutoff")
+        )
+        scene = figure.build_scene()
+        atoms = scene.get_group("atoms").primitives
+        image_atoms = scene.get_group("image_atoms")
+        for atom in atoms + (image_atoms.primitives if image_atoms else []):
+            frac = structure.lattice.cart_to_frac(atom.position)
+            assert np.all(frac >= -1e-8) and np.all(frac <= 1.0 + 1e-8)
+        bonds = scene.get_group("bonds").primitives
+        assert any(np.linalg.norm(bond.end - bond.start) < bond.distance - 1e-7 for bond in bonds)
+        for bond in bonds:
+            frac = structure.lattice.cart_to_frac(np.asarray([bond.start, bond.end]))
+            assert np.all(frac >= -1e-8) and np.all(frac <= 1.0 + 1e-8)
+        for poly in scene.get_group("polyhedra").primitives:
+            frac = structure.lattice.cart_to_frac(np.asarray(poly.vertices))
+            assert np.all(frac >= -1e-8) and np.all(frac <= 1.0 + 1e-8)
+
+    def test_connected_bonds_are_limited_to_one_cell_of_padding(self):
+        structure = mos2_structure()
+        scene = (
+            CrystalFigure(structure)
+            .boundary_mode("connected")
+            .add_bonds("cutoff", cutoff=2.5)
+            .add_polyhedra("Mo", strategy="cutoff")
+            .build_scene()
+        )
+        for bond in scene.get_group("bonds").primitives:
+            frac = structure.lattice.cart_to_frac(np.asarray([bond.start, bond.end]))
+            assert np.all(frac >= -1.0 - 1e-8) and np.all(frac <= 2.0 + 1e-8)
+        for poly in scene.get_group("polyhedra").primitives:
+            frac = structure.lattice.cart_to_frac(np.asarray(poly.vertices))
+            assert np.all(frac >= -1.0 - 1e-8) and np.all(frac <= 2.0 + 1e-8)
+
+    def test_supercell_contains_only_requested_finite_copies(self):
+        structure = rocksalt_structure()
+        scene = CrystalFigure(structure).supercell((2, 1, 3)).boundary_mode("supercell").build_scene()
+        assert scene.metadata["num_sites"] == structure.num_sites * 6
+        atoms = scene.get_group("atoms").primitives
+        assert len(atoms) == structure.num_sites * 6
+
+    def test_repeated_cell_scene_builds_have_identical_geometry(self):
+        figure = CrystalFigure(mos2_structure()).render(
+            style="nature", strategy="cutoff", show_bonds=False
+        )
+        first = figure.build_scene().as_dict()
+        second = figure.build_scene().as_dict()
+        assert first == second
+
     def test_periodically_equivalent_coordinates_render_in_the_display_cell(self):
         structure = mos2_structure()
         original_coords = structure.frac_coords.copy()
