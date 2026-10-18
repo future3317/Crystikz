@@ -481,21 +481,23 @@ class SceneBuilder:
             return polyhedra
 
         bonds = bonds or []
-        # Store (neighbor_index, image_offset) so periodic images are not folded back.
-        adjacency: dict[int, list[tuple[int, tuple[int, int, int]]]] = {i: [] for i in range(len(structure))}
-        for bond in bonds:
-            adjacency[bond.i].append((bond.j, bond.jimage))
-            adjacency[bond.j].append((bond.i, tuple(-x for x in bond.jimage)))
+        def make_adjacency(spec_bonds):
+            # Keep periodic images distinct; each spec gets its own neighbor graph.
+            adjacency = {i: [] for i in range(len(structure))}
+            for bond in spec_bonds:
+                adjacency[bond.i].append((bond.j, bond.jimage))
+                if bond.i != bond.j:
+                    adjacency[bond.j].append((bond.i, tuple(-x for x in bond.jimage)))
+            return adjacency
+
+        default_adjacency = make_adjacency(bonds)
 
         for spec in specs:
             spec_bonds = bonds
+            adjacency = default_adjacency
             if spec.strategy is not None:
                 spec_bonds = spec.strategy.get_bonds(structure)
-                # Rebuild adjacency for this spec.
-                adjacency = {i: [] for i in range(len(structure))}
-                for bond in spec_bonds:
-                    adjacency[bond.i].append((bond.j, bond.jimage))
-                    adjacency[bond.j].append((bond.i, tuple(-x for x in bond.jimage)))
+                adjacency = make_adjacency(spec_bonds)
 
             centers = self._resolve_centers(structure, spec.centers)
             fill_color = spec.fill_color or self.palette.hex("accent")
@@ -522,7 +524,13 @@ class SceneBuilder:
                     continue
                 try:
                     cp = build_polyhedron(center_pos, vertex_positions, vertex_indices, center_idx)
-                except Exception:
+                except Exception as exc:
+                    warnings.warn(
+                        f"Skipping polyhedron for site {center_idx} "
+                        f"({center_site.dominant_element}) with {len(vertex_positions)} neighbors: {exc}",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
                     continue
                 polyhedra.append(Polyhedron(
                     center_site=center_idx,

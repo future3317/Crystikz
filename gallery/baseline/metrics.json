@@ -1,0 +1,311 @@
+{
+  "width_mm": 89.0,
+  "dpi": 300,
+  "transparent": true,
+  "backend_by_extension": {
+    "png": "MatplotlibRenderer",
+    "svg": "SvgRenderer"
+  },
+  "camera": {
+    "elevation": 25.0,
+    "azimuth": 45.0,
+    "padding": 0.12
+  },
+  "display_boundary": "cell_complete",
+  "structures": {
+    "nacl": {
+      "label": "NaCl rock salt",
+      "formula": "NaCl",
+      "lattice_lengths_angstrom": [
+        3.98808,
+        3.98808,
+        3.98808
+      ],
+      "lattice_angles_degrees": [
+        60.0,
+        60.0,
+        60.0
+      ],
+      "num_sites": 2,
+      "reference_center": "Na",
+      "reference_neighbor": "Cl",
+      "cutoff_angstrom": 3.0,
+      "bond_count": 6,
+      "periodic_bond_count": 6,
+      "reference_coordination": 6,
+      "png_pixels": [
+        1051,
+        526
+      ],
+      "png_size_mm": [
+        88.985,
+        44.535
+      ],
+      "rendered_content_occupancy_max_axis": 0.7072,
+      "touches_image_edge": false,
+      "foreground_luminance_std": 21.389,
+      "alpha_bbox": [
+        169,
+        79,
+        908,
+        451
+      ],
+      "element_colors": {
+        "Na": "#a064c3",
+        "Cl": "#5fc85f"
+      }
+    },
+    "si": {
+      "label": "Si diamond",
+      "formula": "Si",
+      "lattice_lengths_angstrom": [
+        3.83959,
+        3.83959,
+        3.83959
+      ],
+      "lattice_angles_degrees": [
+        60.0,
+        60.0,
+        60.0
+      ],
+      "num_sites": 2,
+      "reference_center": "Si",
+      "reference_neighbor": "Si",
+      "cutoff_angstrom": 2.6,
+      "bond_count": 4,
+      "periodic_bond_count": 3,
+      "reference_coordination": 4,
+      "png_pixels": [
+        1051,
+        519
+      ],
+      "png_size_mm": [
+        88.985,
+        43.942
+      ],
+      "rendered_content_occupancy_max_axis": 0.7071,
+      "touches_image_edge": false,
+      "foreground_luminance_std": 15.638,
+      "alpha_bbox": [
+        169,
+        78,
+        908,
+        445
+      ],
+      "element_colors": {
+        "Si": "#c3a582"
+      }
+    },
+    "batio3": {
+      "label": "BaTiO3 perovskite",
+      "formula": "BaTiO3",
+      "lattice_lengths_angstrom": [
+        3.95,
+        3.95,
+        4.05
+      ],
+      "lattice_angles_degrees": [
+        90.0,
+        90.0,
+        90.0
+      ],
+      "num_sites": 5,
+      "reference_center": "Ti",
+      "reference_neighbor": "O",
+      "cutoff_angstrom": 2.5,
+      "bond_count": 6,
+      "periodic_bond_count": 3,
+      "reference_coordination": 6,
+      "png_pixels": [
+        1051,
+        1247
+      ],
+      "png_size_mm": [
+        88.985,
+        105.579
+      ],
+      "rendered_content_occupancy_max_axis": 0.7033,
+      "touches_image_edge": false,
+      "foreground_luminance_std": 21.488,
+      "alpha_bbox": [
+        169,
+        191,
+        908,
+        1068
+      ],
+      "element_colors": {
+        "Ba": "#69a569",
+        "Ti": "#9ba0a5",
+        "O": "#c34b46"
+      }
+    },
+    "rutile_tio2": {
+      "label": "Rutile TiO2",
+      "formula": "TiO2",
+      "lattice_lengths_angstrom": [
+        4.59,
+        4.59,
+        2.96
+      ],
+      "lattice_angles_degrees": [
+        90.0,
+        90.0,
+        90.0
+      ],
+      "num_sites": 6,
+      "reference_center": "Ti",
+      "reference_neighbor": "O",
+      "cutoff_angstrom": 2.1,
+      "bond_count": 12,
+      "periodic_bond_count": 7,
+      "reference_coordination": 6,
+      "png_pixels": [
+        1051,
+        1144
+      ],
+      "png_size_mm": [
+        88.985,
+        96.859
+      ],
+      "rendered_content_occupancy_max_axis": 0.7037,
+      "touches_image_edge": false,
+      "foreground_luminance_std": 23.238,
+      "alpha_bbox": [
+        169,
+        175,
+        908,
+        980
+      ],
+      "element_colors": {
+        "Ti": "#9ba0a5",
+        "O": "#c34b46"
+      }
+    },
+    "zno": {
+      "label": "Wurtzite ZnO",
+      "formula": "ZnO",
+      "lattice_lengths_angstrom": [
+        3.25,
+        3.25,
+        5.21
+      ],
+      "lattice_angles_degrees": [
+        90.0,
+        90.0,
+        120.0
+      ],
+      "num_sites": 4,
+      "reference_center": "Zn",
+      "reference_neighbor": "O",
+      "cutoff_angstrom": 2.2,
+      "bond_count": 8,
+      "periodic_bond_count": 5,
+      "reference_coordination": 4,
+      "png_pixels": [
+        1051,
+        2148
+      ],
+      "png_size_mm": [
+        88.985,
+        181.864
+      ],
+      "rendered_content_occupancy_max_axis": 0.7031,
+      "touches_image_edge": false,
+      "foreground_luminance_std": 18.834,
+      "alpha_bbox": [
+        169,
+        331,
+        908,
+        1838
+      ],
+      "element_colors": {
+        "Zn": "#8287af",
+        "O": "#c34b46"
+      }
+    },
+    "mos2": {
+      "label": "2H-MoS2",
+      "formula": "MoS2",
+      "lattice_lengths_angstrom": [
+        3.19,
+        3.19,
+        12.3
+      ],
+      "lattice_angles_degrees": [
+        90.0,
+        90.0,
+        120.0
+      ],
+      "num_sites": 6,
+      "reference_center": "Mo",
+      "reference_neighbor": "S",
+      "cutoff_angstrom": 2.8,
+      "bond_count": 12,
+      "periodic_bond_count": 10,
+      "reference_coordination": 6,
+      "png_pixels": [
+        1051,
+        2943
+      ],
+      "png_size_mm": [
+        88.985,
+        249.174
+      ],
+      "rendered_content_occupancy_max_axis": 0.7013,
+      "touches_image_edge": false,
+      "foreground_luminance_std": 14.144,
+      "alpha_bbox": [
+        220,
+        454,
+        857,
+        2518
+      ],
+      "element_colors": {
+        "Mo": "#6eaaaa",
+        "S": "#c3af4b"
+      }
+    },
+    "triclinic_ab": {
+      "label": "Triclinic P1 AB",
+      "formula": "CO",
+      "lattice_lengths_angstrom": [
+        4.1,
+        5.0,
+        6.2
+      ],
+      "lattice_angles_degrees": [
+        76.0,
+        83.0,
+        71.0
+      ],
+      "num_sites": 4,
+      "reference_center": null,
+      "reference_neighbor": null,
+      "cutoff_angstrom": 2.5,
+      "bond_count": 1,
+      "periodic_bond_count": 0,
+      "reference_coordination": null,
+      "png_pixels": [
+        1051,
+        891
+      ],
+      "png_size_mm": [
+        88.985,
+        75.438
+      ],
+      "rendered_content_occupancy_max_axis": 0.7037,
+      "touches_image_edge": false,
+      "foreground_luminance_std": 26.735,
+      "alpha_bbox": [
+        170,
+        136,
+        908,
+        763
+      ],
+      "element_colors": {
+        "C": "#5a5a5a",
+        "O": "#c34b46"
+      }
+    }
+  }
+}

@@ -211,3 +211,38 @@ python -m build --wheel
 4. **Automatic label placement / collision avoidance** is not implemented.
 5. Atom glossy shading in Matplotlib is built from stacked vector circles rather than
    true radial gradients; the SVG backend is now available for smoother gradients.
+
+## PR0 visual baseline and next-step design (2026-10-18)
+
+`examples/generate_gallery.py` now creates a fixed-camera, 89 mm PNG/SVG baseline for
+NaCl, diamond Si, BaTiO3, rutile TiO2, wurtzite ZnO, 2H-MoS2, and a low-symmetry
+triclinic P1 AB fixture. `gallery/baseline/metrics.json` records formula, lattice,
+site count, reference coordination, element colors, pixel/physical size, foreground
+occupancy, edge contact, and luminance contrast; `contact_sheet.png` makes the seven
+examples comparable at a glance. The compact contact sheet and metrics are tracked;
+individual high-resolution PNG/SVG renders stay as reproducible ignored artifacts.
+
+Reference cutoffs are explicit and are fixtures for regression, not universal bond
+definitions: Na-Cl 3.0 Å (6), Si-Si 2.6 Å (4), Ti-O in cubic BaTiO3 2.5 Å (6),
+Ti-O in rutile 2.1 Å (6), Zn-O 2.2 Å (4), and Mo-S 2.8 Å (6). The triclinic fixture
+tests non-orthogonal projection and cell geometry; it makes no coordination claim.
+
+### Observed renderer limits and next PR
+
+- The current Matplotlib and SVG paths are 2D painter renderers. Stable camera and
+  scene fixtures can catch regressions, but mean-depth ordering cannot correctly
+  resolve every crossing bond, sphere, and translucent face at pixel level.
+- Existing Matplotlib sphere shading is layered circles; SVG uses vector shading.
+  Neither is a physical lighting model. These paths can improve restrained color,
+  edge visibility, and reproducible framing without promising true 3D occlusion.
+- The gallery already compares six common structures but did not preserve a dedicated
+  seven-case baseline or coordination/PBC checks. Current work adds that evidence
+  and reports skipped coordination polyhedra instead of silently hiding failures.
+- Self-image neighbor bonds such as simple-cubic Cu are stored as both directed
+  periodic neighbors by the strategy, so adjacency construction now inserts each
+  self-image once; the six simple-cubic image sites form six polyhedron vertices.
+- Next PR should remain confined to 2D quality: independently model polyhedron faces
+  and visible edges, add explicit edge/back-face modes, implement stable SVG radial
+  gradients, and align 89 mm layout across SVG and Matplotlib. A depth-buffer renderer
+  is required for complex true-3D occlusion and should be evaluated in its own later
+  PR with an optional dependency.

@@ -3,7 +3,14 @@
 import numpy as np
 import pytest
 
-from crystalfig.examples.presets import perovskite_structure, rocksalt_structure
+from crystalfig.examples.presets import (
+    diamond_structure,
+    mos2_structure,
+    perovskite_structure,
+    rocksalt_structure,
+    rutile_structure,
+    wurtzite_structure,
+)
 from crystalfig.model.lattice import Lattice
 from crystalfig.model.site import Site
 from crystalfig.model.structure import CrystalStructure
@@ -99,3 +106,41 @@ class TestPBCBondGeometry:
         # Distant images of the same O site are dropped.
         assert len(ti_o_bonds) == 6
         assert all(b.distance < 2.1 for b in ti_o_bonds)
+
+    @pytest.mark.parametrize(
+        ("structure", "element", "neighbor", "cutoff", "coordination"),
+        [
+            (rocksalt_structure(), "Na", "Cl", 3.0, 6),
+            (diamond_structure(), "Si", "Si", 2.6, 4),
+            (perovskite_structure(), "Ti", "O", 2.5, 6),
+            (rutile_structure(), "Ti", "O", 2.1, 6),
+            (wurtzite_structure(), "Zn", "O", 2.2, 4),
+            (mos2_structure(), "Mo", "S", 2.8, 6),
+        ],
+    )
+    def test_reference_coordination_and_periodic_bond_identity(
+        self, structure, element, neighbor, cutoff, coordination
+    ):
+        """Reference local environments retain their expected periodic neighbors."""
+        bonds = CutoffStrategy(cutoff=cutoff).get_bonds(structure)
+        center = structure.indices_of_species(element)[0]
+        local = []
+        for bond in bonds:
+            if bond.i == center:
+                local.append((bond.j, bond.jimage))
+                other = bond.j
+                image = np.asarray(bond.jimage, dtype=float)
+            elif bond.j == center:
+                local.append((bond.i, tuple(-x for x in bond.jimage)))
+                other = bond.i
+                image = -np.asarray(bond.jimage, dtype=float)
+            else:
+                continue
+            assert structure.sites[other].dominant_element == neighbor
+            vector = structure.lattice.frac_to_cart(
+                structure.sites[other].frac_coords + image - structure.sites[center].frac_coords
+            )
+            assert np.linalg.norm(vector) == pytest.approx(bond.distance, abs=1e-6)
+
+        assert len(local) == coordination
+        assert len(local) == len(set(local))

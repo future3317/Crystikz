@@ -142,3 +142,15 @@ def mos2_structure(a: float = 3.19, c: float = 12.3) -> CrystalStructure:
         Site(frac_coords=[1 / 3, 2 / 3, 1 / 2 - z], species="S"),
     ]
     return CrystalStructure(lattice=lattice, sites=sites)
+
+
+def triclinic_structure() -> CrystalStructure:
+    """Low-symmetry P1 AB structure for geometry and rendering regression tests."""
+    lattice = Lattice.from_parameters(4.1, 5.0, 6.2, 76.0, 83.0, 71.0)
+    sites = [
+        Site([0.08, 0.12, 0.18], "C"),
+        Site([0.42, 0.17, 0.31], "O"),
+        Site([0.71, 0.63, 0.22], "C"),
+        Site([0.23, 0.74, 0.69], "O"),
+    ]
+    return CrystalStructure(lattice=lattice, sites=sites)

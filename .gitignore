@@ -70,3 +70,6 @@ gallery/*.log
 gallery/*.out
 gallery/*.fdb_latexmk
 gallery/*.fls
+gallery/baseline/*.png
+gallery/baseline/*.svg
+!gallery/baseline/contact_sheet.png
