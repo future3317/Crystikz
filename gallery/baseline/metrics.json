@@ -35,20 +35,20 @@
       "reference_coordination": 6,
       "png_pixels": [
         1051,
-        521
+        915
       ],
       "png_size_mm": [
         88.985,
-        44.111
+        77.47
       ],
-      "rendered_content_occupancy_max_axis": 0.7063,
+      "rendered_content_occupancy_max_axis": 0.7038,
       "touches_image_edge": false,
-      "foreground_luminance_std": 17.674,
+      "foreground_luminance_std": 17.349,
       "alpha_bbox": [
         169,
-        79,
+        140,
         908,
-        447
+        784
       ],
       "element_colors": {
         "Na": "#a064c3",
@@ -77,20 +77,20 @@
       "reference_coordination": 4,
       "png_pixels": [
         1051,
-        584
+        1051
       ],
       "png_size_mm": [
         88.985,
-        49.445
+        88.985
       ],
-      "rendered_content_occupancy_max_axis": 0.7055,
+      "rendered_content_occupancy_max_axis": 0.7031,
       "touches_image_edge": false,
-      "foreground_luminance_std": 11.527,
+      "foreground_luminance_std": 11.166,
       "alpha_bbox": [
-        169,
-        89,
+        170,
+        161,
         908,
-        501
+        900
       ],
       "element_colors": {
         "Si": "#c3a582"
@@ -118,20 +118,20 @@
       "reference_coordination": 6,
       "png_pixels": [
         1051,
-        1193
+        806
       ],
       "png_size_mm": [
         88.985,
-        101.007
+        68.241
       ],
-      "rendered_content_occupancy_max_axis": 0.7031,
+      "rendered_content_occupancy_max_axis": 0.7035,
       "touches_image_edge": false,
-      "foreground_luminance_std": 25.336,
+      "foreground_luminance_std": 25.161,
       "alpha_bbox": [
-        169,
-        183,
+        170,
+        123,
         908,
-        1021
+        690
       ],
       "element_colors": {
         "Ba": "#69a569",
@@ -161,20 +161,20 @@
       "reference_coordination": 6,
       "png_pixels": [
         1051,
-        866
+        908
       ],
       "png_size_mm": [
         88.985,
-        73.321
+        76.877
       ],
-      "rendered_content_occupancy_max_axis": 0.7031,
+      "rendered_content_occupancy_max_axis": 0.7037,
       "touches_image_edge": false,
-      "foreground_luminance_std": 27.614,
+      "foreground_luminance_std": 27.867,
       "alpha_bbox": [
-        169,
-        133,
+        170,
+        139,
         908,
-        741
+        778
       ],
       "element_colors": {
         "Ti": "#9ba0a5",
@@ -203,20 +203,20 @@
       "reference_coordination": 4,
       "png_pixels": [
         1051,
-        1409
+        971
       ],
       "png_size_mm": [
         88.985,
-        119.295
+        82.211
       ],
-      "rendered_content_occupancy_max_axis": 0.7031,
+      "rendered_content_occupancy_max_axis": 0.7044,
       "touches_image_edge": false,
-      "foreground_luminance_std": 21.883,
+      "foreground_luminance_std": 22.211,
       "alpha_bbox": [
-        169,
-        217,
+        170,
+        148,
         908,
-        1206
+        832
       ],
       "element_colors": {
         "Zn": "#8287af",
@@ -245,20 +245,20 @@
       "reference_coordination": 6,
       "png_pixels": [
         1051,
-        2281
+        361
       ],
       "png_size_mm": [
         88.985,
-        193.125
+        30.565
       ],
-      "rendered_content_occupancy_max_axis": 0.7031,
+      "rendered_content_occupancy_max_axis": 0.7091,
       "touches_image_edge": false,
-      "foreground_luminance_std": 11.22,
+      "foreground_luminance_std": 12.492,
       "alpha_bbox": [
         169,
-        351,
+        54,
         908,
-        1951
+        310
       ],
       "element_colors": {
         "Mo": "#6eaaaa",
@@ -287,20 +287,20 @@
       "reference_coordination": null,
       "png_pixels": [
         1051,
-        891
+        950
       ],
       "png_size_mm": [
         88.985,
-        75.438
+        80.433
       ],
-      "rendered_content_occupancy_max_axis": 0.7037,
+      "rendered_content_occupancy_max_axis": 0.7032,
       "touches_image_edge": false,
-      "foreground_luminance_std": 28.643,
+      "foreground_luminance_std": 29.168,
       "alpha_bbox": [
         170,
-        136,
+        146,
         908,
-        763
+        814
       ],
       "element_colors": {
         "C": "#5a5a5a",

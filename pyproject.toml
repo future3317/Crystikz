@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "crystalfig"
-version = "0.1.0"
+version = "0.2.0"
 description = "Publication-oriented crystal structure visualization with vector and optional 3D renderers."
 readme = "README.md"
 license = "MIT"

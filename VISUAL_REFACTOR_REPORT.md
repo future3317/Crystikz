@@ -212,37 +212,31 @@ python -m build --wheel
 5. Atom glossy shading in Matplotlib is built from stacked vector circles rather than
    true radial gradients; the SVG backend is now available for smoother gradients.
 
-## PR0 visual baseline and next-step design (2026-10-18)
+## v0.2 release-audit gallery and renderer status (2026-10-18)
 
-`examples/generate_gallery.py` now creates a fixed-camera, 89 mm PNG/SVG baseline for
-NaCl, diamond Si, BaTiO3, rutile TiO2, wurtzite ZnO, 2H-MoS2, and a low-symmetry
-triclinic P1 AB fixture. `gallery/baseline/metrics.json` records formula, lattice,
-site count, reference coordination, element colors, pixel/physical size, foreground
-occupancy, edge contact, and luminance contrast; `contact_sheet.png` makes the seven
-examples comparable at a glance. The compact contact sheet and metrics are tracked;
-individual high-resolution PNG/SVG renders stay as reproducible ignored artifacts.
+`examples/generate_gallery.py` now maintains two clearly scoped galleries. The seven-case
+`gallery/baseline/` set is a fixed-camera diagnostic for geometry, coordination, occupancy,
+and edge contact. The 11-case `gallery/showcase/` set exports the same structure fixtures as
+PyVista PNG, pure SVG, and Matplotlib PDF at a common 89 mm width. It includes conventional,
+layered, triclinic, monoclinic, and multi-element structures without material-name camera
+rules. `metrics.json` records formulas, lattice dimensions, selected views, neighbor diagnostics,
+and format preflight results.
 
-Reference cutoffs are explicit and are fixtures for regression, not universal bond
-definitions: Na-Cl 3.0 Å (6), Si-Si 2.6 Å (4), Ti-O in cubic BaTiO3 2.5 Å (6),
-Ti-O in rutile 2.1 Å (6), Zn-O 2.2 Å (4), and Mo-S 2.8 Å (6). The triclinic fixture
-tests non-orthogonal projection and cell geometry; it makes no coordination claim.
+Reference cutoffs remain explicit regression fixtures, not universal bond definitions: Na–Cl
+3.0 Å (6), Si–Si 2.6 Å (4), Ti–O in cubic BaTiO3 2.5 Å (6), Ti–O in rutile 2.1 Å (6), Zn–O
+2.2 Å (4), and Mo–S 2.8 Å (6). The triclinic fixture tests non-orthogonal projection and cell
+geometry; it makes no coordination claim. The monoclinic CuO input is loaded from its CIF and
+uses the same publication flow as the other structures.
 
-### Observed renderer limits and next PR
+The release audit adds shared scene fitting and final-scene camera centering, deterministic
+scene-derived view candidates, reciprocal-plane `layer_top`, scale-aware PyVista clipping,
+backend-consistent framing, explicit quality levels, and PyVista text/legend rendering. The
+renderer batches same-style bond tubes into meshes. The Linux visual-gallery workflow now
+creates an off-screen display before its real translucent-polyhedron PNG smoke test and always
+uploads gallery artifacts and the smoke log.
 
-- The current Matplotlib and SVG paths are 2D painter renderers. Stable camera and
-  scene fixtures can catch regressions, but mean-depth ordering cannot correctly
-  resolve every crossing bond, sphere, and translucent face at pixel level.
-- Existing Matplotlib sphere shading is layered circles; SVG uses vector shading.
-  Neither is a physical lighting model. These paths can improve restrained color,
-  edge visibility, and reproducible framing without promising true 3D occlusion.
-- The gallery already compares six common structures but did not preserve a dedicated
-  seven-case baseline or coordination/PBC checks. Current work adds that evidence
-  and reports skipped coordination polyhedra instead of silently hiding failures.
-- Self-image neighbor bonds such as simple-cubic Cu are stored as both directed
-  periodic neighbors by the strategy, so adjacency construction now inserts each
-  self-image once; the six simple-cubic image sites form six polyhedron vertices.
-- Next PR should remain confined to 2D quality: independently model polyhedron faces
-  and visible edges, add explicit edge/back-face modes, implement stable SVG radial
-  gradients, and align 89 mm layout across SVG and Matplotlib. A depth-buffer renderer
-  is required for complex true-3D occlusion and should be evaluated in its own later
-  PR with an optional dependency.
+Remaining renderer limitations are bounded: Matplotlib and SVG are painter renderers and cannot
+fully resolve every interpenetrating transparent mesh; PyVista output is raster; automatic label
+collision avoidance and volumetric data rendering are not implemented. The 10,648-site local
+PyVista scale case peaked at about 1.2 GB RSS, so large supercells should be benchmarked on the
+target runner before publication-scale export.

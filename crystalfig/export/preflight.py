@@ -21,6 +21,7 @@ class PreflightReport:
     raster_objects: bool | None
     warnings: list[str]
     raw: dict[str, str]
+    font_detection: str = "unknown"
 
 
 def preflight_pdf(path: str) -> PreflightReport:
@@ -44,11 +45,14 @@ def preflight_pdf(path: str) -> PreflightReport:
         try:
             result = subprocess.run(["pdfinfo", str(path_obj)], capture_output=True, text=True, shell=False)
             report.raw["pdfinfo"] = result.stdout
-            for line in result.stdout.splitlines():
-                if line.lower().startswith("page size:"):
-                    match = re.search(r"([\d.]+)\s+x\s+([\d.]+)", line.split(":", 1)[1])
-                    if match:
-                        report.page_size = (float(match.group(1)), float(match.group(2)))
+            if result.returncode != 0:
+                report.warnings.append(f"pdfinfo exited with status {result.returncode}.")
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    if line.lower().startswith("page size:"):
+                        match = re.search(r"([\d.]+)\s+x\s+([\d.]+)", line.split(":", 1)[1])
+                        if match:
+                            report.page_size = (float(match.group(1)), float(match.group(2)))
         except Exception as exc:
             report.warnings.append(f"pdfinfo failed: {exc}")
 
@@ -56,19 +60,31 @@ def preflight_pdf(path: str) -> PreflightReport:
         try:
             result = subprocess.run(["pdffonts", str(path_obj)], capture_output=True, text=True, shell=False)
             report.raw["pdffonts"] = result.stdout
+            if result.returncode != 0:
+                report.warnings.append(f"pdffonts exited with status {result.returncode}.")
             lines = result.stdout.strip().splitlines()
-            if len(lines) > 2:
-                header = lines[1]
-                name_col = header.find("fontname")
-                type_col = header.find("type")
+            header = lines[0].lower() if lines else ""
+            name_col = header.find("name")
+            type_col = header.find("type")
+            if result.returncode == 0 and name_col >= 0 and type_col > name_col:
+                report.font_detection = "available"
                 for line in lines[2:]:
-                    font_name = line[name_col:type_col].strip() if name_col >= 0 else line.split()[0]
-                    font_type = line[type_col:].split()[0] if type_col >= 0 else ""
+                    if not line.strip() or set(line.strip()) == {"-"}:
+                        continue
+                    font_name = line[name_col:type_col].strip()
+                    font_type = line[type_col:].split()
                     report.fonts.append(font_name)
-                    if "Type 3" in font_type or "Type3" in font_type:
+                    if font_type[:2] == ["Type", "3"] or font_type[:1] == ["Type3"]:
                         report.has_type3_fonts = True
+            else:
+                report.font_detection = "failed"
+                if result.returncode == 0:
+                    report.warnings.append("pdffonts output did not contain a readable name/type header.")
         except Exception as exc:
+            report.font_detection = "failed"
             report.warnings.append(f"pdffonts failed: {exc}")
+    else:
+        report.warnings.append("pdffonts is unavailable; Type 3 font status is unknown.")
 
     # Detect embedded raster images using pdfimages if available.
     if shutil.which("pdfimages"):
@@ -81,11 +97,16 @@ def preflight_pdf(path: str) -> PreflightReport:
                 shell=False,
             )
             report.raw["pdfimages"] = result.stdout
+            if result.returncode != 0:
+                report.raster_objects = None
+                report.warnings.append(f"pdfimages exited with status {result.returncode}.")
             lines = result.stdout.strip().splitlines()
-            if len(lines) > 2:
+            if result.returncode == 0 and len(lines) > 2:
                 report.raster_objects = True
         except Exception as exc:
             report.warnings.append(f"pdfimages failed: {exc}")
+    else:
+        report.raster_objects = None
 
     return report
 
@@ -136,6 +157,7 @@ def preflight_export(
             "page_size_points": pdf.page_size,
             "fonts": pdf.fonts,
             "has_type3_fonts": pdf.has_type3_fonts,
+            "font_detection": pdf.font_detection,
             "contains_raster_objects": pdf.raster_objects,
         })
         if pdf.page_size:

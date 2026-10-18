@@ -14,11 +14,13 @@ from crystalfig.scene.primitives import (
     Axis,
     Bond,
     CellEdge,
+    LegendItem,
     Line,
     Polygon,
     Polyhedron,
     Polyline,
     Sphere,
+    Text,
 )
 from crystalfig.scene.scene import Scene
 from crystalfig.styles.theme import FigureTheme
@@ -69,6 +71,24 @@ def test_transparent_background_uses_white_rgb_background():
     assert not transparent
 
 
+def test_auto_height_follows_the_shared_scene_frame():
+    scene = Scene([
+        Sphere(position=[0, 0, 0], radius=0.2),
+        Sphere(position=[4, 0, 0], radius=0.2),
+    ])
+    camera = Camera()
+    camera.fit_to_scene(scene)
+    width, height = PyVistaRenderer._window_size(
+        RenderOptions(width=89, dpi=100), scene, camera
+    )
+    assert width / height == pytest.approx(camera.scene_frame(scene).aspect, rel=0.01)
+
+
+def test_pixel_limit_rejects_oversized_renders():
+    with pytest.raises(RenderError, match="pixel limit"):
+        PyVistaRenderer._window_size(RenderOptions(width=1000, dpi=2000, max_pixels=1000))
+
+
 @pytest.mark.optional
 @pytest.mark.skipif(importlib.util.find_spec("pyvista") is None, reason="PyVista is optional")
 def test_exports_scene_as_png_with_requested_pixel_size(tmp_path):
@@ -93,11 +113,14 @@ def test_exports_scene_as_png_with_requested_pixel_size(tmp_path):
             edge_color="#665533",
         ),
         Arrow(start=[0, 0, 0], direction=[0, 0, 0.8], shaft_radius=0.02, head_radius=0.06, head_length=0.2),
-        Axis(start=[0, 0, 0], direction=[0.8, 0, 0], shaft_radius=0.02, head_radius=0.06, head_length=0.2),
+        Axis(start=[0, 0, 0], direction=[0.8, 0, 0], shaft_radius=0.02, head_radius=0.06, head_length=0.2, name="a"),
+        Text(position=[0.7, 0.8, 0.5], text="site", fontsize=8, color="#222222"),
+        Text(position=[0.05, 0.95, 0], text="panel", fontsize=8, layer="annotation", coordinate_space="screen"),
+        LegendItem(text="A", color="#cc5544"),
     ])
     output = tmp_path / "structure.png"
 
-    PyVistaRenderer(camera=Camera()).export(
+    PyVistaRenderer().export(
         scene,
         str(output),
         FigureTheme(),

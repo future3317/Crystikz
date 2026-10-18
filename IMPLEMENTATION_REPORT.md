@@ -97,7 +97,9 @@ The high-level `CrystalFigure` fluent API lives in `crystalfig.figure.builder`. 
 python -m pytest tests -q
 ```
 
-Visual-upgrade result: **122 passed, 10 warnings** (pymatgen/spglib deprecation and oxidation-state notices).
+Current v0.2 release-audit result on the project `.smoke_venv` (Python 3.11.15):
+**139 passed, 13 warnings**. Warnings are from spglib deprecation handling and CrystalNN's
+documented fallback radii when input oxidation states are absent.
 
 Coverage includes:
 
@@ -116,42 +118,34 @@ Coverage includes:
 - Scene visible/layer contract
 - CLI render/inspect/doctor
 
-## 5. Build & Smoke Test
+## 5. Build & Wheel Smoke Test
 
 ```bash
 python -m build --wheel
 ```
 
-Built `dist/crystalfig-0.1.0-py3-none-any.whl` successfully.
+`python scripts/check_release.py` built `dist/crystalfig-0.2.0-py3-none-any.whl` successfully.
+Its isolated wheel-install stage could not download the wheel's runtime dependencies because the
+local package-index proxy refused the connection. The GitHub Actions wheel-smoke job performs the
+same clean install in its network-enabled runner; it must pass before this candidate is promoted.
 
-The visual-upgrade build completed with the project build environment using
-`python -m build --no-isolation --wheel`; the repository's local `build/` output directory
-shadows the `build` module when invoked from the repository root.
-
-Installed into a clean venv and verified:
-
-```bash
-.smoke_venv/Scripts/python -c "import crystalfig; print(crystalfig.__version__)"
-.smoke_venv/Scripts/crystalfig doctor
-```
-
-Both succeeded.
+The wheel build uses the existing project environment and `--no-isolation`; this avoids the
+repository's local `build/` output directory shadowing the `build` module.
 
 ## 6. Generated Examples
 
-Gallery generated in `gallery/`:
+The current reproducible gallery is split by purpose:
 
-- `01_rocksalt_ballstick.{pdf,svg,png}`
-- `02_diamond_tetrahedral.pdf`
-- `03_perovskite_octahedron.{pdf,png}`
-- `03_perovskite_octahedron_tikz.pdf`
-- `04_rutile_distorted.pdf`
-- `05_wurtzite_hexagonal.pdf`
-- `06_mos2_layered.pdf`
-- `07_equivariant_gnn.{tex,pdf}`
-- `gallery/pyvista/{nacl,si,batio3,rutile_tio2,zno,mos2}.png` at 89 mm / 600 dpi (generated locally)
-- `gallery/pyvista/contact_sheet.png` (generated locally)
-- `contact_sheet.png`
+- `gallery/baseline/contact_sheet.png` and `metrics.json` are fixed-camera diagnostics for seven
+  structures and reference coordination checks.
+- `gallery/showcase/contact_sheet.png` and `metrics.json` are the 11-structure publication
+  showcase. Each structure has PNG, SVG, and PDF outputs at 89 mm; PNG uses PyVista at 300 dpi.
+- `gallery/showcase/scale_*.json` records the PyVista atom-count benchmark, elapsed time, peak
+  resident memory, and PNG size.
+
+The benchmark uses synthetic simple-cubic Cu and a 3.7 Å display cutoff, not a chemical model.
+On the local Windows runner, 125, 1,000, and 10,648 rendered sites took 0.64, 0.96, and 4.62 s,
+with peak RSS of 283, 373, and 1,192 MB. The Linux CI reruns these benchmarks on its own runner.
 
 ## 7. Linting
 
@@ -159,7 +153,7 @@ Gallery generated in `gallery/`:
 python -m ruff check crystalfig tests examples
 ```
 
-Result: **All checks passed!**
+Result: **All checks passed.**
 
 ## 8. Known Limitations
 

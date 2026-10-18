@@ -40,6 +40,7 @@ class FigureTheme:
     polyhedron_back_edges: str = "faint"  # hide, faint, dashed
     cell_style: str = "light"  # none, light, full
     camera_preset: str = "auto"
+    render_quality: str = "standard"  # preview, standard, publication
     vector_scale: float = 1.0
     vector_head_size: float = 0.15
     show_legend: bool = False
@@ -153,6 +154,7 @@ class FigureTheme:
             "polyhedron_back_edges": self.polyhedron_back_edges,
             "cell_style": self.cell_style,
             "camera_preset": self.camera_preset,
+            "render_quality": self.render_quality,
             "vector_scale": self.vector_scale,
             "vector_head_size": self.vector_head_size,
             "show_legend": self.show_legend,

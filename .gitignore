@@ -74,3 +74,9 @@ gallery/baseline/*.png
 gallery/baseline/*.svg
 !gallery/baseline/contact_sheet.png
 gallery/pyvista/*.png
+gallery/showcase/*.png
+gallery/showcase/*.svg
+gallery/showcase/*.pdf
+gallery/showcase/metrics.json
+gallery/showcase/scale_*.json
+!gallery/showcase/contact_sheet.png

@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import shutil
+import subprocess
 import sys
+import tempfile
+from pathlib import Path
 
 import yaml
 
@@ -18,32 +22,82 @@ def _add_render_args(parser: argparse.ArgumentParser):
     parser.add_argument("input", help="Input structure file (CIF, POSCAR, XYZ, ...)")
     parser.add_argument("-o", "--output", required=True, help="Output file path")
     parser.add_argument("--fmt", default=None, help="Output format (pdf, svg, png, tex, ...)")
-    parser.add_argument("--view", nargs=3, type=float, default=None, help="View direction e.g. 1 1 0")
     parser.add_argument("--supercell", nargs=3, type=int, default=None, help="Supercell e.g. 2 2 1")
     parser.add_argument("--bonds", default=None, help="Bond strategy: crystalnn, cutoff, covalent, ase")
     parser.add_argument("--polyhedra", default=None, help="Polyhedra center species, e.g. Ti")
-    parser.add_argument("--style", default="publication_muted", help="Style preset")
+    parser.add_argument("--style", default="ballstick_clean", help="Style preset")
+    parser.add_argument("--backend", default=None, help="Renderer backend (matplotlib, svg, tikz, pyvista)")
+    parser.add_argument("--dpi", type=int, default=None, help="Raster resolution")
+    parser.add_argument("--height", type=float, default=None, help="Figure height in mm; default follows projected structure")
+    parser.add_argument("--quality", choices=("preview", "standard", "publication"), default="standard")
+    views = parser.add_mutually_exclusive_group()
+    views.add_argument("--view", nargs=3, type=float, default=None, help="View direction e.g. 1 1 0")
+    views.add_argument("--view-preset", choices=("auto", "isometric", "along_a", "along_b", "along_c", "layer_top", "layer_oblique", "polyhedron_focus"))
+    axes = parser.add_mutually_exclusive_group()
+    axes.add_argument("--show-axes", dest="show_axes", action="store_true")
+    axes.add_argument("--no-axes", dest="show_axes", action="store_false")
+    parser.set_defaults(show_axes=False)
+    cell = parser.add_mutually_exclusive_group()
+    cell.add_argument("--show-cell", dest="show_cell", action="store_true")
+    cell.add_argument("--no-cell", dest="show_cell", action="store_false")
+    parser.set_defaults(show_cell=True)
     parser.add_argument("--transparent", action="store_true", help="Transparent background")
     parser.add_argument("--width", type=float, default=None, help="Figure width in mm")
     parser.add_argument("--latex", action="store_true", help="Compile TikZ via LaTeX to PDF")
 
 
 def cmd_render(args):
-    fig = plot_structure(args.input).style(args.style).show_unit_cell().show_axes()
-    if args.supercell:
-        fig.supercell(tuple(args.supercell))
-    if args.view:
-        fig.view(list(args.view))
-    if args.bonds:
-        fig.add_bonds(strategy=args.bonds)
-    if args.polyhedra:
-        fig.add_polyhedra(centers=args.polyhedra, strategy=args.bonds or "covalent")
+    config = vars(args)
+    fig = _configure_figure(config, Path.cwd())
+    Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     if args.latex:
         result = fig.export_tikz_pdf(args.output)
     else:
-        result = fig.export(args.output, fmt=args.fmt, width=args.width, transparent=args.transparent)
+        result = fig.export(
+            args.output, fmt=args.fmt, width=args.width, height=args.height,
+            dpi=args.dpi, transparent=args.transparent, backend=args.backend,
+        )
     print(f"Exported: {result.path} ({result.format}, {result.vector_status})")
+    for diagnostic in fig.diagnostics:
+        print(f"Diagnostic: {diagnostic}")
     return 0
+
+
+def _configure_figure(config: dict, base_dir: Path):
+    input_path = Path(config["input"])
+    if not input_path.is_absolute():
+        input_path = base_dir / input_path
+    style = config.get("style") or "ballstick_clean"
+    figure = plot_structure(input_path).style(style)
+    figure.quality(config.get("quality") or "standard")
+    figure.show_unit_cell(config.get("show_cell", True))
+    figure.show_axes(config.get("show_axes", False))
+    if config.get("supercell"):
+        figure.supercell(tuple(config["supercell"]))
+    if config.get("view_preset"):
+        figure.view_preset(config["view_preset"])
+    elif config.get("view"):
+        figure.view(config["view"])
+    if config.get("bonds"):
+        bonds = config["bonds"]
+        if isinstance(bonds, dict):
+            figure.add_bonds(
+                strategy=bonds.get("strategy", "crystalnn"),
+                cutoff=bonds.get("cutoff", 2.5),
+                pair_cutoffs=bonds.get("pair_cutoffs"),
+            )
+        else:
+            figure.add_bonds(strategy=bonds)
+    if config.get("polyhedra"):
+        polyhedra = config["polyhedra"]
+        if isinstance(polyhedra, dict):
+            centers = polyhedra["centers"]
+            strategy = polyhedra.get("strategy", "crystalnn")
+        else:
+            centers = polyhedra
+            strategy = config.get("bonds") or "crystalnn"
+        figure.add_polyhedra(centers=centers, strategy=strategy)
+    return figure
 
 
 def cmd_inspect(args):
@@ -82,7 +136,7 @@ def cmd_doctor(_args):
             print(f"  {dep}: {getattr(mod, '__version__', 'installed')}")
         except ImportError:
             print(f"  {dep}: NOT INSTALLED")
-    optional = [("ase", "ase"), ("seekpath", "reciprocal")]
+    optional = [("ase", "ase"), ("seekpath", "reciprocal"), ("pyvista", "render3d")]
     for dep, extra in optional:
         try:
             __import__(dep)
@@ -91,6 +145,24 @@ def cmd_doctor(_args):
             print(f"  {dep} (optional): NOT INSTALLED (pip install crystalfig[{extra}])")
     for exe in ["pdflatex", "xelatex", "lualatex", "latexmk", "dvisvgm", "pdftocairo"]:
         print(f"  {exe}: {'found' if shutil.which(exe) else 'not found'}")
+    if importlib.util.find_spec("pyvista") is not None:
+        probe = (
+            "import pyvista as pv; p=pv.Plotter(off_screen=True, window_size=(64,64)); "
+            "p.add_mesh(pv.Sphere()); p.render(); "
+            "print(p.ren_win.ReportCapabilities()); p.close()"
+        )
+        with tempfile.TemporaryDirectory(prefix="crystalfig-doctor-"):
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-c", probe], capture_output=True, text=True, timeout=20
+                )
+                print(f"  PyVista off-screen probe: {'available' if result.returncode == 0 else f'failed ({result.returncode})'}")
+                if result.returncode == 0:
+                    print("  OpenGL: " + next((line.strip() for line in result.stdout.splitlines() if "OpenGL" in line), "capabilities reported by VTK"))
+                elif result.stderr:
+                    print("  PyVista probe detail: " + result.stderr.strip().splitlines()[-1])
+            except subprocess.TimeoutExpired:
+                print("  PyVista off-screen probe: timed out after 20 seconds")
     return 0
 
 
@@ -109,29 +181,26 @@ def cmd_preflight(args):
 
 
 def cmd_batch(args):
-    with open(args.input, encoding="utf-8") as f:
+    config_path = Path(args.input).resolve()
+    with config_path.open(encoding="utf-8") as f:
         config = yaml.safe_load(f)
-    # Simple batch runner
     figures = config.get("figures", [config])
     for fig_cfg in figures:
-        input_file = fig_cfg["input"]
-        output = fig_cfg["output"]
-        style = fig_cfg.get("style", "publication_muted")
-        view = fig_cfg.get("view")
-        supercell = fig_cfg.get("supercell")
-        bonds = fig_cfg.get("bonds")
-        polyhedra = fig_cfg.get("polyhedra")
-        fig = plot_structure(input_file).style(style).show_unit_cell().show_axes()
-        if view:
-            fig.view(view)
-        if supercell:
-            fig.supercell(tuple(supercell))
-        if bonds:
-            fig.add_bonds(strategy=bonds)
-        if polyhedra:
-            fig.add_polyhedra(centers=polyhedra)
-        fig.export(output)
-        print(f"Batch exported: {output}")
+        if "output" not in fig_cfg:
+            raise ValueError("Each batch figure requires an output path.")
+        figure = _configure_figure(fig_cfg, config_path.parent)
+        output = Path(fig_cfg["output"])
+        if not output.is_absolute():
+            output = config_path.parent / output
+        output.parent.mkdir(parents=True, exist_ok=True)
+        result = figure.export(
+            output, fmt=fig_cfg.get("fmt"), width=fig_cfg.get("width"),
+            height=fig_cfg.get("height"), dpi=fig_cfg.get("dpi"),
+            transparent=fig_cfg.get("transparent"), backend=fig_cfg.get("backend"),
+        )
+        print(f"Batch exported: {result.path} ({result.format}, {result.vector_status})")
+        for diagnostic in figure.diagnostics:
+            print(f"Diagnostic: {diagnostic}")
     return 0
 
 

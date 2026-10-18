@@ -20,6 +20,7 @@ class RenderOptions:
     background: str | None = None
     title: str | None = None
     show_legend: bool = True
+    max_pixels: int = 36_000_000
 
 
 class Renderer(Protocol):

@@ -9,6 +9,7 @@ import pytest
 from crystalfig.examples.presets import perovskite_structure, rocksalt_structure
 from crystalfig.figure.builder import CrystalFigure
 from crystalfig.geometry.planes import MillerPlane
+from crystalfig.scene.camera import Camera
 
 
 class TestCrystalFigure:
@@ -45,6 +46,12 @@ class TestCrystalFigure:
         view_dir = -rot[2]  # camera looks along negative z
         assert np.dot(view_dir, a_axis) > 0.99
 
+    def test_camera_screen_roll_rotates_the_camera_plane(self):
+        base = Camera.along_direction([1, 0, 0])
+        rolled = Camera.along_direction([1, 0, 0], roll=90)
+        assert np.allclose(rolled.rotation_matrix()[0], -base.rotation_matrix()[1])
+        assert np.allclose(rolled.rotation_matrix()[1], base.rotation_matrix()[0])
+
     def test_view_direction_111(self):
         fig = CrystalFigure(rocksalt_structure()).view([1, 1, 1])
         rot = fig.camera.rotation_matrix()
@@ -56,6 +63,43 @@ class TestCrystalFigure:
     def test_view_rejects_unknown_axis(self):
         with pytest.raises(ValueError):
             CrystalFigure(rocksalt_structure()).view("z")
+
+    def test_layer_top_uses_reciprocal_plane_normal_for_nonorthogonal_cell(self):
+        fig = CrystalFigure(rocksalt_structure()).view_normal_to_plane((0, 0, 1))
+        expected = fig.structure.lattice.reciprocal_vector((0, 0, 1))
+        expected /= np.linalg.norm(expected)
+        assert np.dot(-fig.camera.rotation_matrix()[2], expected) > 0.999
+
+    def test_auto_view_is_scene_based_deterministic_and_explainable(self):
+        fig = CrystalFigure(perovskite_structure()).supercell((2, 2, 1)).publication()
+        scene = fig.build_scene()
+        reports = fig.report_view_candidates(scene)
+        repeated = fig.report_view_candidates(scene)
+        assert reports == repeated
+        assert reports[0]["score"] >= reports[-1]["score"]
+        assert "atom_overlap_fraction" in reports[0]
+        assert "bond_visibility" in reports[0]
+        assert {report["roll_degrees"] for report in reports} == {0.0, 90.0}
+
+    def test_auto_fit_recenters_final_supercell_geometry(self):
+        fig = CrystalFigure(rocksalt_structure()).supercell((3, 1, 1)).view([1, 0, 0])
+        scene = fig.build_scene()
+        frame = fig.camera.scene_frame(scene)
+        assert frame is not None
+        assert (frame.xmin + frame.xmax) / 2 == pytest.approx(0.0, abs=1e-8)
+        assert (frame.ymin + frame.ymax) / 2 == pytest.approx(0.0, abs=1e-8)
+
+    def test_publication_api_uses_an_explicit_neighbor_model(self):
+        fig = CrystalFigure(perovskite_structure()).publication()
+        assert fig.theme.name == "ballstick_clean"
+        assert fig.theme.render_quality == "publication"
+        assert fig._scene_options.bond_strategy.__class__.__name__ == "CrystalNNStrategy"
+        assert "verify coordination" in fig.diagnostics[0]
+
+    def test_quick_reports_its_cutoff_as_a_display_heuristic(self):
+        fig = CrystalFigure(rocksalt_structure()).quick()
+        assert "3.0 Å cutoff" in fig.diagnostics[0]
+        assert "verify coordination" in fig.diagnostics[0]
 
     def test_select_single_index_and_species(self):
         fig = CrystalFigure(rocksalt_structure()).select(indices=0).select(species="Cl")
@@ -142,9 +186,8 @@ class TestCrystalFigure:
         )
         scene = fig.build_scene()
         atoms = [p for p in scene.all_primitives() if p.__class__.__name__ == "Sphere"]
-        # The conventional rocksalt cell has one Na and one Cl site; with boundary
-        # completion Na at a corner appears at all 8 corners and Cl at (0.5,0,0)
-        # appears on 4 edges, so the total number of spheres is greater than 2.
+        # Boundary completion repeats the corner and face-centered sites on the
+        # displayed cell boundary, so it emits more than the 8 canonical spheres.
         assert len(atoms) > 2
         # All emitted spheres must still be valid periodic images.
         for a in atoms:

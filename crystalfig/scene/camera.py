@@ -10,6 +10,28 @@ import numpy as np
 from crystalfig.model.lattice import Lattice
 
 
+@dataclass(frozen=True)
+class SceneFrame:
+    """Camera-plane bounds for visible world-space geometry."""
+
+    xmin: float
+    ymin: float
+    xmax: float
+    ymax: float
+
+    @property
+    def width(self) -> float:
+        return max(self.xmax - self.xmin, 1e-9)
+
+    @property
+    def height(self) -> float:
+        return max(self.ymax - self.ymin, 1e-9)
+
+    @property
+    def aspect(self) -> float:
+        return self.width / self.height
+
+
 @dataclass
 class Camera:
     """Orthographic or perspective camera for 3D scene projection.
@@ -45,8 +67,9 @@ class Camera:
         direction: np.ndarray,
         target: np.ndarray | None = None,
         projection: Literal["orthographic", "perspective"] = "orthographic",
+        roll: float = 0.0,
     ) -> Camera:
-        """Create a camera looking along a direct-space direction [uvw]."""
+        """Create a camera looking along a direction, with an optional screen roll."""
         direction = np.asarray(direction, dtype=float)
         norm = np.linalg.norm(direction)
         if norm < 1e-12:
@@ -62,10 +85,14 @@ class Camera:
         x_axis /= np.linalg.norm(x_axis)
         y_axis = np.cross(z_axis, x_axis)
         y_axis /= np.linalg.norm(y_axis)
-        rotation = np.vstack([x_axis, y_axis, z_axis])
+        roll_radians = np.radians(roll)
+        x_rolled = np.cos(roll_radians) * x_axis - np.sin(roll_radians) * y_axis
+        y_rolled = np.sin(roll_radians) * x_axis + np.cos(roll_radians) * y_axis
+        rotation = np.vstack([x_rolled, y_rolled, z_axis])
 
         return cls(
             target=target if target is None else np.asarray(target, dtype=float),
+            roll=roll,
             projection=projection,
             _rotation=rotation,
         )
@@ -177,19 +204,58 @@ class Camera:
         return self
 
     def fit_to_scene(self, scene) -> Camera:
-        """Adjust scale so every projected primitive fits in a [-1, 1] view.
+        """Center and scale the camera against all visible scene geometry."""
+        frame = self.scene_frame(scene)
+        if frame is None:
+            return self
+        rotation = self.rotation_matrix()
+        offset = (frame.xmin + frame.xmax) / 2 * rotation[0]
+        offset += (frame.ymin + frame.ymax) / 2 * rotation[1]
+        if np.linalg.norm(offset) > 1e-12:
+            self.target = self.target + offset
+        frame = self.scene_frame(scene)
+        if frame is not None:
+            self.scale = 2.0 * (1.0 - self.padding) / max(frame.width, frame.height)
+        return self
 
-        Uses unscaled camera coordinates so degenerate views (e.g. looking along
-        a body diagonal) do not collapse to zero extent.
-        """
+    def scene_frame(self, scene) -> SceneFrame | None:
+        """Return the shared unscaled frame used by automatic layout."""
         bounds = self._scene_camera_bounds(scene)
         if bounds is None:
-            return self
-        (umin, vmin), (umax, vmax) = bounds
-        size = max(umax - umin, vmax - vmin)
-        if size > 0:
-            self.scale = 2.0 * (1.0 - self.padding) / size
-        return self
+            return None
+        (xmin, ymin), (xmax, ymax) = bounds
+        return SceneFrame(float(xmin), float(ymin), float(xmax), float(ymax))
+
+    def scene_bounding_sphere(self, scene) -> tuple[np.ndarray, float] | None:
+        """Return a world-space sphere enclosing visible geometry and atom radii."""
+        points = []
+        radii = []
+        for primitive in scene.all_primitives():
+            if getattr(primitive, "layer", "geometry") == "annotation":
+                continue
+            if getattr(primitive, "coordinate_space", "world") == "screen":
+                continue
+            if hasattr(primitive, "position"):
+                points.append(np.asarray(primitive.position, dtype=float))
+                radii.append(float(getattr(primitive, "radius", 0.0)))
+            elif hasattr(primitive, "start") and hasattr(primitive, "end"):
+                points.extend([np.asarray(primitive.start, dtype=float), np.asarray(primitive.end, dtype=float)])
+                radii.extend([float(getattr(primitive, "radius", 0.0))] * 2)
+            elif hasattr(primitive, "vertices"):
+                points.extend(np.asarray(point, dtype=float) for point in primitive.vertices)
+            elif hasattr(primitive, "points"):
+                points.extend(np.asarray(point, dtype=float) for point in primitive.points)
+            elif hasattr(primitive, "start") and hasattr(primitive, "direction"):
+                points.extend([
+                    np.asarray(primitive.start, dtype=float),
+                    np.asarray(primitive.start, dtype=float) + np.asarray(primitive.direction, dtype=float),
+                ])
+        if not points:
+            return None
+        points = np.asarray(points)
+        center = (points.min(axis=0) + points.max(axis=0)) / 2
+        radius = max(float(np.linalg.norm(points - center, axis=1).max()), max(radii, default=0.0))
+        return center, radius
 
     def _scene_camera_bounds(self, scene):
         """Return ((umin, vmin), (umax, vmax)) in unscaled camera coordinates."""
@@ -214,8 +280,9 @@ class Camera:
                 r = getattr(p, "radius", 0.0)
                 add_point(p.position, r)
             elif hasattr(p, "start") and hasattr(p, "end"):  # Bond, Line, CellEdge, Cylinder
-                add_point(p.start)
-                add_point(p.end)
+                radius = float(getattr(p, "radius", 0.0))
+                add_point(p.start, radius)
+                add_point(p.end, radius)
             elif hasattr(p, "vertices"):  # Polyhedron
                 for v in p.vertices:
                     add_point(v)
@@ -223,8 +290,9 @@ class Camera:
                 for v in p.points:
                     add_point(v)
             elif hasattr(p, "start") and hasattr(p, "direction"):  # Arrow, Axis
-                add_point(p.start)
-                add_point(p.start + p.direction)
+                radius = max(float(getattr(p, "shaft_radius", 0.0)), float(getattr(p, "head_radius", 0.0)))
+                add_point(p.start, radius)
+                add_point(p.start + p.direction, radius)
 
         if not pts:
             return None

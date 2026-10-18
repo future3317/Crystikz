@@ -18,6 +18,65 @@ from crystalfig.styles.theme import FigureTheme
 
 
 class TestPreflight:
+    @pytest.mark.parametrize(
+        ("font_type", "has_type3", "expected_warning"),
+        [("Type 3", True, True), ("Type 42", False, False)],
+    )
+    def test_pdffonts_type_detection(self, tmp_path, font_type, has_type3, expected_warning):
+        path = tmp_path / "test.pdf"
+        path.write_bytes(b"pdf")
+        header = "name                 type"
+        output = f"{header}\n{'-' * len(header)}\n{'ExampleFont':<21}{font_type} Custom yes no no 1 0"
+        completed = mock.Mock(stdout=output, returncode=0)
+        with (
+            mock.patch("shutil.which", side_effect=lambda name: "pdffonts" if name == "pdffonts" else None),
+            mock.patch("subprocess.run", return_value=completed),
+        ):
+            report = preflight_export(str(path))
+
+        assert report["has_type3_fonts"] is has_type3
+        assert any("Type 3" in warning for warning in report["warnings"]) is expected_warning
+
+    def test_pdffonts_nonzero_exit_adds_warning(self, tmp_path):
+        path = tmp_path / "test.pdf"
+        path.write_bytes(b"pdf")
+        completed = mock.Mock(stdout="", returncode=1)
+        with (
+            mock.patch("shutil.which", side_effect=lambda name: "pdffonts" if name == "pdffonts" else None),
+            mock.patch("subprocess.run", return_value=completed),
+        ):
+            report = preflight_pdf(str(path))
+
+        assert "pdffonts exited with status 1." in report.warnings
+        assert report.font_detection == "failed"
+
+    def test_pdffonts_missing_is_reported_as_unknown(self, tmp_path):
+        path = tmp_path / "test.pdf"
+        path.write_bytes(b"pdf")
+        with mock.patch("shutil.which", return_value=None):
+            report = preflight_pdf(str(path))
+
+        assert report.font_detection == "unknown"
+        assert any("Type 3 font status is unknown" in warning for warning in report.warnings)
+
+    @pytest.mark.parametrize(("fonttype", "has_type3"), [(3, True), (42, False)])
+    def test_real_matplotlib_pdf_font_detection(self, tmp_path, fonttype, has_type3):
+        if not shutil.which("pdffonts"):
+            pytest.skip("Poppler pdffonts is not installed")
+        import matplotlib
+        from matplotlib.figure import Figure
+
+        path = tmp_path / f"type-{fonttype}.pdf"
+        with matplotlib.rc_context({"pdf.fonttype": fonttype}):
+            figure = Figure(figsize=(2, 1))
+            figure.text(0.1, 0.5, "Crystikz font inspection")
+            figure.savefig(path, format="pdf")
+
+        report = preflight_pdf(str(path))
+        assert report.font_detection == "available"
+        assert report.has_type3_fonts is has_type3
+        assert report.fonts
+
     def test_preflight_raster_unknown_without_pdfimages(self):
         """If pdfimages is unavailable, raster_objects must remain None (unknown)."""
         fig = CrystalFigure(rocksalt_structure()).quick()

@@ -1,5 +1,6 @@
 """Generate gallery examples for crystalfig."""
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -8,16 +9,20 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from crystalfig.diagrams.equivariant import EquivariantGNNDiagram
 from crystalfig.examples.presets import (
+    cesium_chloride_structure,
     diamond_structure,
+    graphite_structure,
     mos2_structure,
     perovskite_structure,
     rocksalt_structure,
     rutile_structure,
     triclinic_structure,
     wurtzite_structure,
+    zincblende_zns_structure,
 )
 from crystalfig.figure.builder import CrystalFigure
 from crystalfig.geometry.reciprocal import BrillouinZone
+from crystalfig.io.loader import load_structure
 from crystalfig.scene.camera import Camera
 
 GALLERY_DIR = Path(__file__).parent.parent / "gallery"
@@ -128,63 +133,110 @@ def generate_baseline():
 
 
 def generate_pyvista_baseline():
-    """Render the six reference structures with the optional true-3D backend."""
+    """Render a material-agnostic 10-structure publication showcase."""
     from PIL import Image, ImageDraw
 
-    from crystalfig.exceptions import OptionalDependencyError
-    from crystalfig.neighbors.strategies import CutoffStrategy
+    from crystalfig.export.preflight import preflight_export
 
-    output_dir = GALLERY_DIR / "pyvista"
+    output_dir = GALLERY_DIR / "showcase"
     output_dir.mkdir(parents=True, exist_ok=True)
     structures = [
-        ("nacl", rocksalt_structure(), "Na", 3.0, False),
-        ("si", diamond_structure(), "Si", 2.6, False),
-        ("batio3", perovskite_structure(a=3.95, c=4.05), "Ti", 2.5, True),
-        ("rutile_tio2", rutile_structure(), "Ti", 2.1, True),
-        ("zno", wurtzite_structure(), "Zn", 2.2, False),
-        ("mos2", mos2_structure(), "Mo", 2.8, False),
+        ("rocksalt", rocksalt_structure(conventional=True)),
+        ("diamond", diamond_structure(conventional=True)),
+        ("perovskite", perovskite_structure(a=3.95, c=4.05)),
+        ("rutile", rutile_structure()),
+        ("wurtzite", wurtzite_structure()),
+        ("layered_mos2", mos2_structure()),
+        ("triclinic_p1", triclinic_structure()),
+        ("cesium_chloride", cesium_chloride_structure()),
+        ("zincblende_zns", zincblende_zns_structure()),
+        ("graphite", graphite_structure()),
+        (
+            "monoclinic_tenorite",
+            load_structure(Path(__file__).parent / "data" / "tenorite_amcsd_18822.cif"),
+        ),
     ]
-    for name, structure, center, cutoff, polyhedra in structures:
-        figure = (
-            CrystalFigure(structure)
-            .show_unit_cell()
-            .boundary_mode("connected")
-            .add_bonds("cutoff", cutoff=cutoff)
-        )
-        if polyhedra:
-            figure.style("polyhedra_clean").add_polyhedra(
-                center, strategy=CutoffStrategy(cutoff=cutoff)
-            )
-        else:
-            figure.style("layered_clean" if name == "mos2" else "ballstick_clean")
-        view = "layer_oblique" if name == "mos2" else "polyhedron_focus" if polyhedra else "auto"
-        figure.view_preset(view)
-        try:
-            figure.export(
-                output_dir / f"{name}.png", backend="pyvista", width=89, dpi=600,
-                transparent=True,
-            )
-        except OptionalDependencyError:
-            print("Skipping PyVista reference images: install crystalfig[render3d].")
-            return
-
-    names = [item[0] for item in structures]
-    contact = Image.new("RGB", (900, 1080), "#eeeeee")
-    draw = ImageDraw.Draw(contact)
-    for index, name in enumerate(names):
-        with Image.open(output_dir / f"{name}.png") as source:
-            panel = source.convert("RGB")
-        panel.thumbnail((440, 320))
-        column, row = index % 2, index // 2
-        contact.paste(panel, (column * 450 + (440 - panel.width) // 2, row * 360 + 4))
-        draw.text((column * 450 + 8, row * 360 + 325), name, fill="black")
+    manifest = {
+        "width_mm": 89,
+        "dpi": 300,
+        "quality": "publication",
+        "structure_sources": {
+            "monoclinic_tenorite": {
+                "record": "American Mineralogist Crystal Structure Database 18822",
+                "record_url": "https://larixite.seescience.org/cifs/18822",
+                "citation": "S. Åsbrink and A. Waśkowska, J. Phys.: Condens. Matter 3, 8173–8180 (1991), doi:10.1088/0953-8984/3/42/012",
+            }
+        },
+        "structures": {},
+    }
+    panels = []
+    for name, structure in structures:
+        figure = CrystalFigure.from_structure(structure).publication().quality("publication")
+        outputs = {
+            "png": figure.export(
+                output_dir / f"{name}.png", backend="pyvista", width=89, dpi=300, transparent=True
+            ),
+            "svg": figure.export(output_dir / f"{name}.svg", backend="svg", width=89),
+            "pdf": figure.export(output_dir / f"{name}.pdf", backend="matplotlib", width=89),
+        }
+        image_path = output_dir / f"{name}.png"
+        with Image.open(image_path) as source:
+            panel_image = source.convert("RGBA")
+            panel_image.thumbnail((420, 300))
+            panel = Image.new("RGBA", (450, 340), "white")
+            panel.alpha_composite(panel_image, ((450 - panel_image.width) // 2, 5))
+            ImageDraw.Draw(panel).text((12, 315), f"{name} · {structure.formula}", fill="#263442")
+            panels.append(panel.convert("RGB"))
+        manifest["structures"][name] = {
+            "formula": structure.formula,
+            "sites": structure.num_sites,
+            "lattice_lengths_angstrom": [round(float(value), 5) for value in structure.lattice.lengths],
+            "selected_view": figure.report_view_candidates(figure.build_scene())[0],
+            "diagnostics": figure.diagnostics,
+            "exports": {
+                suffix: preflight_export(
+                    str(output_dir / f"{name}.{suffix}"),
+                    expected_width_mm=89,
+                    expected_dpi=300 if suffix == "png" else None,
+                    transparent=True if suffix == "png" else None,
+                    vector_status=result.vector_status,
+                )
+                for suffix, result in outputs.items()
+            },
+        }
+    rows = (len(panels) + 1) // 2
+    contact = Image.new("RGB", (900, rows * 340), "#edf1f4")
+    for index, panel in enumerate(panels):
+        row = index // 2
+        x = 225 if len(panels) % 2 and index == len(panels) - 1 else (index % 2) * 450
+        contact.paste(panel, (x, row * 340))
     contact.save(output_dir / "contact_sheet.png")
+    (output_dir / "metrics.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
 
-def main():
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Generate reproducible crystal structure galleries")
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument("--baseline-only", action="store_true")
+    modes.add_argument("--showcase-only", action="store_true")
+    modes.add_argument("--reference-only", action="store_true")
+    args = parser.parse_args(argv)
     GALLERY_DIR.mkdir(exist_ok=True)
+    if args.baseline_only:
+        generate_baseline()
+        return
+    if args.showcase_only:
+        generate_pyvista_baseline()
+        return
+    if args.reference_only:
+        generate_reference_gallery()
+        return
     generate_baseline()
     generate_pyvista_baseline()
+    generate_reference_gallery()
+
+
+def generate_reference_gallery():
 
     # Publication defaults: no legend, no axes unless needed.
     def _pub(fig):

@@ -65,14 +65,14 @@ class Exporter:
                     raise ExportError("The pyvista backend supports PNG output only.")
                 from crystalfig.renderers.pyvista_renderer import PyVistaRenderer
 
+                pixels = PyVistaRenderer._window_size(options, self.scene, self.camera)
                 PyVistaRenderer(camera=self.camera).export(
                     self.scene, str(path), theme, options, fmt=fmt
                 )
                 return ExportResult(str(path), fmt, "raster", {
                     "renderer": "pyvista",
                     "dpi": options.dpi,
-                    "pixels": [round(options.width * options.dpi / 25.4),
-                               round((options.height or options.width) * options.dpi / 25.4)],
+                    "pixels": list(pixels),
                 })
             if backend == "matplotlib3d":
                 if fmt not in ("pdf", "svg", "png", "tif", "tiff", "eps", "pgf"):

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-from scipy.spatial import cKDTree
+from scipy.spatial import ConvexHull, QhullError, cKDTree
 
 from crystalfig.exceptions import OptionalDependencyError, StructureParseError
 from crystalfig.export.exporter import Exporter, ExportResult, RenderOptions
@@ -25,6 +25,7 @@ from crystalfig.scene.builder import (
     SceneOptions,
 )
 from crystalfig.scene.camera import Camera
+from crystalfig.scene.primitives import Bond, Polyhedron
 from crystalfig.scene.scene import Scene
 from crystalfig.styles.palette import get_palette
 from crystalfig.styles.theme import FigureTheme
@@ -44,6 +45,8 @@ class CrystalFigure:
         self.palette = get_palette(self.theme.palette.name).copy()
         self.camera = camera or Camera(elevation=25.0, azimuth=45.0)
         self._scene_options = SceneOptions()
+        self._auto_view = False
+        self.diagnostics: list[str] = []
         if camera is None:
             self.view_preset(self.theme.camera_preset)
 
@@ -61,18 +64,22 @@ class CrystalFigure:
         if isinstance(structure, CrystalStructure):
             return cls(structure, **kwargs)
         try:
-            from pymatgen.core import Structure as PmgStructure
-            if isinstance(structure, PmgStructure):
-                return cls(from_pymatgen(structure), **kwargs)
-        except Exception:
-            pass
+            from pymatgen import core as pmg_core
+
+            pmg_structure_type = pmg_core.Structure
+        except ImportError:
+            pmg_structure_type = None
+        if pmg_structure_type is not None and isinstance(structure, pmg_structure_type):
+            return cls(from_pymatgen(structure), **kwargs)
         try:
-            from ase import Atoms
-            if isinstance(structure, Atoms):
-                from crystalfig.io.ase_adapter import from_ase
-                return cls(from_ase(structure), **kwargs)
-        except Exception:
-            pass
+            import ase
+
+            ase_atoms_type = ase.Atoms
+        except ImportError:
+            ase_atoms_type = None
+        if ase_atoms_type is not None and isinstance(structure, ase_atoms_type):
+            from crystalfig.io.ase_adapter import from_ase
+            return cls(from_ase(structure), **kwargs)
         raise StructureParseError("Unsupported structure type. Provide CrystalStructure, pymatgen Structure, or ASE Atoms.")
 
     # ------------------------------------------------------------------
@@ -109,6 +116,7 @@ class CrystalFigure:
     # ------------------------------------------------------------------
     def view(self, direction: str | list[int] | np.ndarray) -> CrystalFigure:
         """Set camera to look along a crystallographic direction [uvw]."""
+        self._auto_view = False
         if isinstance(direction, str):
             mapping = {"a": [1, 0, 0], "b": [0, 1, 0], "c": [0, 0, 1]}
             if direction not in mapping:
@@ -120,12 +128,13 @@ class CrystalFigure:
         return self
 
     def view_along_lattice(self, axis: int) -> CrystalFigure:
+        self._auto_view = False
         direction = self.structure.lattice.matrix[axis]
         self.camera = Camera.along_direction(direction, target=self._centroid())
         return self
 
     def view_preset(self, name: str) -> CrystalFigure:
-        """Set a deterministic view for common crystal figure types."""
+        """Set a deterministic view preset or defer selection to the final scene."""
         target = self._centroid()
         directions = {
             "isometric": [1, 1, 1],
@@ -137,30 +146,11 @@ class CrystalFigure:
             "polyhedron_focus": [1, 1, 1],
         }
         if name == "auto":
-            candidates = [
-                np.array(d, dtype=float)
-                for d in ([1, 1, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1],
-                          [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 2, 3], [2, 3, 1])
-            ]
-            positions = np.asarray(self.structure.cart_coords, dtype=float)
-            best_score = -np.inf
-            best_camera = None
-            for direction in candidates:
-                candidate = Camera.along_direction(
-                    self.structure.lattice.frac_to_cart(direction), target=target
-                )
-                uv = candidate.project(positions)
-                if len(uv) < 2:
-                    score = 0.0
-                else:
-                    nearest_spacing = float(cKDTree(uv).query(uv, k=2)[0][:, 1].min())
-                    spread = np.ptp(uv, axis=0)
-                    aspect_penalty = abs(np.log((spread[0] + 1e-9) / (spread[1] + 1e-9)))
-                    score = (nearest_spacing / (np.linalg.norm(spread) + 1e-9)
-                             - 0.04 * aspect_penalty)
-                if score > best_score:
-                    best_score, best_camera = score, candidate
-            self.camera = best_camera
+            self._auto_view = True
+            return self
+        self._auto_view = False
+        if name == "layer_top":
+            self.camera = Camera.normal_to_plane((0, 0, 1), self.structure.lattice, target=target)
             return self
         if name not in directions:
             raise ValueError(f"Unknown view preset {name!r}.")
@@ -168,11 +158,133 @@ class CrystalFigure:
         self.camera = Camera.along_direction(direction, target=target)
         return self
 
+    def report_view_candidates(self, scene: Scene | None = None) -> list[dict]:
+        """Return deterministic view candidates scored against the rendered scene."""
+        if scene is None:
+            scene = SceneBuilder(
+                self.structure, self.theme, self.palette, self._scene_options, camera=self.camera
+            ).build()
+        return [report for report, _ in self._scored_view_candidates(scene)]
+
+    def _scored_view_candidates(self, scene: Scene):
+        world_bounds = scene.bounding_box()
+        points = np.asarray(world_bounds) if world_bounds is not None else None
+        target = points.mean(axis=0) if points is not None else self._centroid()
+
+        directions = []
+        labels = []
+        for label, vector in (
+            [(f"direct_{axis}", row) for axis, row in zip("abc", self.structure.lattice.matrix, strict=True)]
+            + [(f"plane_{axis}", row) for axis, row in zip("abc", self.structure.lattice.reciprocal_matrix, strict=True)]
+        ):
+            directions.append(np.asarray(vector, dtype=float))
+            labels.append(label)
+
+        geometry_points = []
+        for primitive in scene.all_primitives():
+            if getattr(primitive, "layer", "geometry") == "annotation":
+                continue
+            if hasattr(primitive, "position"):
+                geometry_points.append(np.asarray(primitive.position, dtype=float))
+            elif hasattr(primitive, "vertices"):
+                geometry_points.extend(np.asarray(p, dtype=float) for p in primitive.vertices)
+            elif hasattr(primitive, "points"):
+                geometry_points.extend(np.asarray(p, dtype=float) for p in primitive.points)
+        if len(geometry_points) >= 3:
+            _, _, axes = np.linalg.svd(np.asarray(geometry_points) - target, full_matrices=False)
+            for index, direction in enumerate(axes[:3]):
+                directions.append(direction)
+                labels.append(f"principal_{index + 1}")
+
+        base = directions[:6]
+        for i in range(len(base)):
+            for j in range(i + 1, len(base)):
+                vector = base[i] / np.linalg.norm(base[i]) + base[j] / np.linalg.norm(base[j])
+                if np.linalg.norm(vector) > 1e-8:
+                    directions.append(vector)
+                    labels.append(f"tilt_{labels[i]}_{labels[j]}")
+
+        camera_candidates = []
+        seen = []
+        for label, direction in zip(labels, directions, strict=True):
+            direction = direction / np.linalg.norm(direction)
+            if any(np.dot(direction, previous) > 0.9995 for previous in seen):
+                continue
+            seen.append(direction)
+            camera_candidates.extend(
+                (label, direction, roll) for roll in (0.0, 90.0)
+            )
+
+        scored = []
+        settings = self.camera
+        for label, direction, roll in camera_candidates:
+            camera = Camera.along_direction(
+                direction, target=target, projection=settings.projection, roll=roll
+            )
+            camera.distance = settings.distance
+            camera.fov = settings.fov
+            camera.padding = settings.padding
+            camera.auto_fit = settings.auto_fit
+            frame = camera.scene_frame(scene)
+            if frame is None:
+                score = 0.0
+                bond_visibility = 0.0
+                atom_overlap = 0.0
+                polyhedron_area = 0.0
+            else:
+                diagonal = float(np.hypot(frame.width, frame.height))
+                spheres = [p for p in scene.all_primitives() if p.__class__.__name__ == "Sphere"]
+                projected = camera.project(np.asarray([p.position for p in spheres])) if spheres else np.empty((0, 2))
+                radii = [float(p.radius) for p in spheres]
+                overlaps = 0
+                if len(spheres) > 1:
+                    candidate_pairs = cKDTree(projected).query_pairs(
+                        1.56 * max(radii), output_type="ndarray"
+                    )
+                    for i, j in candidate_pairs:
+                        if np.linalg.norm(spheres[i].position - spheres[j].position) < 1e-8:
+                            continue
+                        overlaps += np.linalg.norm(projected[i] - projected[j]) < 0.78 * (radii[i] + radii[j])
+                atom_overlap = overlaps / max(len(spheres), 1)
+                bonds = [p for p in scene.all_primitives() if isinstance(p, Bond)]
+                bond_visibility = float(np.mean([
+                    min(np.linalg.norm(camera.project(b.end) - camera.project(b.start)) / max(b.distance, 1e-9), 1.0)
+                    for b in bonds
+                ])) if bonds else 0.5
+                polyhedra = [p for p in scene.all_primitives() if isinstance(p, Polyhedron)]
+                polyhedron_area = 0.0
+                if polyhedra:
+                    areas = []
+                    for poly in polyhedra:
+                        uv = camera.project(np.asarray(poly.vertices))
+                        if len(uv) >= 3:
+                            try:
+                                areas.append(float(ConvexHull(uv).volume))
+                            except QhullError:
+                                continue
+                    polyhedron_area = min(float(np.mean(areas)) / max(diagonal * diagonal, 1e-9), 1.0) if areas else 0.0
+                aspect_penalty = abs(np.log(frame.aspect)) + (0.025 if frame.aspect < 1 else 0.0)
+                score = 1.0 - atom_overlap + 0.35 * bond_visibility + 0.45 * polyhedron_area - 0.08 * aspect_penalty
+            report = {
+                "label": label if roll == 0 else f"{label}_roll90",
+                "direction_cartesian": direction.tolist(),
+                "roll_degrees": roll,
+                "score": float(score),
+                "atom_overlap_fraction": float(atom_overlap),
+                "bond_visibility": float(bond_visibility),
+                "polyhedron_projected_area": float(polyhedron_area),
+                "projected_aspect": frame.aspect if frame is not None else None,
+            }
+            scored.append((report, camera))
+        return sorted(scored, key=lambda item: (-item[0]["score"], item[0]["label"]))
+
     def view_normal_to_plane(self, hkl: tuple[int, int, int]) -> CrystalFigure:
+        self._auto_view = False
         self.camera = Camera.normal_to_plane(np.array(hkl), self.structure.lattice, target=self._centroid())
         return self
 
     def projection(self, proj: str) -> CrystalFigure:
+        self._auto_view = False
         self.camera.projection = proj  # type: ignore
         return self
 
@@ -462,13 +574,55 @@ class CrystalFigure:
             self.view_preset(self.theme.camera_preset)
         return self
 
+    def quality(self, name: str) -> CrystalFigure:
+        """Select preview, standard, or publication rendering effort."""
+        if name not in {"preview", "standard", "publication"}:
+            raise ValueError("quality must be preview, standard, or publication")
+        self.theme.render_quality = name
+        return self
+
+    def publication(
+        self,
+        mode: str = "auto",
+        *,
+        centers: str | list[int] | None = None,
+        strategy: str = "crystalnn",
+    ) -> CrystalFigure:
+        """Apply a generic publication figure setup without material-specific rules.
+
+        ``auto`` uses a ball-and-stick view; it reports the selected neighbor model
+        so the inferred bonds are not mistaken for a unique chemical assignment.
+        Use ``mode='polyhedra'`` with explicit ``centers`` when that geometry is
+        the figure's intended scientific emphasis.
+        """
+        if mode not in {"auto", "ballstick", "polyhedra", "minimal"}:
+            raise ValueError("mode must be auto, ballstick, polyhedra, or minimal")
+        theme = "polyhedra_clean" if mode == "polyhedra" else "overview_minimal" if mode == "minimal" else "ballstick_clean"
+        self.style(theme).quality("publication").show_unit_cell().boundary_mode("connected").view_preset("auto")
+        self.diagnostics = []
+        if mode != "minimal":
+            self.add_bonds(strategy=strategy)
+            self.diagnostics.append(
+                f"Bonds generated with {strategy}; verify coordination for the intended chemical interpretation."
+            )
+        if mode == "polyhedra":
+            if centers is None:
+                raise ValueError("centers is required when mode='polyhedra'.")
+            self.add_polyhedra(centers=centers, strategy=strategy)
+        return self
+
     # ------------------------------------------------------------------
     # Build & export
     # ------------------------------------------------------------------
     def build_scene(self) -> Scene:
         builder = SceneBuilder(self.structure, self.theme, self.palette, self._scene_options, camera=self.camera)
         scene = builder.build()
-        # Apply camera auto-fit using the full projected primitive extent.
+        if self._auto_view:
+            _, camera = self._scored_view_candidates(scene)[0]
+            self.camera = camera
+            scene = SceneBuilder(
+                self.structure, self.theme, self.palette, self._scene_options, camera=self.camera
+            ).build()
         if self.camera.auto_fit:
             self.camera.fit_to_scene(scene)
         return scene
@@ -576,11 +730,11 @@ class CrystalFigure:
         return np.mean(coords, axis=0)
 
     def quick(self) -> CrystalFigure:
-        """Apply a sensible default visualization."""
-        return (
-            self.show_unit_cell()
-            .add_bonds(strategy="cutoff", cutoff=3.0)
-        )
+        """Apply a quick display heuristic with a fixed 3 Å bond cutoff."""
+        self.diagnostics = [
+            "Quick display uses a 3.0 Å cutoff to draw candidate neighbors; verify coordination before chemical interpretation."
+        ]
+        return self.show_unit_cell().add_bonds(strategy="cutoff", cutoff=3.0)
 
 
 def plot_structure(structure: str | Path | CrystalStructure, **kwargs) -> CrystalFigure:

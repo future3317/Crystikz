@@ -5,23 +5,29 @@ crystal structures into reusable ball-and-stick, coordination-polyhedron, layere
 visualizations. A shared structure and scene model feeds editable vector renderers and an optional
 depth-buffered 3D renderer.
 
+![Eleven-structure crystal rendering showcase](gallery/showcase/contact_sheet.png)
+
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![CI](https://github.com/future3317/Crystikz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/future3317/Crystikz/actions/workflows/ci.yml)
 
 ## Install
 
 ```bash
-python -m pip install crystalfig
+python -m pip install "crystalfig @ git+https://github.com/future3317/Crystikz.git"
 ```
+
+Version 0.2.0 is prepared but not yet published to PyPI. When the project is published there,
+the installation command will become `python -m pip install crystalfig`.
 
 Install optional integrations only when needed:
 
 ```bash
-python -m pip install 'crystalfig[render3d]'  # PyVista/VTK 3D PNG rendering
-python -m pip install 'crystalfig[ase]'       # ASE Atoms input and neighbor strategy
-python -m pip install 'crystalfig[reciprocal]' # seekpath reciprocal-space tools
-python -m pip install 'crystalfig[latex]'     # PDF-to-image helpers
-python -m pip install 'crystalfig[all]'       # all optional runtime integrations
+python -m pip install "crystalfig[render3d] @ git+https://github.com/future3317/Crystikz.git"  # PyVista/VTK
+python -m pip install "crystalfig[ase] @ git+https://github.com/future3317/Crystikz.git"       # ASE
+python -m pip install "crystalfig[reciprocal] @ git+https://github.com/future3317/Crystikz.git" # seekpath
+python -m pip install "crystalfig[latex] @ git+https://github.com/future3317/Crystikz.git"     # PDF helpers
+python -m pip install "crystalfig[all] @ git+https://github.com/future3317/Crystikz.git"       # all extras
 ```
 
 The base installation includes CIF/POSCAR loading, pymatgen structures, Matplotlib and SVG
@@ -57,6 +63,20 @@ figure.export("BaTiO3.svg", width=89)
 `CrystalFigure` is reusable and backend-independent: adjust the cell, view, bonds, polyhedra,
 style and annotations before exporting. For example, `view([1, 1, 0])` sets a crystallographic
 view direction, while `supercell((2, 2, 1))` expands the displayed structure.
+
+For a material-agnostic publication starting point, let the scene select a view and report the
+neighbor model used for display:
+
+```python
+figure = CrystalFigure.from_file("unknown_material.cif").publication(mode="auto")
+figure.export("structure.svg", backend="svg", width=89)
+figure.export("structure.png", backend="pyvista", width=89, dpi=600, transparent=True)
+```
+
+`publication()` applies a general ball-and-stick style and `CrystalNN` candidate neighbors; it
+does not claim that automatic neighbor assignment is a unique chemical bond definition. Use
+`publication(mode="polyhedra", centers="Ti")` when the center species is part of your scientific
+question, or choose a different `strategy` explicitly.
 
 ## Choose an output backend
 
@@ -110,7 +130,24 @@ crystalfig preflight BaTiO3.pdf
 ```
 
 `crystalfig render --help` lists rendering options. The Python API also supports YAML batch
-rendering with `crystalfig batch figures.yaml`.
+rendering with `crystalfig batch figures.yaml`. Batch paths are relative to the YAML file:
+
+```yaml
+figures:
+  - input: structures/sample.cif
+    output: figures/sample.svg
+    backend: svg
+    style: ballstick_clean
+    width: 89
+    height: 65
+    dpi: 300
+    quality: standard
+    view_preset: auto
+    show_axes: false
+    show_cell: true
+    bonds:
+      strategy: crystalnn
+```
 
 ## Capabilities
 
@@ -122,7 +159,9 @@ rendering with `crystalfig batch figures.yaml`.
 - Export at figure widths specified in millimetres, with configurable DPI and transparent
   backgrounds where supported by the selected renderer.
 - Inspect the generated examples and reproducible structure baseline in the
-  [visual gallery](gallery/) and [baseline contact sheet](gallery/baseline/contact_sheet.png).
+  [11-structure publication showcase](gallery/showcase/contact_sheet.png), the
+  [baseline diagnostic sheet](gallery/baseline/contact_sheet.png), and the
+  [rendered format comparisons](gallery/showcase/).
 
 ## Scientific and rendering notes
 
@@ -147,6 +186,10 @@ python -m pytest tests -q
 python -m ruff check crystalfig tests examples
 python -m build --wheel
 ```
+
+For the release candidate wheel install, CLI, and export smoke checks, run
+`python scripts/check_release.py`. See [PUBLISHING.md](PUBLISHING.md) for the v0.2.0 release
+checklist and current PyPI status.
 
 ## License
 

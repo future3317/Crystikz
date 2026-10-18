@@ -18,6 +18,21 @@ from crystalfig.neighbors.strategies import CovalentRadiiStrategy, CutoffStrateg
 
 
 class TestCutoffStrategy:
+    def test_conventional_rocksalt_has_correct_composition_and_coordination(self):
+        struct = rocksalt_structure(conventional=True)
+        assert struct.formula == "NaCl"
+        assert len(struct.indices_of_species("Na")) == 4
+        assert len(struct.indices_of_species("Cl")) == 4
+
+        bonds = CutoffStrategy(cutoff=3.0).get_bonds(struct)
+        center = struct.indices_of_species("Na")[0]
+        local = [bond for bond in bonds if bond.i == center or bond.j == center]
+        assert len(local) == 6
+        assert all(
+            struct.sites[bond.j if bond.i == center else bond.i].dominant_species == "Cl"
+            for bond in local
+        )
+
     def test_rocksalt_bonds(self):
         struct = rocksalt_structure()
         strategy = CutoffStrategy(cutoff=3.0)

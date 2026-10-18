@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "codex/**"]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -32,8 +33,31 @@ jobs:
       - name: Test with pytest
         run: python -m pytest tests -q
 
+  wheel-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PDF preflight tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
+
+      - name: Install build dependencies
+        run: python -m pip install --upgrade pip build
+
+      - name: Build and verify a clean wheel installation
+        run: python scripts/check_release.py
+
   visual-gallery:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -45,14 +69,52 @@ jobs:
       - name: Install gallery dependencies
         run: python -m pip install -e ".[dev,render3d]"
 
-      - name: Render reference structures
-        run: python examples/generate_gallery.py
+      - name: Render vector baseline without OpenGL
+        run: python examples/generate_gallery.py --baseline-only
+
+      - name: Configure headless display
+        uses: pyvista/setup-headless-display-action@v3
+
+      - name: Record VTK and OpenGL capabilities
+        run: |
+          python - <<'PY'
+          import pyvista as pv
+          import vtk
+          plotter = pv.Plotter(off_screen=True, window_size=(64, 64))
+          plotter.add_mesh(pv.Sphere())
+          plotter.render()
+          print(f"PyVista: {pv.__version__}")
+          print(f"VTK: {vtk.vtkVersion.GetVTKVersion()}")
+          print(plotter.ren_win.ReportCapabilities())
+          plotter.close()
+          PY
+
+      - name: Render real PyVista polyhedron smoke test
+        run: python -m pytest tests/test_pyvista_renderer.py -q -k exports_scene_as_png_with_requested_pixel_size 2>&1 | tee pyvista-smoke.log
+
+      - name: Render 11-structure publication gallery
+        run: python examples/generate_gallery.py --showcase-only
+
+      - name: Benchmark PyVista at 10^2, 10^3, and 10^4 sites
+        run: |
+          python scripts/benchmark_pyvista.py --target-sites 100 --output gallery/showcase/scale_100.json
+          python scripts/benchmark_pyvista.py --target-sites 1000 --output gallery/showcase/scale_1000.json
+          python scripts/benchmark_pyvista.py --target-sites 10000 --output gallery/showcase/scale_10000.json
 
       - name: Upload visual gallery
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: crystalfig-visual-gallery
+          name: crystalfig-visual-gallery-${{ github.run_id }}
+          if-no-files-found: warn
           path: |
             gallery/baseline/contact_sheet.png
             gallery/baseline/metrics.json
             gallery/pyvista/*.png
+            gallery/showcase/contact_sheet.png
+            gallery/showcase/*.png
+            gallery/showcase/*.svg
+            gallery/showcase/*.pdf
+            gallery/showcase/metrics.json
+            gallery/showcase/scale_*.json
+            pyvista-smoke.log

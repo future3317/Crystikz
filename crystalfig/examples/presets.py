@@ -26,13 +26,13 @@ def rocksalt_structure(a: float = 5.64, *, conventional: bool = False) -> Crysta
         lattice = Lattice.from_parameters(a, a, a, 90.0, 90.0, 90.0)
         sites = [
             Site(frac_coords=[0.0, 0.0, 0.0], species="Na"),
-            Site(frac_coords=[0.5, 0.5, 0.0], species="Cl"),
-            Site(frac_coords=[0.5, 0.0, 0.5], species="Cl"),
-            Site(frac_coords=[0.0, 0.5, 0.5], species="Cl"),
-            Site(frac_coords=[0.5, 0.5, 0.5], species="Na"),
-            Site(frac_coords=[0.5, 0.0, 0.0], species="Na"),
-            Site(frac_coords=[0.0, 0.5, 0.0], species="Na"),
-            Site(frac_coords=[0.0, 0.0, 0.5], species="Na"),
+            Site(frac_coords=[0.5, 0.5, 0.0], species="Na"),
+            Site(frac_coords=[0.5, 0.0, 0.5], species="Na"),
+            Site(frac_coords=[0.0, 0.5, 0.5], species="Na"),
+            Site(frac_coords=[0.5, 0.5, 0.5], species="Cl"),
+            Site(frac_coords=[0.5, 0.0, 0.0], species="Cl"),
+            Site(frac_coords=[0.0, 0.5, 0.0], species="Cl"),
+            Site(frac_coords=[0.0, 0.0, 0.5], species="Cl"),
         ]
         return CrystalStructure(lattice=lattice, sites=sites)
     # FCC primitive vectors
@@ -152,5 +152,41 @@ def triclinic_structure() -> CrystalStructure:
         Site([0.42, 0.17, 0.31], "O"),
         Site([0.71, 0.63, 0.22], "C"),
         Site([0.23, 0.74, 0.69], "O"),
+    ]
+    return CrystalStructure(lattice=lattice, sites=sites)
+
+
+def cesium_chloride_structure(a: float = 4.12) -> CrystalStructure:
+    """CsCl-type cubic structure used as a generic 8-coordinate test case."""
+    lattice = Lattice.from_parameters(a, a, a, 90.0, 90.0, 90.0)
+    return CrystalStructure(
+        lattice=lattice,
+        sites=[
+            Site([0.0, 0.0, 0.0], "Cs"),
+            Site([0.5, 0.5, 0.5], "Cl"),
+        ],
+    )
+
+
+def zincblende_zns_structure(a: float = 5.41) -> CrystalStructure:
+    """Zinc-blende ZnS conventional cell for a new tetrahedral test material."""
+    lattice = Lattice.from_parameters(a, a, a, 90.0, 90.0, 90.0)
+    fcc = ([0.0, 0.0, 0.0], [0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0])
+    sites = [Site(position, "Zn") for position in fcc]
+    sites.extend(
+        Site([(position[axis] + 0.25) % 1.0 for axis in range(3)], "S")
+        for position in fcc
+    )
+    return CrystalStructure(lattice=lattice, sites=sites)
+
+
+def graphite_structure(a: float = 2.46, c: float = 6.71) -> CrystalStructure:
+    """AB-stacked graphite hexagonal cell for a layered blind-test case."""
+    lattice = Lattice.from_parameters(a, a, c, 90.0, 90.0, 120.0)
+    sites = [
+        Site([0.0, 0.0, 0.0], "C"),
+        Site([1 / 3, 2 / 3, 0.0], "C"),
+        Site([0.0, 0.0, 0.5], "C"),
+        Site([2 / 3, 1 / 3, 0.5], "C"),
     ]
     return CrystalStructure(lattice=lattice, sites=sites)
