@@ -362,6 +362,9 @@ class SceneBuilder:
                 (meta["site_index"], tuple(meta.get("image_offset", (0, 0, 0))))
                 for poly in polyhedra for meta in poly.vertex_metadata
             )
+            center_species = {
+                structure.sites[poly.center_site].dominant_element for poly in polyhedra
+            }
             center_positions = [
                 structure.lattice.frac_to_cart(structure.sites[poly.center_site].frac_coords)
                 for poly in polyhedra
@@ -370,14 +373,22 @@ class SceneBuilder:
                 np.linalg.norm(np.asarray(poly.vertices) - center, axis=1).max()
                 for poly, center in zip(polyhedra, center_positions, strict=True)
             )
-            visible_images.update(
-                (index, (0, 0, 0))
-                for index, site in enumerate(structure.sites)
-                if min(
-                    np.linalg.norm(structure.lattice.frac_to_cart(site.frac_coords) - center)
-                    for center in center_positions
-                ) <= context_radius
-            )
+            for center in center_positions:
+                nearest_by_species = {}
+                for index, site in enumerate(structure.sites):
+                    if site.dominant_element in center_species:
+                        continue
+                    distance = np.linalg.norm(
+                        structure.lattice.frac_to_cart(site.frac_coords) - center
+                    )
+                    if distance > context_radius:
+                        continue
+                    current = nearest_by_species.get(site.dominant_element)
+                    if current is None or distance < current[0]:
+                        nearest_by_species[site.dominant_element] = (distance, index)
+                visible_images.update(
+                    (index, (0, 0, 0)) for _, index in nearest_by_species.values()
+                )
         for spec in self.options.polyhedra_specs:
             if spec.centers != "auto":
                 centers.update(self._resolve_centers(structure, spec.centers))

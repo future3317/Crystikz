@@ -368,29 +368,13 @@
             -0.8988217622301882
           ],
           "roll_degrees": 90.0,
-          "score": 1.3428789487527115,
+          "score": 1.3426150234483756,
           "atom_overlap_fraction": 0.0,
           "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.051268875471815835,
-          "polyhedron_depth_ratio": 0.6854040070863991,
-          "polyhedron_overlap_fraction": 1.8750437636169477e-32,
-          "projected_aspect": 1.010732676630452
-        },
-        {
-          "label": "lattice_0+-_roll90",
-          "direction_cartesian": [
-            -2.819794849132476e-17,
-            0.4383143161492893,
-            -0.8988217622301882
-          ],
-          "roll_degrees": 90.0,
-          "score": 1.3428789487527115,
-          "atom_overlap_fraction": 0.0,
-          "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.051268875471815835,
+          "polyhedron_projected_area": 0.05148391762949603,
           "polyhedron_depth_ratio": 0.6854040070863991,
           "polyhedron_overlap_fraction": 0.0,
-          "projected_aspect": 1.010732676630452
+          "projected_aspect": 1.0150271551842152
         },
         {
           "label": "lattice_+0-",
@@ -400,29 +384,45 @@
             -0.8988217622301882
           ],
           "roll_degrees": 0.0,
-          "score": 1.3408789487527115,
+          "score": 1.3406150234483756,
           "atom_overlap_fraction": 0.0,
           "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.05126887547181583,
-          "polyhedron_depth_ratio": 0.6854040070863991,
-          "polyhedron_overlap_fraction": 2.343804704521184e-33,
-          "projected_aspect": 0.9893812905443679
-        },
-        {
-          "label": "lattice_0+-",
-          "direction_cartesian": [
-            -2.819794849132476e-17,
-            0.4383143161492893,
-            -0.8988217622301882
-          ],
-          "roll_degrees": 0.0,
-          "score": 1.3408789487527115,
-          "atom_overlap_fraction": 0.0,
-          "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.05126887547181583,
+          "polyhedron_projected_area": 0.05148391762949601,
           "polyhedron_depth_ratio": 0.6854040070863991,
           "polyhedron_overlap_fraction": 0.0,
-          "projected_aspect": 0.9893812905443679
+          "projected_aspect": 0.9851953170834251
+        },
+        {
+          "label": "lattice_+0+",
+          "direction_cartesian": [
+            0.4383143161492894,
+            5.503695970595917e-17,
+            0.8988217622301882
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.3377378864522684,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "polyhedron_projected_area": 0.05761138678746262,
+          "polyhedron_depth_ratio": 0.6854040070863994,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.1081447892758018
+        },
+        {
+          "label": "lattice_0++",
+          "direction_cartesian": [
+            8.187597092059357e-17,
+            0.4383143161492894,
+            0.8988217622301882
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.3373044967413434,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "polyhedron_projected_area": 0.05734224492631594,
+          "polyhedron_depth_ratio": 0.6854040070863994,
+          "polyhedron_overlap_fraction": 0.0,
+          "projected_aspect": 1.1128531598885678
         }
       ],
       "diagnostics": [
@@ -439,7 +439,7 @@
           "manual_visual_review_required": true,
           "size": [
             1051,
-            1040
+            1036
           ],
           "mode": "RGBA",
           "has_alpha": true,
@@ -458,10 +458,10 @@
           "warnings": [],
           "manual_visual_review_required": true,
           "svg_width": "89.000mm",
-          "svg_height": "88.055mm",
+          "svg_height": "87.682mm",
           "contains_raster_images": false,
           "page_width_mm": 89.0,
-          "page_height_mm": 88.055
+          "page_height_mm": 87.682
         },
         "pdf": {
           "path": "E:\\CODE\\Equivariant Geometric Deep Learning Workbench\\gallery\\showcase\\perovskite.pdf",
@@ -472,14 +472,14 @@
           "manual_visual_review_required": true,
           "page_size_points": [
             252.283,
-            249.605
+            248.548
           ],
           "fonts": [],
           "has_type3_fonts": false,
           "font_detection": "available",
           "contains_raster_objects": false,
           "page_width_mm": 88.9998361111111,
-          "page_height_mm": 88.05509722222222
+          "page_height_mm": 87.68221111111112
         }
       }
     },
@@ -493,9 +493,9 @@
       ],
       "camera_used": "lattice_+--_roll90",
       "view_dir_cartesian": [
-        0.689414598069998,
-        -0.689414598069998,
-        -0.2222949030813937
+        0.6433735168759327,
+        -0.6433735168759327,
+        -0.41489882569776926
       ],
       "projection": "orthographic",
       "roll": 90.0,
@@ -512,6 +512,38 @@
       "num_real_polyhedra": 4,
       "num_clipped_polyhedra": 0,
       "recommended_camera_candidates": [
+        {
+          "label": "lattice_+--_roll90",
+          "direction_cartesian": [
+            0.6433735168759327,
+            -0.6433735168759327,
+            -0.41489882569776926
+          ],
+          "roll_degrees": 90.0,
+          "score": 1.3910397343244834,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "polyhedron_projected_area": 0.07308571025367003,
+          "polyhedron_depth_ratio": 0.8930514534543762,
+          "polyhedron_overlap_fraction": 0.007131294964028786,
+          "projected_aspect": 1.035652089126933
+        },
+        {
+          "label": "lattice_+--",
+          "direction_cartesian": [
+            0.6433735168759327,
+            -0.6433735168759327,
+            -0.41489882569776926
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.3890397343244834,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "polyhedron_projected_area": 0.07308571025367001,
+          "polyhedron_depth_ratio": 0.8930514534543763,
+          "polyhedron_overlap_fraction": 0.007131294964028781,
+          "projected_aspect": 0.9655752259844441
+        },
         {
           "label": "lattice_+--_roll90",
           "direction_cartesian": [
@@ -543,38 +575,6 @@
           "polyhedron_depth_ratio": 0.9030675243841011,
           "polyhedron_overlap_fraction": 0.028187239952615222,
           "projected_aspect": 0.9996870394736445
-        },
-        {
-          "label": "lattice_+--",
-          "direction_cartesian": [
-            0.8594010153561953,
-            -0.42970050767809764,
-            -0.2771053382847863
-          ],
-          "roll_degrees": 0.0,
-          "score": 1.3797004008473717,
-          "atom_overlap_fraction": 0.0,
-          "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.07395114554985377,
-          "polyhedron_depth_ratio": 0.8471770107295751,
-          "polyhedron_overlap_fraction": 0.016062405168138536,
-          "projected_aspect": 1.004175695647093
-        },
-        {
-          "label": "lattice_+--_roll90",
-          "direction_cartesian": [
-            0.8594010153561953,
-            -0.42970050767809764,
-            -0.2771053382847863
-          ],
-          "roll_degrees": 90.0,
-          "score": 1.3777004008473717,
-          "atom_overlap_fraction": 0.0,
-          "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.07395114554985377,
-          "polyhedron_depth_ratio": 0.8471770107295751,
-          "polyhedron_overlap_fraction": 0.01606240516813853,
-          "projected_aspect": 0.995841668280567
         }
       ],
       "diagnostics": [
@@ -591,7 +591,7 @@
           "manual_visual_review_required": true,
           "size": [
             1051,
-            1051
+            1015
           ],
           "mode": "RGBA",
           "has_alpha": true,
@@ -610,10 +610,10 @@
           "warnings": [],
           "manual_visual_review_required": true,
           "svg_width": "89.000mm",
-          "svg_height": "88.972mm",
+          "svg_height": "85.936mm",
           "contains_raster_images": false,
           "page_width_mm": 89.0,
-          "page_height_mm": 88.972
+          "page_height_mm": 85.936
         },
         "pdf": {
           "path": "E:\\CODE\\Equivariant Geometric Deep Learning Workbench\\gallery\\showcase\\rutile.pdf",
@@ -624,14 +624,14 @@
           "manual_visual_review_required": true,
           "page_size_points": [
             252.283,
-            252.205
+            243.599
           ],
           "fonts": [],
           "has_type3_fonts": false,
           "font_detection": "available",
           "contains_raster_objects": false,
           "page_width_mm": 88.9998361111111,
-          "page_height_mm": 88.97231944444444
+          "page_height_mm": 85.93631388888888
         }
       }
     },
@@ -672,45 +672,13 @@
             0.7071067811865475
           ],
           "roll_degrees": 90.0,
-          "score": 1.3309946497175478,
+          "score": 1.3331785639271443,
           "atom_overlap_fraction": 0.0,
           "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.04052153954177819,
+          "polyhedron_projected_area": 0.06452109388305664,
           "polyhedron_depth_ratio": 0.698787634916506,
           "polyhedron_overlap_fraction": 0.0,
-          "projected_aspect": 1.160689946819102
-        },
-        {
-          "label": "tilt_direct_c_plane_b",
-          "direction_cartesian": [
-            4.329780281177467e-17,
-            0.7071067811865476,
-            0.7071067811865475
-          ],
-          "roll_degrees": 0.0,
-          "score": 1.3289946497175478,
-          "atom_overlap_fraction": 0.0,
-          "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.04052153954177818,
-          "polyhedron_depth_ratio": 0.698787634916506,
-          "polyhedron_overlap_fraction": 0.0,
-          "projected_aspect": 0.8615565274262289
-        },
-        {
-          "label": "lattice_+++",
-          "direction_cartesian": [
-            1.6636474569709732e-16,
-            0.47530352290088623,
-            0.8798218917019551
-          ],
-          "roll_degrees": 0.0,
-          "score": 1.3284868426440248,
-          "atom_overlap_fraction": 0.0,
-          "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.046868960813725595,
-          "polyhedron_depth_ratio": 0.7293458751511118,
-          "polyhedron_overlap_fraction": 0.04695767195767195,
-          "projected_aspect": 1.0284269711759737
+          "projected_aspect": 1.2544707025548159
         },
         {
           "label": "lattice_+++_roll90",
@@ -720,13 +688,45 @@
             0.8798218917019551
           ],
           "roll_degrees": 90.0,
-          "score": 1.3264868426440248,
+          "score": 1.3324090898732177,
           "atom_overlap_fraction": 0.0,
           "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.04686896081372561,
-          "polyhedron_depth_ratio": 0.7293458751511119,
-          "polyhedron_overlap_fraction": 0.046957671957671955,
-          "projected_aspect": 0.9723587848503541
+          "polyhedron_projected_area": 0.0723990107882738,
+          "polyhedron_depth_ratio": 0.7293458751511118,
+          "polyhedron_overlap_fraction": 0.04695767195767195,
+          "projected_aspect": 1.0949364233191692
+        },
+        {
+          "label": "lattice_++-_roll90",
+          "direction_cartesian": [
+            0.41162492534040607,
+            0.237651761450443,
+            -0.8798218917019551
+          ],
+          "roll_degrees": 90.0,
+          "score": 1.3324090898732177,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "polyhedron_projected_area": 0.07239901078827381,
+          "polyhedron_depth_ratio": 0.7293458751511116,
+          "polyhedron_overlap_fraction": 0.04695767195767187,
+          "projected_aspect": 1.0949364233191692
+        },
+        {
+          "label": "tilt_direct_c_plane_b",
+          "direction_cartesian": [
+            4.329780281177467e-17,
+            0.7071067811865476,
+            0.7071067811865475
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.3311785639271443,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "polyhedron_projected_area": 0.06452109388305664,
+          "polyhedron_depth_ratio": 0.698787634916506,
+          "polyhedron_overlap_fraction": 9.089827734461724e-18,
+          "projected_aspect": 0.7971489473316764
         }
       ],
       "diagnostics": [
@@ -743,7 +743,7 @@
           "manual_visual_review_required": true,
           "size": [
             1051,
-            906
+            838
           ],
           "mode": "RGBA",
           "has_alpha": true,
@@ -762,10 +762,10 @@
           "warnings": [],
           "manual_visual_review_required": true,
           "svg_width": "89.000mm",
-          "svg_height": "76.679mm",
+          "svg_height": "70.946mm",
           "contains_raster_images": false,
           "page_width_mm": 89.0,
-          "page_height_mm": 76.679
+          "page_height_mm": 70.946
         },
         "pdf": {
           "path": "E:\\CODE\\Equivariant Geometric Deep Learning Workbench\\gallery\\showcase\\wurtzite.pdf",
@@ -776,14 +776,14 @@
           "manual_visual_review_required": true,
           "page_size_points": [
             252.283,
-            217.356
+            201.107
           ],
           "fonts": [],
           "has_type3_fonts": false,
           "font_detection": "available",
           "contains_raster_objects": false,
           "page_width_mm": 88.9998361111111,
-          "page_height_mm": 76.67836666666666
+          "page_height_mm": 70.94608055555555
         }
       }
     },
@@ -1248,11 +1248,11 @@
         5.41,
         5.41
       ],
-      "camera_used": "lattice_+0+_roll90",
+      "camera_used": "principal_1_roll90",
       "view_dir_cartesian": [
-        0.894427190999916,
-        2.7383934913210134e-17,
-        0.447213595499958
+        0.0,
+        -0.09053574604251848,
+        -0.9958932064677039
       ],
       "projection": "orthographic",
       "roll": 90.0,
@@ -1270,68 +1270,68 @@
       "num_clipped_polyhedra": 0,
       "recommended_camera_candidates": [
         {
-          "label": "lattice_+0+_roll90",
+          "label": "principal_1_roll90",
           "direction_cartesian": [
-            0.894427190999916,
-            2.7383934913210134e-17,
-            0.447213595499958
+            0.0,
+            -0.09053574604251848,
+            -0.9958932064677039
           ],
           "roll_degrees": 90.0,
-          "score": 1.3195708424095436,
+          "score": 1.3591414998952138,
           "atom_overlap_fraction": 0.0,
           "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.040698849308574335,
-          "polyhedron_depth_ratio": 0.8017837257372731,
-          "polyhedron_overlap_fraction": 0.08333333333333331,
-          "projected_aspect": 1.113020155599457
+          "polyhedron_projected_area": 0.10092720199732028,
+          "polyhedron_depth_ratio": 0.7357672073819589,
+          "polyhedron_overlap_fraction": 0.015151515151515188,
+          "projected_aspect": 1.081036504866603
         },
         {
-          "label": "lattice_+0-_roll90",
+          "label": "principal_3_roll90",
           "direction_cartesian": [
-            0.894427190999916,
-            -2.7383934913210134e-17,
-            -0.447213595499958
+            -0.0,
+            0.9958932064677039,
+            -0.09053574604251868
           ],
           "roll_degrees": 90.0,
-          "score": 1.3195708424095436,
+          "score": 1.3591414998952138,
           "atom_overlap_fraction": 0.0,
           "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.040698849308574314,
-          "polyhedron_depth_ratio": 0.8017837257372731,
-          "polyhedron_overlap_fraction": 0.08333333333333336,
-          "projected_aspect": 1.1130201555994572
+          "polyhedron_projected_area": 0.10092720199732025,
+          "polyhedron_depth_ratio": 0.7357672073819588,
+          "polyhedron_overlap_fraction": 0.015151515151515199,
+          "projected_aspect": 1.0810365048666035
         },
         {
-          "label": "lattice_0++_roll90",
+          "label": "principal_1",
           "direction_cartesian": [
-            8.21518047396304e-17,
-            0.894427190999916,
-            0.447213595499958
+            0.0,
+            -0.09053574604251848,
+            -0.9958932064677039
           ],
-          "roll_degrees": 90.0,
-          "score": 1.3195708424095436,
+          "roll_degrees": 0.0,
+          "score": 1.3571414998952138,
           "atom_overlap_fraction": 0.0,
           "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.040698849308574314,
-          "polyhedron_depth_ratio": 0.8017837257372731,
-          "polyhedron_overlap_fraction": 0.08333333333333333,
-          "projected_aspect": 1.1130201555994568
+          "polyhedron_projected_area": 0.1009272019973203,
+          "polyhedron_depth_ratio": 0.7357672073819589,
+          "polyhedron_overlap_fraction": 0.0151515151515152,
+          "projected_aspect": 0.9250381420962257
         },
         {
-          "label": "lattice_0+-_roll90",
+          "label": "principal_3",
           "direction_cartesian": [
-            2.7383934913210134e-17,
-            0.894427190999916,
-            -0.447213595499958
+            -0.0,
+            0.9958932064677039,
+            -0.09053574604251868
           ],
-          "roll_degrees": 90.0,
-          "score": 1.3195708424095436,
+          "roll_degrees": 0.0,
+          "score": 1.3571414998952138,
           "atom_overlap_fraction": 0.0,
           "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.04069884930857432,
-          "polyhedron_depth_ratio": 0.8017837257372729,
-          "polyhedron_overlap_fraction": 0.08333333333333337,
-          "projected_aspect": 1.1130201555994572
+          "polyhedron_projected_area": 0.10092720199732023,
+          "polyhedron_depth_ratio": 0.7357672073819588,
+          "polyhedron_overlap_fraction": 0.015151515151515206,
+          "projected_aspect": 0.9250381420962254
         }
       ],
       "diagnostics": [
@@ -1348,7 +1348,7 @@
           "manual_visual_review_required": true,
           "size": [
             1051,
-            944
+            972
           ],
           "mode": "RGBA",
           "has_alpha": true,
@@ -1367,10 +1367,10 @@
           "warnings": [],
           "manual_visual_review_required": true,
           "svg_width": "89.000mm",
-          "svg_height": "79.963mm",
+          "svg_height": "82.328mm",
           "contains_raster_images": false,
           "page_width_mm": 89.0,
-          "page_height_mm": 79.963
+          "page_height_mm": 82.328
         },
         "pdf": {
           "path": "E:\\CODE\\Equivariant Geometric Deep Learning Workbench\\gallery\\showcase\\zincblende_zns.pdf",
@@ -1381,14 +1381,14 @@
           "manual_visual_review_required": true,
           "page_size_points": [
             252.283,
-            226.666
+            233.372
           ],
           "fonts": [],
           "has_type3_fonts": false,
           "font_detection": "available",
           "contains_raster_objects": false,
           "page_width_mm": 88.9998361111111,
-          "page_height_mm": 79.96272777777777
+          "page_height_mm": 82.32845555555555
         }
       }
     },
@@ -1553,9 +1553,9 @@
       ],
       "camera_used": "principal_1_roll90",
       "view_dir_cartesian": [
-        0.9785682406483374,
-        0.058070938978157675,
-        -0.19756508912409831
+        -0.328792150677846,
+        0.0007535115445373389,
+        0.9444020086133812
       ],
       "projection": "orthographic",
       "roll": 90.0,
@@ -1575,34 +1575,34 @@
         {
           "label": "principal_1_roll90",
           "direction_cartesian": [
-            0.9785682406483374,
-            0.058070938978157675,
-            -0.19756508912409831
+            -0.328792150677846,
+            0.0007535115445373389,
+            0.9444020086133812
           ],
           "roll_degrees": 90.0,
-          "score": 1.3602195356839115,
+          "score": 1.3574245802462888,
           "atom_overlap_fraction": 0.0,
           "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.04498378148894903,
-          "polyhedron_depth_ratio": 0.8261529069413998,
-          "polyhedron_overlap_fraction": 0.025241834060425766,
-          "projected_aspect": 1.0115613471489597
+          "polyhedron_projected_area": 0.0051673897602735755,
+          "polyhedron_depth_ratio": 0.9632901075137681,
+          "polyhedron_overlap_fraction": 0.006880470960542576,
+          "projected_aspect": 1.4228262687447395
         },
         {
           "label": "principal_1",
           "direction_cartesian": [
-            0.9785682406483374,
-            0.058070938978157675,
-            -0.19756508912409831
+            -0.328792150677846,
+            0.0007535115445373389,
+            0.9444020086133812
           ],
           "roll_degrees": 0.0,
-          "score": 1.3582195356839115,
+          "score": 1.3554245802462888,
           "atom_overlap_fraction": 0.0,
           "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.04498378148894903,
-          "polyhedron_depth_ratio": 0.8261529069413999,
-          "polyhedron_overlap_fraction": 0.02524183406042574,
-          "projected_aspect": 0.9885707899164544
+          "polyhedron_projected_area": 0.005167389760273574,
+          "polyhedron_depth_ratio": 0.9632901075137681,
+          "polyhedron_overlap_fraction": 0.006880470960542632,
+          "projected_aspect": 0.702826495382483
         },
         {
           "label": "lattice_+0-_roll90",
@@ -1612,13 +1612,13 @@
             -0.9224052419204674
           ],
           "roll_degrees": 90.0,
-          "score": 1.3514075390415514,
+          "score": 1.354590868476126,
           "atom_overlap_fraction": 0.0,
           "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.00421011466523032,
+          "polyhedron_projected_area": 0.010135230780597778,
           "polyhedron_depth_ratio": 0.9663027545734837,
-          "polyhedron_overlap_fraction": 0.014233333333333473,
-          "projected_aspect": 1.477859990063807
+          "polyhedron_overlap_fraction": 0.01423333333333345,
+          "projected_aspect": 1.457504685211404
         },
         {
           "label": "lattice_+0-",
@@ -1628,13 +1628,13 @@
             -0.9224052419204674
           ],
           "roll_degrees": 0.0,
-          "score": 1.3494075390415514,
+          "score": 1.352590868476126,
           "atom_overlap_fraction": 0.0,
           "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.0042101146652303205,
-          "polyhedron_depth_ratio": 0.9663027545734838,
-          "polyhedron_overlap_fraction": 0.01423333333333334,
-          "projected_aspect": 0.6766540854501546
+          "polyhedron_projected_area": 0.010135230780597781,
+          "polyhedron_depth_ratio": 0.9663027545734837,
+          "polyhedron_overlap_fraction": 0.014233333333333417,
+          "projected_aspect": 0.686104140965389
         }
       ],
       "diagnostics": [
@@ -1651,7 +1651,7 @@
           "manual_visual_review_required": true,
           "size": [
             1051,
-            1039
+            739
           ],
           "mode": "RGBA",
           "has_alpha": true,
@@ -1670,10 +1670,10 @@
           "warnings": [],
           "manual_visual_review_required": true,
           "svg_width": "89.000mm",
-          "svg_height": "87.983mm",
+          "svg_height": "62.552mm",
           "contains_raster_images": false,
           "page_width_mm": 89.0,
-          "page_height_mm": 87.983
+          "page_height_mm": 62.552
         },
         "pdf": {
           "path": "E:\\CODE\\Equivariant Geometric Deep Learning Workbench\\gallery\\showcase\\monoclinic_tenorite.pdf",
@@ -1684,14 +1684,14 @@
           "manual_visual_review_required": true,
           "page_size_points": [
             252.283,
-            249.4
+            177.312
           ],
           "fonts": [],
           "has_type3_fonts": false,
           "font_detection": "available",
           "contains_raster_objects": false,
           "page_width_mm": 88.9998361111111,
-          "page_height_mm": 87.98277777777778
+          "page_height_mm": 62.55173333333333
         }
       }
     },
@@ -1703,14 +1703,14 @@
         8.17,
         8.17
       ],
-      "camera_used": "lattice_+-+_roll90",
+      "camera_used": "lattice_+-+",
       "view_dir_cartesian": [
         0.40824829046386296,
         -0.4082482904638631,
         0.8164965809277261
       ],
       "projection": "orthographic",
-      "roll": 90.0,
+      "roll": 0.0,
       "selected_intent": "coordination",
       "intent_confidence": 0.78,
       "display_window": [
@@ -1725,22 +1725,6 @@
       "num_clipped_polyhedra": 0,
       "recommended_camera_candidates": [
         {
-          "label": "lattice_+-+_roll90",
-          "direction_cartesian": [
-            0.4082482904638629,
-            -0.408248290463863,
-            0.816496580927726
-          ],
-          "roll_degrees": 90.0,
-          "score": 1.2262258269270203,
-          "atom_overlap_fraction": 0.13333333333333333,
-          "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.025616932394410968,
-          "polyhedron_depth_ratio": 0.8076522238273582,
-          "polyhedron_overlap_fraction": 2.3627809326980914e-10,
-          "projected_aspect": 1.0264725237244796
-        },
-        {
           "label": "lattice_+-+",
           "direction_cartesian": [
             0.4082482904638629,
@@ -1748,45 +1732,61 @@
             0.816496580927726
           ],
           "roll_degrees": 0.0,
-          "score": 1.2242258269270205,
-          "atom_overlap_fraction": 0.13333333333333333,
+          "score": 1.3694608561420294,
+          "atom_overlap_fraction": 0.0,
           "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.02561693239441097,
+          "polyhedron_projected_area": 0.049341251322181416,
           "polyhedron_depth_ratio": 0.8076522238273584,
-          "polyhedron_overlap_fraction": 2.3627809920050915e-10,
-          "projected_aspect": 0.974210197435752
-        },
-        {
-          "label": "lattice_+-+",
-          "direction_cartesian": [
-            0.4082482904638629,
-            -0.816496580927726,
-            0.408248290463863
-          ],
-          "roll_degrees": 0.0,
-          "score": 1.1694023311533233,
-          "atom_overlap_fraction": 0.13333333333333333,
-          "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.028144280228286238,
-          "polyhedron_depth_ratio": 0.6303764835904965,
-          "polyhedron_overlap_fraction": 1.1861399897212403e-17,
-          "projected_aspect": 1.2968921517424217
+          "polyhedron_overlap_fraction": 2.362780843737591e-10,
+          "projected_aspect": 1.0061698425050714
         },
         {
           "label": "lattice_+-+_roll90",
           "direction_cartesian": [
             0.4082482904638629,
-            -0.816496580927726,
-            0.408248290463863
+            -0.408248290463863,
+            0.816496580927726
           ],
           "roll_degrees": 90.0,
-          "score": 1.1674023311533233,
-          "atom_overlap_fraction": 0.13333333333333333,
+          "score": 1.3674608561420292,
+          "atom_overlap_fraction": 0.0,
           "bond_visibility": 0.5,
-          "polyhedron_projected_area": 0.028144280228286238,
-          "polyhedron_depth_ratio": 0.6303764835904965,
-          "polyhedron_overlap_fraction": 1.7792099240350222e-17,
-          "projected_aspect": 0.771074139554676
+          "polyhedron_projected_area": 0.049341251322181416,
+          "polyhedron_depth_ratio": 0.8076522238273582,
+          "polyhedron_overlap_fraction": 2.362780903044591e-10,
+          "projected_aspect": 0.9938679910245469
+        },
+        {
+          "label": "lattice_0+-",
+          "direction_cartesian": [
+            1.438348624333616e-16,
+            0.894427190999916,
+            -0.44721359549995787
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.3100479322629766,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "polyhedron_projected_area": 0.05378236644138627,
+          "polyhedron_depth_ratio": 0.6937759793365187,
+          "polyhedron_overlap_fraction": 0.03636936720272373,
+          "projected_aspect": 1.2846739523273383
+        },
+        {
+          "label": "lattice_0+-",
+          "direction_cartesian": [
+            7.19174312166808e-17,
+            0.447213595499958,
+            -0.894427190999916
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.3100479314201054,
+          "atom_overlap_fraction": 0.0,
+          "bond_visibility": 0.5,
+          "polyhedron_projected_area": 0.0537823663711667,
+          "polyhedron_depth_ratio": 0.6937759793365188,
+          "polyhedron_overlap_fraction": 0.03636936902115486,
+          "projected_aspect": 1.2846739523273383
         }
       ],
       "diagnostics": [
@@ -1803,7 +1803,7 @@
           "manual_visual_review_required": true,
           "size": [
             1051,
-            1024
+            1045
           ],
           "mode": "RGBA",
           "has_alpha": true,
@@ -1822,10 +1822,10 @@
           "warnings": [],
           "manual_visual_review_required": true,
           "svg_width": "89.000mm",
-          "svg_height": "86.705mm",
+          "svg_height": "88.454mm",
           "contains_raster_images": false,
           "page_width_mm": 89.0,
-          "page_height_mm": 86.705
+          "page_height_mm": 88.454
         },
         "pdf": {
           "path": "E:\\CODE\\Equivariant Geometric Deep Learning Workbench\\gallery\\showcase\\blind_mg_al2o4_spinel.pdf",
@@ -1836,14 +1836,14 @@
           "manual_visual_review_required": true,
           "page_size_points": [
             252.283,
-            245.777
+            250.736
           ],
           "fonts": [],
           "has_type3_fonts": false,
           "font_detection": "available",
           "contains_raster_objects": false,
           "page_width_mm": 88.9998361111111,
-          "page_height_mm": 86.70466388888889
+          "page_height_mm": 88.45408888888888
         }
       }
     },

@@ -1,11 +1,14 @@
 """Tests for scene and camera."""
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 from crystalfig.examples.presets import mos2_structure, perovskite_structure, rocksalt_structure
 from crystalfig.figure.builder import CrystalFigure
 from crystalfig.geometry.polyhedra import validate_mesh_winding
+from crystalfig.io.loader import load_structure
 from crystalfig.neighbors.strategies import CrystalNNStrategy, CutoffStrategy
 from crystalfig.scene.camera import Camera
 from crystalfig.scene.primitives import Sphere
@@ -53,6 +56,21 @@ class TestScene:
         assert scene.metadata["camera_used"] != "isometric"
         assert scene.metadata["num_real_polyhedra"] == 4
         assert scene.metadata["num_clipped_polyhedra"] == 0
+
+    def test_coordination_view_does_not_scatter_unselected_center_species(self):
+        structure = load_structure(
+            Path(__file__).parents[1] / "examples" / "data" / "tenorite_amcsd_18822.cif"
+        )
+        scene = CrystalFigure(structure).publication(intent="coordination").build_scene()
+        polyhedra = scene.get_group("polyhedra").primitives
+        selected_centers = {poly.center_site for poly in polyhedra}
+        visible_copper = {
+            atom.metadata["site_index"]
+            for atom in scene.get_group("atoms").primitives
+            if atom.metadata["element"] == "Cu"
+        }
+        assert selected_centers
+        assert visible_copper == selected_centers
 
     def test_cell_clips_periodic_bonds_and_polyhedra_to_the_cell(self):
         structure = mos2_structure()
