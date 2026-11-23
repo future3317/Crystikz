@@ -88,10 +88,10 @@
         ],
         "occupancy_width": 0.9196003805899143,
         "occupancy_height": 0.9194117647058824,
-        "foreground_fraction": 0.3495544859237701,
+        "foreground_fraction": 0.3476697263110763,
         "path": "BaTiO3_journal_clean.png",
         "depth_peeling": true,
-        "ssim_vs_v4": 0.602878481794536
+        "ssim_vs_v4": 0.6025907216666083
       },
       "journal_vivid": {
         "display": "hybrid",
@@ -170,10 +170,10 @@
         ],
         "occupancy_width": 0.9196003805899143,
         "occupancy_height": 0.9193168433451119,
-        "foreground_fraction": 0.35316609118692277,
+        "foreground_fraction": 0.35126510284108803,
         "path": "BaTiO3_journal_vivid.png",
         "depth_peeling": true,
-        "ssim_vs_v4": 0.5711884605554598
+        "ssim_vs_v4": 0.570834589534069
       }
     },
     "MoS2": {
@@ -741,10 +741,10 @@
         ],
         "occupancy_width": 0.9196003805899143,
         "occupancy_height": 0.9191000478697942,
-        "foreground_fraction": 0.412959414521901,
+        "foreground_fraction": 0.4120821811864877,
         "path": "MgAl2O4_journal_clean.png",
         "depth_peeling": true,
-        "ssim_vs_v4": 0.6625271839438228
+        "ssim_vs_v4": 0.6623335282285787
       },
       "journal_vivid": {
         "display": "hybrid",
@@ -824,10 +824,10 @@
         ],
         "occupancy_width": 0.9196003805899143,
         "occupancy_height": 0.9191000478697942,
-        "foreground_fraction": 0.41219809805246,
+        "foreground_fraction": 0.41131152760210593,
         "path": "MgAl2O4_journal_vivid.png",
         "depth_peeling": true,
-        "ssim_vs_v4": 0.6357198582238777
+        "ssim_vs_v4": 0.6354628876424173
       }
     },
     "LiFePO4": {
@@ -909,10 +909,10 @@
         ],
         "occupancy_width": 0.9196003805899143,
         "occupancy_height": 0.9187609585037989,
-        "foreground_fraction": 0.47609496063141,
+        "foreground_fraction": 0.47508648633318523,
         "path": "LiFePO4_journal_clean.png",
         "depth_peeling": true,
-        "ssim_vs_v4": 0.604027818125166
+        "ssim_vs_v4": 0.6036920229406385
       },
       "journal_vivid": {
         "display": "hybrid",
@@ -992,10 +992,10 @@
         ],
         "occupancy_width": 0.9196003805899143,
         "occupancy_height": 0.9188084112149533,
-        "foreground_fraction": 0.47471922601527694,
+        "foreground_fraction": 0.47370772828725644,
         "path": "LiFePO4_journal_vivid.png",
         "depth_peeling": true,
-        "ssim_vs_v4": 0.5696604828605331
+        "ssim_vs_v4": 0.5692405725632856
       }
     },
     "alpha_SiO2": {
@@ -1076,10 +1076,10 @@
         ],
         "occupancy_width": 0.9196003805899143,
         "occupancy_height": 0.918982850384388,
-        "foreground_fraction": 0.2506162641982714,
+        "foreground_fraction": 0.2493454742491311,
         "path": "alpha_SiO2_journal_clean.png",
         "depth_peeling": true,
-        "ssim_vs_v4": 0.6962903409549155
+        "ssim_vs_v4": 0.6959989130186065
       },
       "journal_vivid": {
         "display": "hybrid",
@@ -1158,10 +1158,10 @@
         ],
         "occupancy_width": 0.9196003805899143,
         "occupancy_height": 0.9190785587714116,
-        "foreground_fraction": 0.25131888567859034,
+        "foreground_fraction": 0.2500473489372201,
         "path": "alpha_SiO2_journal_vivid.png",
         "depth_peeling": true,
-        "ssim_vs_v4": 0.6867028804120855
+        "ssim_vs_v4": 0.6864167534455787
       }
     },
     "Eu2FeGe2OS6": {
@@ -1243,7 +1243,7 @@
         ],
         "occupancy_width": 0.9196003805899143,
         "occupancy_height": 0.9196386115073705,
-        "foreground_fraction": 0.47792085340456497,
+        "foreground_fraction": 0.47709379876421387,
         "path": "Eu2FeGe2OS6_journal_clean.png",
         "depth_peeling": true
       },
@@ -1325,7 +1325,7 @@
         ],
         "occupancy_width": 0.9196003805899143,
         "occupancy_height": 0.9196386115073705,
-        "foreground_fraction": 0.47830361501601854,
+        "foreground_fraction": 0.4774813109630436,
         "path": "Eu2FeGe2OS6_journal_vivid.png",
         "depth_peeling": true
       }
@@ -1534,7 +1534,7 @@
         "padding": 0.08,
         "projection": "orthographic"
       },
-      "ssim_pyvista_vs_matplotlib": 0.6807676416505286
+      "ssim_pyvista_vs_matplotlib": 0.6806406677815963
     },
     "Si": {
       "display": "network",

@@ -140,6 +140,45 @@ def test_gradient_bond_tube_carries_interpolatable_endpoint_rgb():
 
 @pytest.mark.optional
 @pytest.mark.skipif(importlib.util.find_spec("pyvista") is None, reason="PyVista is optional")
+def test_translucent_polyhedron_face_colors_render_as_red_and_blue_pixels(tmp_path):
+    from crystalfig.styles.specs import FigureStyle, PolyhedronStyle
+
+    theme = FigureStyle(
+        polyhedra=PolyhedronStyle(face_opacity=0.8, back_face_opacity=0.8)
+    ).to_legacy_theme()
+    triangle = [[0, 1, 2]]
+    red = Polyhedron(
+        vertices=[[-1.8, -0.8, 0], [-0.4, -0.8, 0], [-1.1, 0.8, 0]],
+        faces=triangle,
+        fill_color="#d55e00",
+        opacity=1.0,
+    )
+    blue = Polyhedron(
+        vertices=[[0.4, -0.8, 0], [1.8, -0.8, 0], [1.1, 0.8, 0]],
+        faces=triangle,
+        fill_color="#0072b2",
+        opacity=1.0,
+    )
+    renderer = PyVistaRenderer(camera=Camera(elevation=0, azimuth=0))
+    output = tmp_path / "colored-faces.png"
+    renderer.export(
+        Scene([red, blue]),
+        str(output),
+        theme,
+        RenderOptions(width=50.8, height=50.8, dpi=80),
+    )
+    from PIL import Image
+
+    pixels = np.asarray(Image.open(output).convert("RGB"))
+    red_pixels = (pixels[:, :, 0] > 1.3 * pixels[:, :, 2]) & (pixels[:, :, 0] > 1.15 * pixels[:, :, 1])
+    blue_pixels = (pixels[:, :, 2] > 1.3 * pixels[:, :, 0]) & (pixels[:, :, 2] > 1.05 * pixels[:, :, 1])
+    assert np.count_nonzero(red_pixels) > 20
+    assert np.count_nonzero(blue_pixels) > 20
+    assert renderer.last_depth_peeling_used
+
+
+@pytest.mark.optional
+@pytest.mark.skipif(importlib.util.find_spec("pyvista") is None, reason="PyVista is optional")
 def test_exports_scene_as_png_with_requested_pixel_size(tmp_path):
     scene = Scene([
         Sphere(position=[0, 0, 0], radius=0.35, color="#cc5544", metadata={"site_index": 0}),

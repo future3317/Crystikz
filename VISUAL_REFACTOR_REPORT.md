@@ -28,6 +28,10 @@ spatial layering, shell integrity and figure composition determines visual
 acceptance. In the dense Ce–Cd–Te example, some atoms still overlap in projection
 and the default element colors are closer in hue than in the paper.
 
+Linux validation checks both depth peeling and the colors of rendered translucent
+face interiors. This catches the loss of face colors that a successful PNG export
+and VTK's depth-peeling flag alone can miss.
+
 ## Historical refactor
 
 ## Scope

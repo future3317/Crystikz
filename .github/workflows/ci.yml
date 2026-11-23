@@ -98,6 +98,12 @@ jobs:
         shell: bash
         run: python -m pytest tests/test_pyvista_renderer.py tests/test_export.py -q 2>&1 | tee pyvista-smoke.log
 
+      - name: Test translucent face color with EGL
+        env:
+          VTK_DEFAULT_OPENGL_WINDOW: vtkEGLRenderWindow
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: python -m pytest tests/test_pyvista_renderer.py -q -k "translucent_polyhedron_face_colors or depth_peeling_composites"
+
       - name: Render 11-structure publication gallery
         run: python examples/generate_gallery.py --showcase-only
 

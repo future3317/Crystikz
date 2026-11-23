@@ -112,14 +112,18 @@ class PyVistaRenderer:
             self._set_camera(plotter, scene, window_size[0] / window_size[1])
             self._add_lighting(plotter, theme, scene, pv)
             if peeling_requested:
+                # On EGL PyVista substitutes an SSAA pass for FXAA. That pass
+                # replaces the render path that performs depth peeling.
+                plotter.disable_anti_aliasing()
                 try:
                     plotter.enable_depth_peeling(number_of_peels=16, occlusion_ratio=0.0)
                 except (AttributeError, RuntimeError) as exc:
                     warnings.warn(f"VTK depth peeling unavailable: {exc}", RuntimeWarning, stacklevel=2)
-            try:
-                plotter.enable_anti_aliasing("fxaa" if peeling_requested else quality["aa"])
-            except (AttributeError, RuntimeError) as exc:
-                warnings.warn(f"VTK anti-aliasing unavailable: {exc}", RuntimeWarning, stacklevel=2)
+            else:
+                try:
+                    plotter.enable_anti_aliasing(quality["aa"])
+                except (AttributeError, RuntimeError) as exc:
+                    warnings.warn(f"VTK anti-aliasing unavailable: {exc}", RuntimeWarning, stacklevel=2)
             if ssao_enabled:
                 try:
                     plotter.enable_ssao(radius=0.5, bias=0.005, kernel_size=quality["kernel"])
@@ -413,10 +417,6 @@ class PyVistaRenderer:
                         line_width=max(1.0, primitive.linewidth * dpi / 72),
                     )
                 elif isinstance(primitive, Polyhedron) and primitive.faces:
-                    packed_faces = np.asarray(
-                        [item for face in primitive.faces for item in (len(face), *face)], dtype=np.int64
-                    )
-                    mesh = pv.PolyData(np.asarray(primitive.vertices), packed_faces)
                     from matplotlib.colors import to_rgba
 
                     style = getattr(theme, "figure_style", None)
@@ -425,6 +425,8 @@ class PyVistaRenderer:
                     camera_vertices = np.asarray(primitive.vertices) @ self.camera.rotation_matrix().T
                     face_roles = primitive.face_metadata
                     rgba = []
+                    render_vertices = []
+                    render_faces = []
                     for index, face in enumerate(primitive.faces):
                         points = camera_vertices[np.asarray(face, dtype=int)]
                         normal = np.zeros(3)
@@ -438,12 +440,19 @@ class PyVistaRenderer:
                             else primitive.fill_color or primitive.color
                         )
                         alpha = primitive.opacity * (face_opacity if front else back_opacity)
-                        rgba.append([round(255 * value) for value in to_rgba(color)[:3]] + [round(255 * alpha)])
-                    mesh.cell_data["face_rgba"] = np.asarray(rgba, dtype=np.uint8)
+                        face_rgba = [round(255 * value) for value in to_rgba(color)[:3]] + [round(255 * alpha)]
+                        start_index = len(render_vertices)
+                        render_vertices.extend(primitive.vertices[vertex] for vertex in face)
+                        render_faces.append((len(face), *range(start_index, start_index + len(face))))
+                        rgba.extend([face_rgba] * len(face))
+                    packed_faces = np.asarray([value for face in render_faces for value in face], dtype=np.int64)
+                    mesh = pv.PolyData(np.asarray(render_vertices), packed_faces)
+                    mesh.point_data["face_rgba"] = np.asarray(rgba, dtype=np.uint8)
                     plotter.add_mesh(
                         mesh,
                         scalars="face_rgba",
                         rgba=True,
+                        preference="point",
                         smooth_shading=False,
                         show_edges=False,
                         show_scalar_bar=False,
