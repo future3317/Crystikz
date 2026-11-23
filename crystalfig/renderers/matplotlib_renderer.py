@@ -212,10 +212,8 @@ class MatplotlibRenderer:
             elif isinstance(p, (Arrow, Axis)):
                 pts.append(np.asarray(self.camera.project(p.start)).flatten()[:2])
                 pts.append(np.asarray(self.camera.project(p.start + p.direction)).flatten()[:2])
-            elif isinstance(p, Text):
-                # Annotations with 2D normalized positions are not part of data bounds.
-                if getattr(p, "layer", "default") != "annotation":
-                    pts.append(np.asarray(self.camera.project(p.position)).flatten()[:2])
+            elif isinstance(p, Text) and p.layer != "annotation":
+                pts.append(np.asarray(self.camera.project(p.position)).flatten()[:2])
         if not pts:
             return None
         arr = np.array(pts)
