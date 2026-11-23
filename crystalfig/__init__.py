@@ -22,6 +22,7 @@ from crystalfig.figure import (
 from crystalfig.model.lattice import Lattice
 from crystalfig.model.site import Site
 from crystalfig.model.structure import CrystalStructure
+from crystalfig.planning.display import BondDisplayPolicy
 
 __all__ = [
     "__version__",
@@ -30,6 +31,7 @@ __all__ = [
     "plot_structure",
     "DisplayConfig",
     "DisplayPlan",
+    "BondDisplayPolicy",
     "CameraConfig",
     "RenderConfig",
     "FigureConfig",

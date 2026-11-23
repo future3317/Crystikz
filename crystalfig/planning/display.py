@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 
@@ -10,6 +11,10 @@ from crystalfig.analysis.coordination import CoordinationAnalyzer
 from crystalfig.analysis.structure_intent import StructureIntentAnalyzer
 from crystalfig.model.structure import CrystalStructure
 from crystalfig.neighbors.base import NeighborStrategy
+
+BondDisplayPolicy = Literal[
+    "all_bonds", "center_ligand_only", "polyhedron_edges_only", "hidden"
+]
 
 
 @dataclass(frozen=True)
@@ -24,6 +29,9 @@ class DisplayConfig:
     show_unit_cell: bool | None = None
     max_atoms: int = 60
     max_polyhedra: int = 6
+    framing: str = "auto"
+    framing_site: int | None = None
+    bond_display_policy: BondDisplayPolicy | None = None
 
 
 @dataclass(frozen=True)
@@ -41,6 +49,7 @@ class DisplayPlan:
     show_cell: bool = True
     layer_normal: tuple[float, float, float] | None = None
     layer_translations: tuple[tuple[float, float, float], ...] = ()
+    framing: str = "auto"
 
 
 class DisplayPlanner:
@@ -198,3 +207,92 @@ class DisplayPlanner:
         if intent == "minimal" or structure.num_sites >= max_atoms:
             repeats[:] = 1
         return tuple(int(value) for value in repeats)
+
+    @staticmethod
+    def resolve_framing(framing, framing_site, intent, region, centers):
+        """Apply an explicit figure framing choice to the existing display inputs."""
+        if framing not in {"auto", "unit_cell", "local_coordination", "motif"}:
+            raise ValueError("framing must be 'auto', 'unit_cell', 'local_coordination', or 'motif'")
+        if framing_site is not None and (not isinstance(framing_site, int) or framing_site < 0):
+            raise ValueError("framing_site must be a non-negative site index")
+        if framing == "unit_cell":
+            return intent, "cell", centers
+        if framing == "motif":
+            return intent, "motif", centers
+        if framing == "local_coordination":
+            if framing_site is not None:
+                centers = [framing_site]
+            return "coordination", "cell", centers
+        return intent, region, centers
+
+    @staticmethod
+    def representative_motif_instances(structure, bonds, limit=12):
+        """Grow a compact connected motif in the periodic site-image graph."""
+        adjacency = {index: [] for index in range(structure.num_sites)}
+        site_images = np.floor(structure.frac_coords).astype(int)
+        for bond in bonds:
+            image = tuple(
+                int(bond.jimage[axis] + site_images[bond.j, axis] - site_images[bond.i, axis])
+                for axis in range(3)
+            )
+            adjacency[bond.i].append((bond.j, image))
+            adjacency[bond.j].append((bond.i, tuple(-value for value in image)))
+        adjacency = {
+            index: list(dict.fromkeys(entries)) for index, entries in adjacency.items()
+        }
+        if not structure.num_sites:
+            return ()
+        quotient = {
+            index: {other for other, _ in entries if other != index}
+            for index, entries in adjacency.items()
+        }
+        components = []
+        remaining = set(range(structure.num_sites))
+        while remaining:
+            component = set()
+            stack = [min(remaining)]
+            while stack:
+                index = stack.pop()
+                if index in component:
+                    continue
+                component.add(index)
+                stack.extend(quotient[index] - component)
+            remaining -= component
+            components.append(component)
+        largest = max(components, key=lambda nodes: (len(nodes), -min(nodes)))
+        start = min(largest, key=lambda i: (-len(adjacency[i]), i))
+        selected = [(start, (0, 0, 0))]
+        visited = set(selected)
+        represented = {structure.sites[start].dominant_species}
+        cursor = 0
+        while cursor < len(selected) and len(selected) < limit:
+            index, offset = selected[cursor]
+            cursor += 1
+            neighbors = [
+                (other, tuple(offset[axis] + image[axis] for axis in range(3)))
+                for other, image in adjacency[index]
+            ]
+            neighbors.sort(key=lambda node: (
+                structure.sites[node[0]].dominant_species in represented,
+                -len(adjacency[node[0]]), node[0], node[1],
+            ))
+            for node in neighbors:
+                if node in visited:
+                    continue
+                visited.add(node)
+                selected.append(node)
+                represented.add(structure.sites[node[0]].dominant_species)
+                if len(selected) == limit:
+                    break
+        return tuple(selected)
+
+    @staticmethod
+    def local_center(structure, bonds):
+        analyzer = CoordinationAnalyzer()
+        candidates = analyzer.automatic_center_candidates(structure, bonds)
+        if not candidates:
+            adjacency = analyzer.adjacency(structure, bonds)
+            candidates = [index for index, neighbors in adjacency.items() if neighbors]
+        if not candidates:
+            return ()
+        return tuple(analyzer.select_adjacent_centers(structure, candidates, 1, bonds))

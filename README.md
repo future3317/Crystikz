@@ -7,7 +7,7 @@ depth-buffered 3D renderer.
 
 ![Four crystals rendered in PyVista with vector titles and element keys](gallery/publication_review/paper_four_panel.png)
 
-[Publication benchmark](gallery/publication_review/comparison_contact_sheet.png) · [Same scene in two backends](gallery/publication_review/backend_comparison.png) · [14-structure diagnostic gallery](gallery/showcase/contact_sheet.png)
+[Journal and VESTA benchmarks](gallery/publication_review/comparison_contact_sheet.png) · [Bond and framing comparisons](gallery/publication_review/coordination_comparison.png) · [Same scene in two backends](gallery/publication_review/backend_comparison.png) · [14-structure diagnostic gallery](gallery/showcase/contact_sheet.png)
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -98,6 +98,17 @@ periodic ligands across the cell boundary. `show_partial` explicitly clips the h
 artificial faces. `CrystalNN` is a candidate neighbor model. Choose a cutoff or manual neighbors
 when the scientific interpretation requires a different shell.
 
+Use `framing="unit_cell"` for a complete cell, `framing="local_coordination"` for a single
+periodic neighborhood, and `framing="motif"` for a representative connected fragment.
+`framing_site` optionally specifies a zero-based site index for local coordination. For dense
+networks, automatic framing can select a motif when the full cell exceeds the display budget.
+
+Set `bond_display_policy` in `DisplayConfig` or `publication()` to control chemical bond lines.
+The coordination default, `center_ligand_only`, keeps the sticks for the displayed shells and
+draws them thinner and lighter. `all_bonds` draws all bonds in the displayed region.
+`polyhedron_edges_only` uses the existing polyhedron outlines without sticks, while `hidden`
+hides chemical bonds in any view. Polyhedron appearance is controlled by the selected style.
+
 Create a polyhedron-led view when coordination is the intended scientific message:
 
 ```python
@@ -174,7 +185,8 @@ figure.export("MoS2.png", backend="pyvista", width=89, dpi=600)
 ```
 
 Choose `vesta_ballstick`, `vesta_coordination`, `journal_clean`, `journal_vivid` or
-`layered_crystal`. For custom appearance, use `crystalfig.styles.get_style()` and
+`layered_crystal`. The VESTA presets use larger ceramic spheres, stronger highlights and
+thin cylindrical bonds. For custom appearance, use `crystalfig.styles.get_style()` and
 `dataclasses.replace()` to adjust atom, bond, polyhedron, cell or lighting settings independently.
 `CameraConfig(mode="fixed", elevation=30, azimuth=35)` records an explicit view. Existing
 `FigureTheme` presets and crystallographic view presets are available through the fluent API.
@@ -184,6 +196,7 @@ Choose `vesta_ballstick`, `vesta_coordination`, `journal_clean`, `journal_vivid`
 ```bash
 crystalfig render BaTiO3.cif -o BaTiO3.pdf --bonds crystalnn --polyhedra Ti --width 89
 crystalfig render BaTiO3.cif -o motif.png --intent coordination --region motif --centers Ti --style vesta_coordination
+crystalfig render dense.cif -o local.png --framing local_coordination --framing-site 0 --style vesta_coordination
 crystalfig inspect BaTiO3.cif
 crystalfig doctor
 crystalfig preflight BaTiO3.pdf
@@ -198,9 +211,9 @@ figures:
     output: figures/sample.pdf
     style: journal_vivid
     display:
-      intent: coordination
-      region: motif
+      framing: local_coordination
       neighbor_strategy: crystalnn
+      bond_display_policy: center_ligand_only
     camera:
       mode: auto
     render:
@@ -237,6 +250,8 @@ OVITO, and general 3D software such as Blender. It focuses on repeatable Python 
 from crystal structure data.
 
 ## Development
+
+Use Python 3.11 for development and validation.
 
 ```bash
 git clone https://github.com/future3317/Crystikz.git

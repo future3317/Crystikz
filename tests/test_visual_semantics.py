@@ -4,12 +4,16 @@ from collections import Counter
 from math import prod
 from pathlib import Path
 
+import numpy as np
+
+from crystalfig.analysis.coordination import CoordinationAnalyzer
 from crystalfig.examples.presets import diamond_structure, mos2_structure, perovskite_structure
 from crystalfig.figure.builder import CrystalFigure
 from crystalfig.figure.config import CameraConfig, FigureConfig, RenderConfig
 from crystalfig.io.loader import load_structure
+from crystalfig.neighbors.base import NeighborBond
 from crystalfig.neighbors.strategies import CrystalNNStrategy
-from crystalfig.planning.display import DisplayConfig
+from crystalfig.planning.display import DisplayConfig, DisplayPlanner
 
 DATA = Path(__file__).parent.parent / "examples" / "data" / "visual_regression"
 
@@ -161,3 +165,101 @@ def test_configured_network_motif_expands_beyond_unit_cell():
     cell = CrystalFigure(perovskite_structure()).configure(cell_config)
     assert motif._display_plan.repeat != (1, 1, 1)
     assert cell._display_plan.repeat == (1, 1, 1)
+
+
+def test_explicit_framing_choices_on_dense_cell_fixture():
+    structure = load_structure(DATA / "Ce6Cd23Te.cif")
+    unit_cell = CrystalFigure(structure).publication(
+        framing="unit_cell", style="ballstick", intent="network"
+    )
+    motif = CrystalFigure(structure).publication(
+        framing="motif", style="ballstick", intent="network"
+    )
+    local = CrystalFigure(structure).publication(
+        framing="local_coordination", framing_site=0,
+        style="nature", strategy="crystalnn",
+    )
+    local_without_hull = CrystalFigure(structure).publication(
+        framing="local_coordination", framing_site=0,
+        style="ballstick", coordination_shell="none", strategy="crystalnn",
+    ).add_bonds(strategy="crystalnn")
+    automatic = CrystalFigure(structure).publication(style="vesta_ballstick", intent="auto")
+    assert unit_cell._display_plan.repeat == (1, 1, 1)
+    assert motif._display_plan.repeat == DisplayPlanner.publication_window(
+        structure, "network", "motif", max_atoms=60
+    )
+    assert local._display_plan.repeat == (1, 1, 1)
+    assert local._display_plan.selected_centers == (0,)
+    assert local._display_plan.intent == "coordination"
+    assert automatic._display_plan.framing == "motif"
+    unit_scene = unit_cell.build_scene()
+    motif_scene = motif.build_scene()
+    local_scene = local.build_scene()
+    local_without_hull_scene = local_without_hull.build_scene()
+    automatic_scene = automatic.build_scene()
+    assert len(motif_scene.get_group("atoms").primitives) < len(unit_scene.get_group("atoms").primitives)
+    motif_atoms = motif_scene.get_group("atoms").primitives
+    motif_positions = [sphere.position for sphere in motif_atoms]
+    motif_edges = []
+    for bond in motif_scene.get_group("bonds").primitives:
+        first_distances = [np.linalg.norm(bond.start - position) for position in motif_positions]
+        second_distances = [np.linalg.norm(bond.end - position) for position in motif_positions]
+        first, second = int(np.argmin(first_distances)), int(np.argmin(second_distances))
+        assert first_distances[first] < 1e-7
+        assert second_distances[second] < 1e-7
+        motif_edges.append((first, second))
+    reachable = {0}
+    while True:
+        expanded = reachable | {
+            second if first in reachable else first
+            for first, second in motif_edges
+            if first in reachable or second in reachable
+        }
+        if expanded == reachable:
+            break
+        reachable = expanded
+    assert len(reachable) == len(motif_atoms)
+    coordination_cell = CrystalFigure(structure).publication(
+        framing="unit_cell", style="vesta_coordination", intent="coordination"
+    ).build_scene()
+    hidden_cell = CrystalFigure(structure).publication(
+        framing="unit_cell", style="vesta_coordination", intent="coordination",
+        show_unit_cell=False,
+    ).build_scene()
+    assert coordination_cell.get_group("cell") is not None
+    assert hidden_cell.get_group("cell") is None
+    assert len(coordination_cell.get_group("atoms").primitives) >= structure.num_sites
+    assert len(local_scene.get_group("atoms").primitives) > 1
+    assert local_scene.get_group("bonds").primitives
+    assert local_without_hull_scene.get_group("atoms").primitives
+    assert local_without_hull_scene.get_group("bonds").primitives
+    assert local_without_hull_scene.get_group("polyhedra") is None
+    assert len(automatic_scene.get_group("atoms").primitives) < len(unit_scene.get_group("atoms").primitives)
+    shell = CoordinationAnalyzer().analyze(
+        structure, [0], CrystalNNStrategy()
+    )[0]
+    rendered = {
+        (atom.metadata["site_index"], tuple(atom.metadata["image_offset"]))
+        for atom in local_scene.get_group("atoms").primitives
+    }
+    expected = {(0, (0, 0, 0))} | set(zip(
+        shell.ligand_indices, shell.ligand_image_offsets, strict=True
+    ))
+    assert expected <= rendered
+    positions = [atom.position for atom in local_scene.get_group("atoms").primitives]
+    for bond in local_scene.get_group("bonds").primitives:
+        assert min(np.linalg.norm(bond.start - position) for position in positions) < 1e-7
+        assert min(np.linalg.norm(bond.end - position) for position in positions) < 1e-7
+    assert 0 <= unit_scene.metadata["camera_score_components"]["projection_crowding_fraction"] <= 1
+
+
+def test_periodic_self_bond_produces_both_local_ligand_images():
+    shell = CoordinationAnalyzer().analyze(
+        perovskite_structure(), [0],
+        [
+            NeighborBond(0, 0, (1, 0, 0), 1.0),
+            NeighborBond(0, 0, (-1, 0, 0), 1.0),
+        ],
+    )[0]
+    assert shell.coordination_number == 2
+    assert set(shell.ligand_image_offsets) == {(-1, 0, 0), (1, 0, 0)}

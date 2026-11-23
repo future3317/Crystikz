@@ -18,29 +18,29 @@ PRESETS: dict[str, FigureStyle] = {
     "vesta_ballstick": FigureStyle(
         name="vesta_ballstick",
         atoms=AtomStyle(
-            radius_scale=0.29, radius_scale_polyhedron=0.25,
-            radius_scale_polyhedron_center=0.17, material="ceramic",
-            roughness=0.28, specular=0.52,
+            radius_scale=0.34, radius_scale_polyhedron=0.29,
+            radius_scale_polyhedron_center=0.20, material="ceramic",
+            roughness=0.34, specular=0.42, ambient=0.28,
         ),
         bonds=BondStyle(radius=0.05, color_mode="element_split"),
-        polyhedra=PolyhedronStyle(face_opacity=0.0, back_face_opacity=0.0),
+        polyhedra=PolyhedronStyle(face_opacity=0.0, back_face_opacity=0.0, edge_mode="none"),
         cell=CellStyle(visible=True),
-        lighting=LightingStyle(key_intensity=0.95, fill_intensity=0.5, rim_intensity=0.4),
+        lighting=LightingStyle(key_intensity=1.05, fill_intensity=0.65, rim_intensity=0.35),
         palette=get_palette("vesta_classic"),
     ),
     "vesta_coordination": FigureStyle(
         name="vesta_coordination",
         atoms=AtomStyle(
-            radius_scale=0.24, radius_scale_polyhedron=0.25,
-            radius_scale_polyhedron_center=0.17, material="ceramic",
-            roughness=0.28, specular=0.52,
+            radius_scale=0.28, radius_scale_polyhedron=0.29,
+            radius_scale_polyhedron_center=0.20, material="ceramic",
+            roughness=0.34, specular=0.42, ambient=0.28,
         ),
         bonds=BondStyle(radius=0.04, color_mode="element_split"),
         polyhedra=PolyhedronStyle(
             color_mode="environment", face_opacity=0.25,
             back_face_opacity=0.08, edge_mode="visible", edge_width=0.8,
         ),
-        lighting=LightingStyle(key_intensity=0.95, fill_intensity=0.5, rim_intensity=0.4),
+        lighting=LightingStyle(key_intensity=1.05, fill_intensity=0.65, rim_intensity=0.35),
         palette=get_palette("vesta_classic"),
     ),
     "journal_clean": FigureStyle(

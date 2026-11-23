@@ -16,6 +16,7 @@ class AtomStyle:
     sphere_resolution: int = 64
     roughness: float = 0.34
     specular: float = 0.25
+    ambient: float = 0.18
 
 
 @dataclass(frozen=True)

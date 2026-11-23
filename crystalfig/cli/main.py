@@ -35,8 +35,11 @@ def _add_render_args(parser: argparse.ArgumentParser):
     parser.add_argument("--quality", choices=("preview", "standard", "publication"), default=None)
     parser.add_argument("--intent", choices=("auto", "network", "coordination", "layered", "ionic", "minimal"))
     parser.add_argument("--region", choices=("auto", "cell", "motif", "supercell"))
+    parser.add_argument("--framing", choices=("auto", "unit_cell", "local_coordination", "motif"))
+    parser.add_argument("--framing-site", type=int, help="Structure site index for local coordination framing")
     parser.add_argument("--centers", nargs="+", default=None, help="Coordination center species or indices")
     parser.add_argument("--neighbor-strategy", default=None, help="Coordination neighbor strategy")
+    parser.add_argument("--bond-display-policy", choices=("all_bonds", "center_ligand_only", "polyhedron_edges_only", "hidden"))
     views = parser.add_mutually_exclusive_group()
     views.add_argument("--view", nargs=3, type=float, default=None, help="View direction e.g. 1 1 0")
     views.add_argument("--view-preset", choices=("auto", "isometric", "along_a", "along_b", "along_c", "layer_top", "layer_oblique", "polyhedron_focus"))
@@ -79,6 +82,8 @@ def _configure_figure(config: dict, base_dir: Path):
         any(key in config for key in ("display", "camera", "render"))
         or config.get("intent") is not None
         or config.get("region") is not None
+        or config.get("framing") is not None
+        or config.get("bond_display_policy") is not None
         or selected_style in PRESETS
     )
     if use_figure_config:
@@ -107,10 +112,16 @@ def _configure_figure(config: dict, base_dir: Path):
             display_values["intent"] = config["intent"]
         if config.get("region") is not None:
             display_values["region"] = config["region"]
+        if config.get("framing") is not None:
+            display_values["framing"] = config["framing"]
+        if config.get("framing_site") is not None:
+            display_values["framing_site"] = config["framing_site"]
         if config.get("centers") is not None:
             display_values["centers"] = tuple(config["centers"])
         if config.get("neighbor_strategy") is not None:
             display_values["neighbor_strategy"] = config["neighbor_strategy"]
+        if config.get("bond_display_policy") is not None:
+            display_values["bond_display_policy"] = config["bond_display_policy"]
         if config.get("bonds") is not None:
             display_values["neighbor_strategy"] = resolve_strategy(config["bonds"])
         polyhedra = config.get("polyhedra")

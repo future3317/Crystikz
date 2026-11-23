@@ -5,12 +5,14 @@ from __future__ import annotations
 import argparse
 import json
 from collections import Counter
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
 from generate_visual_review_v4 import DATA, ROOT, structures
 from generate_visual_review_v4 import OUT as BASELINE
-from PIL import Image, ImageDraw, ImageOps
+from matplotlib import get_data_path
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 from scipy.ndimage import gaussian_filter
 
 from crystalfig import (
@@ -30,6 +32,12 @@ OUT = ROOT / "gallery" / "publication_review"
 WIDTH_MM = 89
 DPI = 600
 THUMBNAIL = (344, 268)
+STYLES = (
+    ("journal_clean", "Journal Clean"),
+    ("journal_vivid", "Journal Vivid"),
+    ("vesta_ballstick", "VESTA Ballstick"),
+    ("vesta_coordination", "VESTA Coordination"),
+)
 
 
 def thumbnail(path):
@@ -74,10 +82,11 @@ def make_sheet(rows, path):
     width, height = THUMBNAIL
     image = Image.new("RGB", (len(rows[0]) * (width + 24), len(rows) * (height + 36)), "#edf1f5")
     draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype(str(Path(get_data_path()) / "fonts/ttf/DejaVuSans.ttf"), 15)
     for row, panels in enumerate(rows):
         for col, (caption, panel) in enumerate(panels):
             x, y = col * (width + 24), row * (height + 36)
-            draw.text((x + 12, y + 8), caption, fill="#263344")
+            draw.text((x + 12, y + 5), caption, fill="#263344", font=font)
             if panel is not None:
                 image.paste(panel, (x + 12, y + 26))
     image.save(path)
@@ -86,10 +95,13 @@ def make_sheet(rows, path):
 def read_scene(figure, scene):
     primitives = scene.all_primitives()
     polyhedra = [item for item in primitives if isinstance(item, Polyhedron)]
+    atoms = [item for item in primitives if isinstance(item, Sphere)]
     return {
         "display": figure._display_plan.intent,
+        "framing": figure._display_plan.framing,
         "repeat": figure._display_plan.repeat,
-        "atoms": sum(isinstance(item, Sphere) for item in primitives),
+        "atoms": len(atoms),
+        "displayed_elements": dict(Counter(atom.metadata["element"] for atom in atoms)),
         "bonds": sum(isinstance(item, Bond) for item in primitives),
         "polyhedra": len(polyhedra),
         "clipped_polyhedra": sum(bool(item.metadata.get("clipped")) for item in polyhedra),
@@ -114,6 +126,20 @@ def new_figure(structure, style, *, display=None, camera=None):
     ))
 
 
+def render_panel(figure, path, options):
+    scene = figure.build_scene()
+    result = Exporter(scene, figure.theme, camera=figure.camera).export(
+        path, options=options, backend="pyvista",
+    )
+    details = read_scene(figure, scene) | image_metrics(path) | {
+        "path": path.name,
+        "depth_peeling": result.metadata.get("depth_peeling_used"),
+    }
+    if details["polyhedra"] and not details["depth_peeling"]:
+        raise RuntimeError(f"VTK did not depth-peel {path.name}")
+    return thumbnail(path), details
+
+
 def main():
     import pyvista as pv
 
@@ -135,26 +161,50 @@ def main():
         old = thumbnail(old_path) if old_path.is_file() else None
         row = [(f"{name} / v4" if old is not None else f"{name} / new CIF", old)]
         manifest["structures"][name] = {}
-        for style in ("journal_clean", "journal_vivid"):
+        for style, label in STYLES:
             figure = new_figure(structure, style)
-            scene = figure.build_scene()
-            path = out / f"{name}_{style}.png"
-            result = Exporter(scene, figure.theme, camera=figure.camera).export(
-                path, options=options, backend="pyvista",
-            )
-            panel = thumbnail(path)
-            row.append((style.replace("_", " ").title(), panel))
-            details = read_scene(figure, scene) | image_metrics(path) | {
-                "path": path.name,
-                "depth_peeling": result.metadata.get("depth_peeling_used"),
-            }
-            if details["polyhedra"] and not details["depth_peeling"]:
-                raise RuntimeError(f"VTK did not depth-peel {path.name}")
+            panel, details = render_panel(figure, out / f"{name}_{style}.png", options)
+            row.append((label, panel))
             if old is not None:
                 details["ssim_vs_v4"] = ssim(old, panel)
             manifest["structures"][name][style] = details
         rows.append(row)
     make_sheet(rows, out / "comparison_contact_sheet.png")
+
+    focus_rows = []
+    manifest["bond_policy_comparison"] = {}
+    fixed_camera = CameraConfig(mode="fixed", elevation=32, azimuth=32)
+    for name in ("BaTiO3", "MgAl2O4", "LiFePO4"):
+        display = DisplayConfig(intent="coordination")
+        panels = []
+        manifest["bond_policy_comparison"][name] = {}
+        for policy, label in (
+            ("all_bonds", "All bonds"),
+            ("center_ligand_only", "Center–ligand"),
+            ("polyhedron_edges_only", "Polyhedron edges"),
+        ):
+            figure = new_figure(
+                materials[name], "vesta_coordination",
+                display=replace(display, bond_display_policy=policy), camera=fixed_camera,
+            )
+            panel, details = render_panel(figure, out / f"{name}_{policy}.png", options)
+            panels.append((f"{name} / {label}", panel))
+            manifest["bond_policy_comparison"][name][policy] = details
+        focus_rows.append(panels)
+
+    ce_panels = []
+    manifest["dense_framing"] = {}
+    for framing, label, style in (
+        ("unit_cell", "Full cell", "vesta_ballstick"),
+        ("local_coordination", "Local coordination", "vesta_coordination"),
+        ("motif", "Connected motif", "vesta_ballstick"),
+    ):
+        figure = new_figure(materials["Ce6Cd23Te"], style, display=DisplayConfig(framing=framing))
+        panel, details = render_panel(figure, out / f"Ce6Cd23Te_{framing}.png", options)
+        ce_panels.append((f"Ce₆Cd₂₃Te / {label}", panel))
+        manifest["dense_framing"][framing] = details
+    focus_rows.append(ce_panels)
+    make_sheet(focus_rows, out / "coordination_comparison.png")
 
     # Use one fixed view and scene across renderers so shading differences are visible.
     comparisons = []
@@ -165,7 +215,7 @@ def main():
     ):
         figure = new_figure(
             materials[name], style, display=DisplayConfig(intent=intent, region="cell"),
-            camera=CameraConfig(mode="fixed", elevation=32, azimuth=32),
+            camera=fixed_camera,
         )
         scene = figure.build_scene()
         exporter = Exporter(scene, figure.theme, camera=figure.camera)
@@ -190,7 +240,7 @@ def main():
         ("MoS2", "MoS₂ · S–Mo–S", "layered_crystal", DisplayConfig(intent="layered")),
         ("Eu2FeGe2OS6", "Eu₂FeGe₂OS₆", "vesta_coordination",
          DisplayConfig(intent="coordination", region="cell", centers=("Fe", "Ge"), show_unit_cell=True)),
-        ("Ce6Cd23Te", "Ce₆Cd₂₃Te", "vesta_ballstick", DisplayConfig(intent="network", region="cell")),
+        ("Ce6Cd23Te", "Ce₆Cd₂₃Te · motif", "vesta_ballstick", DisplayConfig(framing="motif")),
     )):
         grid.add_structure(new_figure(materials[name], style, display=display), 0, col, title=title)
     grid.save(out / "paper_four_panel.png", dpi=DPI)

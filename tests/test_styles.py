@@ -53,6 +53,34 @@ def test_composable_figure_styles_and_requested_presets():
     assert first.palette.element_colors is not PUBLICATION.element_colors
 
 
+def test_vesta_presets_use_larger_nonmetallic_atoms_and_journal_clean_is_unchanged():
+    ballstick = get_style("vesta_ballstick")
+    coordination = get_style("vesta_coordination")
+    assert ballstick.atoms.radius_scale == pytest.approx(0.34)
+    assert coordination.atoms.radius_scale == pytest.approx(0.28)
+    assert ballstick.atoms.radius_scale_polyhedron == pytest.approx(0.29)
+    assert coordination.atoms.radius_scale_polyhedron == pytest.approx(0.29)
+    for style in (ballstick, coordination):
+        assert style.atoms.material == "ceramic"
+        assert style.atoms.roughness == pytest.approx(0.34)
+        assert style.atoms.specular == pytest.approx(0.42)
+        assert style.atoms.ambient == pytest.approx(0.28)
+        assert style.lighting.key_intensity == pytest.approx(1.05)
+        assert style.lighting.fill_intensity == pytest.approx(0.65)
+        assert style.lighting.rim_intensity == pytest.approx(0.35)
+        assert style.to_legacy_theme().figure_style.atoms.material == "ceramic"
+    assert ballstick.polyhedra.face_opacity == 0
+    assert ballstick.polyhedra.edge_mode == "none"
+
+    clean = get_style("journal_clean")
+    assert clean.atoms == AtomStyle(
+        radius_scale=0.25, radius_scale_polyhedron=0.23,
+        radius_scale_polyhedron_center=0.15, material="ceramic",
+        roughness=0.42, specular=0.4, ambient=0.18,
+    )
+    assert clean.lighting == LightingStyle(key_intensity=0.85, fill_intensity=0.5, rim_intensity=0.28)
+
+
 def test_figure_style_maps_to_legacy_theme_with_effective_alpha():
     style = FigureStyle(
         atoms=AtomStyle(radius_scale_polyhedron=0.23, radius_scale_polyhedron_center=0.15),

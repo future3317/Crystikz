@@ -17,7 +17,7 @@ from crystalfig.model.structure import CrystalStructure
 from crystalfig.neighbors.base import NeighborBond, NeighborStrategy
 from crystalfig.neighbors.strategies import CovalentRadiiStrategy, CrystalNNStrategy, CutoffStrategy
 from crystalfig.planning.camera import CameraPlanner
-from crystalfig.planning.display import DisplayConfig, DisplayPlanner
+from crystalfig.planning.display import BondDisplayPolicy, DisplayConfig, DisplayPlanner
 from crystalfig.renderers.matplotlib_renderer import MatplotlibRenderer
 from crystalfig.scene.builder import (
     Annotation,
@@ -92,10 +92,13 @@ class CrystalFigure:
             style=selected_style,
             intent=display_intent,
             region=display.region,
+            framing=display.framing,
+            framing_site=display.framing_site,
             centers=list(display.centers) if display.centers else None,
             strategy=strategy,
             show_atoms=display.show_atoms,
             show_bonds=display.show_bonds,
+            bond_display_policy=display.bond_display_policy,
             show_unit_cell=display.show_unit_cell,
             coordination_shell=display.coordination_shell,
             display_budget={**budget, "max_bonds": max(200, display.max_atoms * 4)},
@@ -241,10 +244,13 @@ class CrystalFigure:
         plan = getattr(self, "_display_plan", None)
         layer_normal = plan.layer_normal if plan else None
         layer_translations = plan.layer_translations if plan else None
+        centroid = self._centroid()
+        if plan and plan.framing == "local_coordination" and plan.selected_centers:
+            centroid = self.structure.cart_coords[plan.selected_centers[0]]
         return CameraPlanner(
             self.structure, self.camera, intent=plan.intent if plan else "auto",
             layer_normal=layer_normal, layer_translations=layer_translations,
-            centroid=self._centroid(),
+            centroid=centroid,
         ).score(scene)
 
     def view_normal_to_plane(self, hkl: tuple[int, int, int]) -> CrystalFigure:
@@ -291,6 +297,7 @@ class CrystalFigure:
         pair_cutoffs: dict[str, float] | None = None,
     ) -> CrystalFigure:
         self._scene_options.show_bonds = True
+        self._scene_options.bond_display_policy = "all_bonds"
         if isinstance(strategy, str):
             strat = self._make_bond_strategy(strategy, cutoff=cutoff, pair_cutoffs=pair_cutoffs)
         else:
@@ -575,6 +582,7 @@ class CrystalFigure:
         camera: str | Camera | None = None,
         show_atoms: bool = True,
         show_bonds: bool | None = None,
+        bond_display_policy: BondDisplayPolicy | None = None,
         show_unit_cell: bool | None = None,
         show_legend: bool = False,
         background: str | None = None,
@@ -586,6 +594,8 @@ class CrystalFigure:
         region: str | tuple[int, int, int] = "auto",
         coordination_shell: str = "complete",
         display_budget: dict[str, int | float] | None = None,
+        framing: str = "auto",
+        framing_site: int | None = None,
     ) -> CrystalFigure:
         """Plan a material-agnostic publication view from periodic structure features.
 
@@ -603,7 +613,18 @@ class CrystalFigure:
             if candidate_style.name in {"vesta_ballstick", "vesta_coordination", "layered_crystal"}:
                 named_figure_style = candidate_style
         bond_strategy = self._make_bond_strategy(strategy)
+        if bond_display_policy not in {None, "all_bonds", "center_ligand_only", "polyhedron_edges_only", "hidden"}:
+            raise ValueError("bond_display_policy must be all_bonds, center_ligand_only, polyhedron_edges_only, or hidden")
         selected_bonds = bond_strategy.get_bonds(self.structure)
+        intent, region, centers = DisplayPlanner.resolve_framing(
+            framing, framing_site, intent, region, centers
+        )
+        if framing == "unit_cell" and show_unit_cell is None:
+            show_unit_cell = True
+        elif framing == "local_coordination" and show_unit_cell is None:
+            show_unit_cell = False
+        if framing_site is not None and framing_site >= self.structure.num_sites:
+            raise ValueError(f"framing site index {framing_site} is outside the structure")
         selected_intent, intent_confidence = DisplayPlanner.resolve_intent(
             self.structure, intent, selected_bonds
         )
@@ -640,7 +661,11 @@ class CrystalFigure:
             "minimal": "overview_minimal",
         }
         theme = theme_style or theme_by_style.get(selected_style, "ballstick_clean")
-        default_boundary = "polyhedra_complete" if selected_style == "nature" else "connected"
+        default_boundary = (
+            "polyhedra_complete"
+            if selected_style == "nature" or framing == "local_coordination"
+            else "connected"
+        )
         if selected_style == "polyhedra":
             default_boundary = "polyhedra_complete"
         budget = {"max_atoms": 60, "max_polyhedra": 8, "max_bonds": 200}
@@ -649,6 +674,17 @@ class CrystalFigure:
             if unknown:
                 raise ValueError(f"Unknown display_budget keys: {sorted(unknown)}")
             budget.update(display_budget)
+        if (
+            framing == "auto" and region == "auto"
+            and self._scene_options.supercell is None
+            and selected_intent in {"network", "hybrid"}
+            and (
+                self.structure.num_sites > int(budget["max_atoms"])
+                or len(selected_bonds) > int(budget["max_bonds"])
+            )
+        ):
+            framing = "motif"
+            region = "motif"
         estimated_degree = max(
             1.0,
             2.0 * len(selected_bonds)
@@ -661,7 +697,9 @@ class CrystalFigure:
         if coordination_shell == "none" and selected_style in {"nature", "polyhedra"}:
             selected_style = "ballstick"
             theme = "ballstick_clean"
-        planner_centers = centers if centers is not None else ("auto" if selected_style == "nature" else None)
+        planner_centers = centers if centers is not None else (
+            "auto" if selected_style == "nature" or framing == "local_coordination" else None
+        )
         self._display_plan, budget = DisplayPlanner.plan(
             self.structure, intent=selected_intent, confidence=intent_confidence,
             region=region, coordination_shell=coordination_shell,
@@ -671,6 +709,20 @@ class CrystalFigure:
             bonds=selected_bonds, centers=planner_centers,
             supercell=self._scene_options.supercell,
         )
+        if framing == "local_coordination":
+            self._display_plan = replace(
+                self._display_plan, image_atoms="complete_coordination_shell", framing=framing
+            )
+        elif framing == "motif":
+            self._display_plan = replace(
+                self._display_plan,
+                image_atoms="connected_motif",
+                show_cell=bool(show_unit_cell),
+                cell_frame="subtle" if show_unit_cell else "hide",
+                framing=framing,
+            )
+        else:
+            self._display_plan = replace(self._display_plan, framing=framing)
         repeats = self._display_plan.repeat
         explicit_scaling = self._scene_options.supercell
         if isinstance(region, tuple):
@@ -696,14 +748,36 @@ class CrystalFigure:
             if final_structure is not self.structure else selected_bonds
         )
         centers_for_selection = planner_centers
-        if selected_style in {"nature", "polyhedra"} and coordination_shell != "none":
-            selected_centers = DisplayPlanner.select_centers(
-                self.structure, final_structure, final_bonds, centers_for_selection,
-                int(budget["max_polyhedra"]), self._display_plan.center_window,
-            )
+        if (
+            selected_style in {"nature", "polyhedra"} or framing == "local_coordination"
+        ) and (coordination_shell != "none" or framing == "local_coordination"):
+            if framing == "local_coordination" and centers_for_selection == "auto":
+                selected_centers = DisplayPlanner.local_center(final_structure, final_bonds)
+            else:
+                selected_centers = DisplayPlanner.select_centers(
+                    self.structure, final_structure, final_bonds, centers_for_selection,
+                    1 if framing == "local_coordination" else int(budget["max_polyhedra"]),
+                    self._display_plan.center_window,
+                )
+            if framing == "local_coordination":
+                selected_centers = selected_centers[:1]
             self._display_plan = replace(
                 self._display_plan, selected_centers=selected_centers
             )
+        self._scene_options.local_shell_center = (
+            self._display_plan.selected_centers[0]
+            if framing == "local_coordination" and self._display_plan.selected_centers
+            else None
+        )
+        self._scene_options.show_all_cell_atoms = framing == "unit_cell"
+        self._scene_options.motif_instances = (
+            DisplayPlanner.representative_motif_instances(
+                final_structure, final_bonds,
+                limit=min(12, int(budget["max_atoms"])),
+            )
+            if framing == "motif" else ()
+        )
+        self._bond_policy_was_explicit = bond_display_policy is not None
         render_bonds = self._display_plan.show_bonds
         show_cell_frame = self._display_plan.show_cell
         self.style(theme).quality("publication").show_unit_cell(show_cell_frame)
@@ -721,8 +795,10 @@ class CrystalFigure:
             if selected_style in {"nature", "polyhedra"} else None
         )
         selected_boundary = boundary or (
-            "cell" if coordination_shell == "show_partial" else default_boundary
+            "cell" if coordination_shell == "show_partial" and framing != "local_coordination"
+            else default_boundary
         )
+        self._boundary_was_explicit = boundary is not None
         self.boundary_mode(selected_boundary).view_preset(self.theme.camera_preset or "auto")
         if camera is not None:
             if isinstance(camera, Camera):
@@ -735,6 +811,14 @@ class CrystalFigure:
         self._scene_options.show_atoms = show_atoms
         self._scene_options.show_legend = show_legend
         self._scene_options.show_bonds = bool(render_bonds)
+        selected_bond_policy = bond_display_policy or (
+            "center_ligand_only"
+            if selected_intent == "coordination"
+            and (selected_style in {"nature", "polyhedra"} or framing == "local_coordination")
+            else "all_bonds"
+        )
+        if show_bonds is False:
+            selected_bond_policy = "hidden"
         self._display_budget = budget
         if background is not None:
             self.theme.background = "#20242c" if background == "dark" else background
@@ -760,6 +844,8 @@ class CrystalFigure:
             self.theme.polyhedron_edge_opacity = polyhedron_edge_alpha
         self.add_bonds(strategy=strategy)
         self._scene_options.show_bonds = bool(render_bonds)
+        self._scene_options.bond_display_policy = selected_bond_policy
+        self._scene_options.bond_display_centers = tuple(self._display_plan.selected_centers)
         self.diagnostics.append(
             f"Bonds generated with {strategy}; verify coordination for the intended chemical interpretation."
         )
@@ -836,7 +922,24 @@ class CrystalFigure:
             message = "Automatic coordination geometry produced no valid polyhedra; showing the bond network instead."
             if message not in self.diagnostics:
                 self.diagnostics.append(message)
-            scene_options = replace(self._scene_options, show_bonds=True)
+            scene_options = replace(
+                self._scene_options,
+                show_bonds=True,
+                bond_display_policy=(
+                    self._scene_options.bond_display_policy
+                    if (
+                        getattr(self, "_bond_policy_was_explicit", False)
+                        or not self._scene_options.show_bonds
+                    )
+                    else "all_bonds"
+                ),
+                display_boundary=(
+                    self._scene_options.display_boundary
+                    if getattr(self, "_boundary_was_explicit", False)
+                    or self._scene_options.local_shell_center is not None
+                    else "connected"
+                ),
+            )
             builder = SceneBuilder(
                 self.structure, self.theme, self.palette,
                 scene_options, camera=self.camera,
@@ -866,6 +969,7 @@ class CrystalFigure:
                 "coordination_shell_policy": plan.coordination_shell,
                 "image_atom_policy": plan.image_atoms,
                 "cell_frame_policy": plan.cell_frame,
+                "framing": plan.framing,
             })
         scene.metadata["camera_used"] = selected_view["label"] if selected_view else "explicit"
         scene.metadata["camera_score"] = selected_view["score"] if selected_view else None

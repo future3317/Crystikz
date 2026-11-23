@@ -13,6 +13,21 @@ from crystalfig.scene.primitives import Bond, Polyhedron
 _CENTER_LIGAND_COLLAPSE_WEIGHT = 0.75
 
 
+def _projection_crowding_fraction(projected, positions, radii) -> float:
+    if len(projected) < 2:
+        return 0.0
+    pairs = cKDTree(projected).query_pairs(
+        3.0 * float(np.median(radii)), output_type="ndarray"
+    )
+    counts = np.zeros(len(projected), dtype=int)
+    for i, j in pairs:
+        if np.linalg.norm(positions[i] - positions[j]) < 1e-8:
+            continue
+        counts[i] += 1
+        counts[j] += 1
+    return float(np.count_nonzero(counts >= 4) / len(projected))
+
+
 def _convex_polygon_intersection_area(subject, clipper):
     def cross2d(first, second):
         return first[0] * second[1] - first[1] * second[0]
@@ -121,6 +136,11 @@ class CameraPlanner:
             polyhedron_centers.append(
                 np.asarray(center, dtype=float) if center is not None else vertices.mean(axis=0)
             )
+        if self.intent == "coordination":
+            target = (
+                np.mean(polyhedron_centers, axis=0)
+                if polyhedron_centers else self.centroid
+            )
         polyhedron_faces = []
         for vertices, poly in zip(polyhedron_vertices, polyhedra, strict=True):
             center = vertices.mean(axis=0)
@@ -228,6 +248,7 @@ class CameraPlanner:
                 score = 0.0
                 bond_visibility = 0.0
                 atom_overlap = 0.0
+                projection_crowding = 0.0
                 polyhedron_area = 0.0
                 polyhedron_depth = 0.0
                 polyhedron_overlap = 0.0
@@ -250,6 +271,9 @@ class CameraPlanner:
                         if np.linalg.norm(projected[i] - projected[j]) < 0.78 * (radii[i] + radii[j]):
                             overlapping_atoms.update((int(i), int(j)))
                 atom_overlap = len(overlapping_atoms) / max(len(spheres), 1)
+                projection_crowding = _projection_crowding_fraction(
+                    projected, sphere_positions, radii
+                )
                 projected_bonds = camera.project(bond_world_endpoints) if len(bonds) else np.empty((0, 2))
                 if bonds:
                     projected_lengths = np.linalg.norm(
@@ -324,6 +348,7 @@ class CameraPlanner:
                     - _CENTER_LIGAND_COLLAPSE_WEIGHT * center_ligand_collapse
                     - 0.45 * polyhedron_overlap - 0.08 * aspect_penalty
                     - 1.4 * bond_crossings
+                    - 0.25 * projection_crowding
                 )
                 if layer_normal is not None and frame is not None:
                     cosine = abs(float(np.dot(direction, layer_normal)))
@@ -346,6 +371,7 @@ class CameraPlanner:
                 "roll_degrees": roll,
                 "score": float(score),
                 "atom_overlap_fraction": float(atom_overlap),
+                "projection_crowding_fraction": float(projection_crowding),
                 "atom_visibility_fraction": None,
                 "atom_occlusion_fraction": None,
                 "bond_visibility": float(bond_visibility),
@@ -478,6 +504,14 @@ class CameraPlanner:
         if frame is None:
             return
         visibility = self.sphere_visibility(camera, spheres, frame)
+        old_crowding = report["projection_crowding_fraction"]
+        atom_positions = np.asarray([sphere.position for sphere in spheres], dtype=float).reshape((-1, 3))
+        projected_atoms = camera.project(atom_positions) if len(spheres) else np.empty((0, 2))
+        crowding = _projection_crowding_fraction(
+            projected_atoms,
+            atom_positions,
+            np.asarray([sphere.radius for sphere in spheres]),
+        )
         crossing = _projected_bond_crossing_fraction(bonds, camera)
         ligand_collapse, center_collapse = self.shell_collapse_metrics(camera, vertices, centers)
         vertical = (
@@ -486,6 +520,7 @@ class CameraPlanner:
         )
         aspect_penalty = abs(np.log(max(frame.aspect, 1e-12)))
         score = report["score"] + 0.35 * (visibility - old_visibility)
+        score -= 0.25 * (crowding - old_crowding)
         score += 1.4 * (old_crossing - crossing)
         score -= 0.35 * (ligand_collapse - old_ligand_collapse)
         score -= _CENTER_LIGAND_COLLAPSE_WEIGHT * (center_collapse - old_center_collapse)
@@ -498,6 +533,7 @@ class CameraPlanner:
             roll_degrees=camera.roll,
             atom_visibility_fraction=visibility,
             atom_occlusion_fraction=1.0 - visibility,
+            projection_crowding_fraction=crowding,
             projected_bond_crossing_fraction=crossing,
             polyhedron_ligand_collapse_fraction=ligand_collapse,
             center_ligand_collapse_fraction=center_collapse,

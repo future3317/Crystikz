@@ -13,12 +13,18 @@
     "BaTiO3": {
       "journal_clean": {
         "display": "hybrid",
+        "framing": "auto",
         "repeat": [
           3,
           2,
           1
         ],
         "atoms": 39,
+        "displayed_elements": {
+          "Ba": 4,
+          "Ti": 6,
+          "O": 29
+        },
         "bonds": 62,
         "polyhedra": 6,
         "clipped_polyhedra": 0,
@@ -37,6 +43,7 @@
             "roll_degrees": 0.0,
             "score": 1.5835639523831193,
             "atom_overlap_fraction": 0.10256410256410256,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 1.0,
             "atom_occlusion_fraction": 0.0,
             "bond_visibility": 0.8128306754532131,
@@ -95,12 +102,18 @@
       },
       "journal_vivid": {
         "display": "hybrid",
+        "framing": "auto",
         "repeat": [
           3,
           2,
           1
         ],
         "atoms": 39,
+        "displayed_elements": {
+          "Ba": 4,
+          "Ti": 6,
+          "O": 29
+        },
         "bonds": 62,
         "polyhedra": 6,
         "clipped_polyhedra": 0,
@@ -119,6 +132,7 @@
             "roll_degrees": 0.0,
             "score": 1.5834549403054055,
             "atom_overlap_fraction": 0.10256410256410256,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 1.0,
             "atom_occlusion_fraction": 0.0,
             "bond_visibility": 0.8128306754532131,
@@ -174,17 +188,198 @@
         "path": "BaTiO3_journal_vivid.png",
         "depth_peeling": true,
         "ssim_vs_v4": 0.570834589534069
+      },
+      "vesta_ballstick": {
+        "display": "hybrid",
+        "framing": "auto",
+        "repeat": [
+          3,
+          2,
+          1
+        ],
+        "atoms": 69,
+        "displayed_elements": {
+          "Ba": 6,
+          "Ti": 6,
+          "O": 57
+        },
+        "bonds": 108,
+        "polyhedra": 0,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {},
+        "camera": {
+          "candidate": "lattice_0+-_tilt_right+5",
+          "score": {
+            "label": "lattice_0+-_tilt_right+5",
+            "direction_cartesian": [
+              -2.2506396400000662e-17,
+              0.36755734658630546,
+              -0.9300008585858589
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.4447730115064557,
+            "atom_overlap_fraction": 0.08695652173913043,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 0.968421052631579,
+            "atom_occlusion_fraction": 0.03157894736842104,
+            "bond_visibility": 0.7836790872390247,
+            "projected_bond_crossing_fraction": 0.046296296296296294,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "polyhedron_face_visibility_fraction": 0.0,
+            "polyhedron_ligand_collapse_fraction": 0.0,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.2319937119712658,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              1.0,
+              6.123233995736765e-17,
+              -0.0
+            ],
+            [
+              -5.69461287335731e-17,
+              0.9300008585858589,
+              0.36755734658630546
+            ],
+            [
+              2.2506396400000662e-17,
+              -0.36755734658630546,
+              0.9300008585858589
+            ]
+          ],
+          "target": [
+            4.9375,
+            2.858153903666667,
+            0.9462600657130167
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1706
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9205518553758325,
+        "occupancy_height": 0.9202813599062134,
+        "foreground_fraction": 0.14889576498907423,
+        "path": "BaTiO3_vesta_ballstick.png",
+        "depth_peeling": false,
+        "ssim_vs_v4": 0.5541714837134645
+      },
+      "vesta_coordination": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          3,
+          2,
+          1
+        ],
+        "atoms": 39,
+        "displayed_elements": {
+          "Ba": 4,
+          "Ti": 6,
+          "O": 29
+        },
+        "bonds": 36,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "6": 6
+        },
+        "camera": {
+          "candidate": "lattice_+++_tilt_up-10",
+          "score": {
+            "label": "lattice_+++_tilt_up-10",
+            "direction_cartesian": [
+              0.5788806761216954,
+              0.4835849027769562,
+              0.6565385020081387
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.7946258868301368,
+            "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 1.0,
+            "atom_occlusion_fraction": 0.0,
+            "bond_visibility": 0.8111736755273078,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.0317743459299516,
+            "polyhedron_depth_ratio": 0.5725983343138684,
+            "polyhedron_overlap_fraction": 5.215874957343082e-35,
+            "polyhedron_face_visibility_fraction": 0.24056261216234406,
+            "polyhedron_ligand_collapse_fraction": 0.0,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.27888078054116,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              0.6411105696423817,
+              -0.7674485243277369,
+              0.0
+            ],
+            [
+              -0.503859504530489,
+              -0.4209137730145937,
+              0.7542925131412279
+            ],
+            [
+              -0.5788806761216954,
+              -0.4835849027769562,
+              -0.6565385020081387
+            ]
+          ],
+          "target": [
+            5.925000000000001,
+            3.9500000000000006,
+            1.9749999999999999
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1644
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9190997566909975,
+        "foreground_fraction": 0.3514365301497126,
+        "path": "BaTiO3_vesta_coordination.png",
+        "depth_peeling": true,
+        "ssim_vs_v4": 0.5869927644640598
       }
     },
     "MoS2": {
       "journal_clean": {
         "display": "layered",
+        "framing": "auto",
         "repeat": [
           3,
           3,
           1
         ],
         "atoms": 78,
+        "displayed_elements": {
+          "Mo": 18,
+          "S": 60
+        },
         "bonds": 108,
         "polyhedra": 0,
         "clipped_polyhedra": 0,
@@ -201,6 +396,7 @@
             "roll_degrees": 0.0,
             "score": 5.763169777393786,
             "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 1.0,
             "atom_occlusion_fraction": 0.0,
             "bond_visibility": 0.8355012867500285,
@@ -259,12 +455,17 @@
       },
       "journal_vivid": {
         "display": "layered",
+        "framing": "auto",
         "repeat": [
           3,
           3,
           1
         ],
         "atoms": 78,
+        "displayed_elements": {
+          "Mo": 18,
+          "S": 60
+        },
         "bonds": 108,
         "polyhedra": 0,
         "clipped_polyhedra": 0,
@@ -281,6 +482,7 @@
             "roll_degrees": 0.0,
             "score": 5.763169777393786,
             "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 1.0,
             "atom_occlusion_fraction": 0.0,
             "bond_visibility": 0.8355012867500285,
@@ -336,17 +538,195 @@
         "path": "MoS2_journal_vivid.png",
         "depth_peeling": false,
         "ssim_vs_v4": 0.5673816410975191
+      },
+      "vesta_ballstick": {
+        "display": "layered",
+        "framing": "auto",
+        "repeat": [
+          3,
+          3,
+          1
+        ],
+        "atoms": 78,
+        "displayed_elements": {
+          "Mo": 18,
+          "S": 60
+        },
+        "bonds": 108,
+        "polyhedra": 0,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {},
+        "camera": {
+          "candidate": "tilt_direct_a_plane_b_tilt_right-10",
+          "score": {
+            "label": "tilt_direct_a_plane_b_tilt_right-10",
+            "direction_cartesian": [
+              0.6963642403200189,
+              0.6963642403200189,
+              0.17364817766693025
+            ],
+            "roll_degrees": 0.0,
+            "score": 5.758624322848332,
+            "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 0.987012987012987,
+            "atom_occlusion_fraction": 0.012987012987012991,
+            "bond_visibility": 0.8355012867500285,
+            "projected_bond_crossing_fraction": 0.42592592592592593,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "polyhedron_face_visibility_fraction": 0.0,
+            "polyhedron_ligand_collapse_fraction": 0.0,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.1671194395970335,
+            "layer_separation": 1.0,
+            "layer_normal_vertical_fraction": 0.9848077530122081,
+            "layer_spacing_angstrom": 1.58,
+            "projected_layer_spacing_fraction": 0.07825622429790542
+          },
+          "rotation": [
+            [
+              0.7071067811865475,
+              -0.7071067811865475,
+              0.0
+            ],
+            [
+              -0.12278780396897279,
+              -0.12278780396897279,
+              0.9848077530122081
+            ],
+            [
+              -0.696364240320019,
+              -0.696364240320019,
+              -0.17364817766693028
+            ]
+          ],
+          "target": [
+            2.392500000000001,
+            4.143931557108539,
+            6.15
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1801
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9210275927687916,
+        "occupancy_height": 0.920599666851749,
+        "foreground_fraction": 0.1772318581864077,
+        "path": "MoS2_vesta_ballstick.png",
+        "depth_peeling": false,
+        "ssim_vs_v4": 0.5504088745908874
+      },
+      "vesta_coordination": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          3,
+          3,
+          1
+        ],
+        "atoms": 28,
+        "displayed_elements": {
+          "Mo": 6,
+          "S": 22
+        },
+        "bonds": 36,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "6": 6
+        },
+        "camera": {
+          "candidate": "lattice_+++",
+          "score": {
+            "label": "lattice_+++",
+            "direction_cartesian": [
+              0.1897841036400238,
+              0.10957190332447964,
+              0.9756925704377396
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.7616201916351928,
+            "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 1.0,
+            "atom_occlusion_fraction": 0.0,
+            "bond_visibility": 0.7553223304421447,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.03577651664354528,
+            "polyhedron_depth_ratio": 0.7951070904464127,
+            "polyhedron_overlap_fraction": 0.014635883905013199,
+            "polyhedron_face_visibility_fraction": 0.23896727541733973,
+            "polyhedron_ligand_collapse_fraction": 0.19999999999999998,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.0862148977613075,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              0.5000000000000002,
+              -0.8660254037844386,
+              0.0
+            ],
+            [
+              -0.8449745522828204,
+              -0.4878462852188701,
+              0.21914380664895922
+            ],
+            [
+              -0.18978410364002382,
+              -0.10957190332447965,
+              -0.9756925704377397
+            ]
+          ],
+          "target": [
+            2.012899573187048,
+            3.003895469146131,
+            3.1734492163848222
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1935
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9198966408268734,
+        "foreground_fraction": 0.37252106397991824,
+        "path": "MoS2_vesta_coordination.png",
+        "depth_peeling": true,
+        "ssim_vs_v4": 0.5189827525066233
       }
     },
     "Si": {
       "journal_clean": {
         "display": "network",
+        "framing": "auto",
         "repeat": [
           3,
           2,
           1
         ],
         "atoms": 76,
+        "displayed_elements": {
+          "Si": 76
+        },
         "bonds": 96,
         "polyhedra": 0,
         "clipped_polyhedra": 0,
@@ -363,6 +743,7 @@
             "roll_degrees": 0.0,
             "score": 1.5866527027469732,
             "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 0.9605263157894737,
             "atom_occlusion_fraction": 0.03947368421052633,
             "bond_visibility": 0.7628189084385668,
@@ -421,12 +802,16 @@
       },
       "journal_vivid": {
         "display": "network",
+        "framing": "auto",
         "repeat": [
           3,
           2,
           1
         ],
         "atoms": 76,
+        "displayed_elements": {
+          "Si": 76
+        },
         "bonds": 96,
         "polyhedra": 0,
         "clipped_polyhedra": 0,
@@ -443,6 +828,7 @@
             "roll_degrees": 0.0,
             "score": 1.5866527027469732,
             "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 0.9605263157894737,
             "atom_occlusion_fraction": 0.03947368421052633,
             "bond_visibility": 0.7628189084385668,
@@ -498,17 +884,192 @@
         "path": "Si_journal_vivid.png",
         "depth_peeling": false,
         "ssim_vs_v4": 0.6883629291705832
+      },
+      "vesta_ballstick": {
+        "display": "network",
+        "framing": "auto",
+        "repeat": [
+          3,
+          2,
+          1
+        ],
+        "atoms": 76,
+        "displayed_elements": {
+          "Si": 76
+        },
+        "bonds": 96,
+        "polyhedra": 0,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {},
+        "camera": {
+          "candidate": "lattice_++-_tilt_up-5",
+          "score": {
+            "label": "lattice_++-_tilt_up-5",
+            "direction_cartesian": [
+              0.2541104331986159,
+              0.7031070318104798,
+              -0.6641297987278303
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.5725591589908667,
+            "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 0.92,
+            "atom_occlusion_fraction": 0.07999999999999996,
+            "bond_visibility": 0.7628189084385668,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "polyhedron_face_visibility_fraction": 0.0,
+            "polyhedron_ligand_collapse_fraction": 0.0,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.2279464693409379,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              0.9404638474635202,
+              -0.3398937357676845,
+              0.0
+            ],
+            [
+              0.2257335583242427,
+              0.6245900657267487,
+              0.7476172887525618
+            ],
+            [
+              -0.254110433198616,
+              -0.70310703181048,
+              0.6641297987278304
+            ]
+          ],
+          "target": [
+            7.31536082995053,
+            4.88892300091309,
+            2.1242694545978353
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1712
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9210275927687916,
+        "occupancy_height": 0.9199766355140186,
+        "foreground_fraction": 0.10757472856291739,
+        "path": "Si_vesta_ballstick.png",
+        "depth_peeling": false,
+        "ssim_vs_v4": 0.6799037189472654
+      },
+      "vesta_coordination": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          3,
+          2,
+          1
+        ],
+        "atoms": 76,
+        "displayed_elements": {
+          "Si": 76
+        },
+        "bonds": 96,
+        "polyhedra": 0,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {},
+        "camera": {
+          "candidate": "principal_3_tilt_up+5",
+          "score": {
+            "label": "principal_3_tilt_up+5",
+            "direction_cartesian": [
+              -0.029613986566493215,
+              0.06337371348572728,
+              0.9975503918292392
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.6056021141081636,
+            "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 1.0,
+            "atom_occlusion_fraction": 0.0,
+            "bond_visibility": 0.8157413382443645,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "polyhedron_face_visibility_fraction": 0.0,
+            "polyhedron_ligand_collapse_fraction": 0.0,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.4533074057698068,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              -0.9995596407481262,
+              0.0,
+              -0.029673634551176525
+            ],
+            [
+              0.0018805284141264387,
+              0.9979898658999644,
+              -0.06334580628466824
+            ],
+            [
+              0.029613986566493215,
+              -0.06337371348572728,
+              -0.9975503918292392
+            ]
+          ],
+          "target": [
+            6.767103483489392,
+            4.116148395346831,
+            2.0445589000714737
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1447
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9205518553758325,
+        "occupancy_height": 0.9205252246026261,
+        "foreground_fraction": 0.09279312097538331,
+        "path": "Si_vesta_coordination.png",
+        "depth_peeling": false,
+        "ssim_vs_v4": 0.5790598205601034
       }
     },
     "NaCl": {
       "journal_clean": {
         "display": "ionic",
+        "framing": "auto",
         "repeat": [
           2,
           2,
           1
         ],
         "atoms": 64,
+        "displayed_elements": {
+          "Na": 16,
+          "Cl": 48
+        },
         "bonds": 96,
         "polyhedra": 0,
         "clipped_polyhedra": 0,
@@ -525,6 +1086,7 @@
             "roll_degrees": 0.0,
             "score": 1.4267737853824367,
             "atom_overlap_fraction": 0.1875,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 0.9473684210526315,
             "atom_occlusion_fraction": 0.052631578947368474,
             "bond_visibility": 0.8111736755273077,
@@ -583,12 +1145,17 @@
       },
       "journal_vivid": {
         "display": "ionic",
+        "framing": "auto",
         "repeat": [
           2,
           2,
           1
         ],
         "atoms": 64,
+        "displayed_elements": {
+          "Na": 16,
+          "Cl": 48
+        },
         "bonds": 96,
         "polyhedra": 0,
         "clipped_polyhedra": 0,
@@ -605,6 +1172,7 @@
             "roll_degrees": 0.0,
             "score": 1.4267737853824367,
             "atom_overlap_fraction": 0.1875,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 0.9473684210526315,
             "atom_occlusion_fraction": 0.052631578947368474,
             "bond_visibility": 0.8111736755273077,
@@ -660,17 +1228,197 @@
         "path": "NaCl_journal_vivid.png",
         "depth_peeling": false,
         "ssim_vs_v4": 0.8508494692501972
+      },
+      "vesta_ballstick": {
+        "display": "ionic",
+        "framing": "auto",
+        "repeat": [
+          2,
+          2,
+          1
+        ],
+        "atoms": 64,
+        "displayed_elements": {
+          "Na": 16,
+          "Cl": 48
+        },
+        "bonds": 96,
+        "polyhedra": 0,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {},
+        "camera": {
+          "candidate": "lattice_++-",
+          "score": {
+            "label": "lattice_++-",
+            "direction_cartesian": [
+              0.33333333333333337,
+              0.6666666666666667,
+              -0.6666666666666667
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.4089750783138855,
+            "atom_overlap_fraction": 0.1875,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 0.8977272727272727,
+            "atom_occlusion_fraction": 0.10227272727272729,
+            "bond_visibility": 0.8111736755273077,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "polyhedron_face_visibility_fraction": 0.0,
+            "polyhedron_ligand_collapse_fraction": 0.0,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.020714803587796,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              0.8944271909999159,
+              -0.4472135954999579,
+              0.0
+            ],
+            [
+              0.29814239699997197,
+              0.5962847939999439,
+              0.7453559924999299
+            ],
+            [
+              -0.33333333333333337,
+              -0.6666666666666667,
+              0.6666666666666667
+            ]
+          ],
+          "target": [
+            4.554302108360204,
+            4.878604216720409,
+            2.2207552709005127
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          2060
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9205518553758325,
+        "occupancy_height": 0.9199029126213593,
+        "foreground_fraction": 0.10785035980527098,
+        "path": "NaCl_vesta_ballstick.png",
+        "depth_peeling": false,
+        "ssim_vs_v4": 0.8557523332492596
+      },
+      "vesta_coordination": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          2,
+          2,
+          1
+        ],
+        "atoms": 28,
+        "displayed_elements": {
+          "Na": 6,
+          "Cl": 22
+        },
+        "bonds": 36,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "6": 6
+        },
+        "camera": {
+          "candidate": "lattice_+++_roll90_tilt_up-10",
+          "score": {
+            "label": "lattice_+++_roll90_tilt_up-10",
+            "direction_cartesian": [
+              0.6156092340184812,
+              0.6156092340184812,
+              0.49198632296269984
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.7629637891240675,
+            "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 1.0,
+            "atom_occlusion_fraction": 0.0,
+            "bond_visibility": 0.8111736755273078,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.06210106366044168,
+            "polyhedron_depth_ratio": 0.5656854249492381,
+            "polyhedron_overlap_fraction": 0.1285714285714286,
+            "polyhedron_face_visibility_fraction": 0.2405626121623441,
+            "polyhedron_ligand_collapse_fraction": 0.0,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.0327406875929372,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              0.3478868652179599,
+              0.3478868652179598,
+              -0.8706029278710485
+            ],
+            [
+              0.7071067811865475,
+              -0.7071067811865475,
+              5.330905444727968e-17
+            ],
+            [
+              -0.6156092340184811,
+              -0.6156092340184811,
+              -0.49198632296269973
+            ]
+          ],
+          "target": [
+            5.64,
+            7.05,
+            1.41
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          2036
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.918958742632613,
+        "foreground_fraction": 0.46232888875596073,
+        "path": "NaCl_vesta_coordination.png",
+        "depth_peeling": true,
+        "ssim_vs_v4": 0.6220032568264783
       }
     },
     "MgAl2O4": {
       "journal_clean": {
         "display": "hybrid",
+        "framing": "auto",
         "repeat": [
           1,
           1,
           1
         ],
         "atoms": 28,
+        "displayed_elements": {
+          "Mg": 1,
+          "Al": 5,
+          "O": 22
+        },
         "bonds": 34,
         "polyhedra": 6,
         "clipped_polyhedra": 0,
@@ -690,6 +1438,7 @@
             "roll_degrees": 0.0,
             "score": 1.7228997454523145,
             "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 1.0,
             "atom_occlusion_fraction": 0.0,
             "bond_visibility": 0.8090398081603584,
@@ -748,12 +1497,18 @@
       },
       "journal_vivid": {
         "display": "hybrid",
+        "framing": "auto",
         "repeat": [
           1,
           1,
           1
         ],
         "atoms": 28,
+        "displayed_elements": {
+          "Mg": 1,
+          "Al": 5,
+          "O": 22
+        },
         "bonds": 34,
         "polyhedra": 6,
         "clipped_polyhedra": 0,
@@ -773,6 +1528,7 @@
             "roll_degrees": 0.0,
             "score": 1.7228021979670292,
             "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 1.0,
             "atom_occlusion_fraction": 0.0,
             "bond_visibility": 0.8090398081603584,
@@ -828,17 +1584,201 @@
         "path": "MgAl2O4_journal_vivid.png",
         "depth_peeling": true,
         "ssim_vs_v4": 0.6354628876424173
+      },
+      "vesta_ballstick": {
+        "display": "hybrid",
+        "framing": "auto",
+        "repeat": [
+          1,
+          1,
+          1
+        ],
+        "atoms": 89,
+        "displayed_elements": {
+          "Mg": 8,
+          "Al": 16,
+          "O": 65
+        },
+        "bonds": 128,
+        "polyhedra": 0,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {},
+        "camera": {
+          "candidate": "lattice_+-+_tilt_right+10",
+          "score": {
+            "label": "lattice_+-+_tilt_right+10",
+            "direction_cartesian": [
+              0.6974677699977961,
+              -0.6974677699977965,
+              0.16455217904543895
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.2012822168980204,
+            "atom_overlap_fraction": 0.3595505617977528,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 0.9,
+            "atom_occlusion_fraction": 0.09999999999999998,
+            "bond_visibility": 0.7986284484866231,
+            "projected_bond_crossing_fraction": 0.015625,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "polyhedron_face_visibility_fraction": 0.0,
+            "polyhedron_ligand_collapse_fraction": 0.0,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.1591097208552221,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              -0.7071067811865477,
+              -0.7071067811865474,
+              0.0
+            ],
+            [
+              -0.11635596166205277,
+              0.11635596166205282,
+              0.986368379649002
+            ],
+            [
+              -0.6974677699977961,
+              0.6974677699977965,
+              -0.16455217904543895
+            ]
+          ],
+          "target": [
+            3.503824262920782,
+            3.5344679906792194,
+            4.104428140654942
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1814
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9205518553758325,
+        "occupancy_height": 0.9200661521499449,
+        "foreground_fraction": 0.1580987603552872,
+        "path": "MgAl2O4_vesta_ballstick.png",
+        "depth_peeling": false,
+        "ssim_vs_v4": 0.6117208753187715
+      },
+      "vesta_coordination": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          1,
+          1,
+          1
+        ],
+        "atoms": 28,
+        "displayed_elements": {
+          "Mg": 1,
+          "Al": 5,
+          "O": 22
+        },
+        "bonds": 34,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "4": 1,
+          "6": 5
+        },
+        "camera": {
+          "candidate": "lattice_+-+_tilt_up-5",
+          "score": {
+            "label": "lattice_+-+_tilt_up-5",
+            "direction_cartesian": [
+              0.41001936552921425,
+              -0.6251525656451808,
+              0.6641297987278304
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.7226924899073142,
+            "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 1.0,
+            "atom_occlusion_fraction": 0.0,
+            "bond_visibility": 0.8090398081603584,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.04357301368829793,
+            "polyhedron_depth_ratio": 0.5964739518779503,
+            "polyhedron_overlap_fraction": 0.08333333333333333,
+            "polyhedron_face_visibility_fraction": 0.24120972028759444,
+            "polyhedron_ligand_collapse_fraction": 0.08888888888888889,
+            "center_ligand_collapse_fraction": 0.041666666666666664,
+            "projected_aspect": 1.0063061215547064,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              -0.8361932970922599,
+              -0.5484348365102053,
+              0.0
+            ],
+            [
+              -0.3642319175868532,
+              0.5553408860954434,
+              0.747617288752562
+            ],
+            [
+              -0.41001936552921425,
+              0.6251525656451808,
+              -0.6641297987278304
+            ]
+          ],
+          "target": [
+            2.882876014006813,
+            6.292819094150831,
+            5.598878674481667
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          2089
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9191000478697942,
+        "foreground_fraction": 0.4121873945304547,
+        "path": "MgAl2O4_vesta_coordination.png",
+        "depth_peeling": true,
+        "ssim_vs_v4": 0.6375280318920158
       }
     },
     "LiFePO4": {
       "journal_clean": {
         "display": "hybrid",
+        "framing": "auto",
         "repeat": [
           1,
           1,
           1
         ],
         "atoms": 27,
+        "displayed_elements": {
+          "Li": 2,
+          "Fe": 2,
+          "P": 2,
+          "O": 21
+        },
         "bonds": 32,
         "polyhedra": 6,
         "clipped_polyhedra": 0,
@@ -858,6 +1798,7 @@
             "roll_degrees": 90.0,
             "score": 1.585071158451755,
             "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 1.0,
             "atom_occlusion_fraction": 0.0,
             "bond_visibility": 0.795554533312004,
@@ -916,12 +1857,19 @@
       },
       "journal_vivid": {
         "display": "hybrid",
+        "framing": "auto",
         "repeat": [
           1,
           1,
           1
         ],
         "atoms": 27,
+        "displayed_elements": {
+          "Li": 2,
+          "Fe": 2,
+          "P": 2,
+          "O": 21
+        },
         "bonds": 32,
         "polyhedra": 6,
         "clipped_polyhedra": 0,
@@ -941,6 +1889,7 @@
             "roll_degrees": 90.0,
             "score": 1.5850059479579777,
             "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 1.0,
             "atom_occlusion_fraction": 0.0,
             "bond_visibility": 0.795554533312004,
@@ -996,17 +1945,201 @@
         "path": "LiFePO4_journal_vivid.png",
         "depth_peeling": true,
         "ssim_vs_v4": 0.5692405725632856
+      },
+      "vesta_ballstick": {
+        "display": "hybrid",
+        "framing": "auto",
+        "repeat": [
+          1,
+          1,
+          1
+        ],
+        "atoms": 52,
+        "displayed_elements": {
+          "Li": 4,
+          "Fe": 4,
+          "P": 4,
+          "O": 40
+        },
+        "bonds": 64,
+        "polyhedra": 0,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {},
+        "camera": {
+          "candidate": "principal_3_roll90_tilt_up-5",
+          "score": {
+            "label": "principal_3_roll90_tilt_up-5",
+            "direction_cartesian": [
+              0.942823716627833,
+              0.2718441997238275,
+              -0.19283197463229929
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.5015637401739474,
+            "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 0.978494623655914,
+            "atom_occlusion_fraction": 0.021505376344086002,
+            "bond_visibility": 0.7927452732318352,
+            "projected_bond_crossing_fraction": 0.0625,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "polyhedron_face_visibility_fraction": 0.0,
+            "polyhedron_ligand_collapse_fraction": 0.0,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.4709049104113343,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              -0.18528400781200716,
+              -0.05342290603956113,
+              -0.9812317919632487
+            ],
+            [
+              0.27704381569203085,
+              -0.9608572860663545,
+              6.00831186624707e-17
+            ],
+            [
+              -0.942823716627833,
+              -0.2718441997238275,
+              0.19283197463229929
+            ]
+          ],
+          "target": [
+            2.3861046101550407,
+            2.4807102692552743,
+            4.819774640670294
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1429
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9205518553758325,
+        "occupancy_height": 0.9202239328201539,
+        "foreground_fraction": 0.13767453969327756,
+        "path": "LiFePO4_vesta_ballstick.png",
+        "depth_peeling": false,
+        "ssim_vs_v4": 0.5978885972703717
+      },
+      "vesta_coordination": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          1,
+          1,
+          1
+        ],
+        "atoms": 27,
+        "displayed_elements": {
+          "Li": 2,
+          "Fe": 2,
+          "P": 2,
+          "O": 21
+        },
+        "bonds": 32,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "4": 2,
+          "6": 4
+        },
+        "camera": {
+          "candidate": "lattice_+++_roll90",
+          "score": {
+            "label": "lattice_+++_roll90",
+            "direction_cartesian": [
+              0.2836725383363541,
+              0.727968542519357,
+              0.6241728062772782
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.5849328543367345,
+            "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 1.0,
+            "atom_occlusion_fraction": 0.0,
+            "bond_visibility": 0.7955545333120041,
+            "projected_bond_crossing_fraction": 0.0625,
+            "polyhedron_projected_area": 0.05096513854609841,
+            "polyhedron_depth_ratio": 0.6557318216258934,
+            "polyhedron_overlap_fraction": 0.1306840350552419,
+            "polyhedron_face_visibility_fraction": 0.25294109979066853,
+            "polyhedron_ligand_collapse_fraction": 0.044444444444444446,
+            "center_ligand_collapse_fraction": 0.09722222222222221,
+            "projected_aspect": 1.226902124246339,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              0.22662714121899527,
+              0.581577020659309,
+              -0.7812863162144512
+            ],
+            [
+              0.9317564219562512,
+              -0.3630839712012701,
+              4.7839989318482726e-17
+            ],
+            [
+              -0.2836725383363541,
+              -0.727968542519357,
+              -0.6241728062772782
+            ]
+          ],
+          "target": [
+            0.7708825583264991,
+            2.1123736308286287,
+            3.742097836954206
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1714
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9189031505250875,
+        "foreground_fraction": 0.4738527623300363,
+        "path": "LiFePO4_vesta_coordination.png",
+        "depth_peeling": true,
+        "ssim_vs_v4": 0.5676408833593589
       }
     },
     "alpha_SiO2": {
       "journal_clean": {
         "display": "hybrid",
+        "framing": "auto",
         "repeat": [
           3,
           2,
           1
         ],
         "atoms": 25,
+        "displayed_elements": {
+          "Si": 6,
+          "O": 19
+        },
         "bonds": 24,
         "polyhedra": 6,
         "clipped_polyhedra": 0,
@@ -1025,6 +2158,7 @@
             "roll_degrees": 0.0,
             "score": 1.8233970401758914,
             "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 1.0,
             "atom_occlusion_fraction": 0.0,
             "bond_visibility": 0.8051407997743457,
@@ -1083,12 +2217,17 @@
       },
       "journal_vivid": {
         "display": "hybrid",
+        "framing": "auto",
         "repeat": [
           3,
           2,
           1
         ],
         "atoms": 25,
+        "displayed_elements": {
+          "Si": 6,
+          "O": 19
+        },
         "bonds": 24,
         "polyhedra": 6,
         "clipped_polyhedra": 0,
@@ -1107,6 +2246,7 @@
             "roll_degrees": 0.0,
             "score": 1.8234060448013534,
             "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 1.0,
             "atom_occlusion_fraction": 0.0,
             "bond_visibility": 0.8051407997743457,
@@ -1162,17 +2302,199 @@
         "path": "alpha_SiO2_journal_vivid.png",
         "depth_peeling": true,
         "ssim_vs_v4": 0.6864167534455787
+      },
+      "vesta_ballstick": {
+        "display": "hybrid",
+        "framing": "auto",
+        "repeat": [
+          3,
+          2,
+          1
+        ],
+        "atoms": 76,
+        "displayed_elements": {
+          "Si": 18,
+          "O": 58
+        },
+        "bonds": 72,
+        "polyhedra": 0,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {},
+        "camera": {
+          "candidate": "lattice_+++_tilt_up+10",
+          "score": {
+            "label": "lattice_+++_tilt_up+10",
+            "direction_cartesian": [
+              0.3541350008329148,
+              0.2660834588471945,
+              0.8965422433510787
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.5963390646682414,
+            "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 0.9770114942528736,
+            "atom_occlusion_fraction": 0.02298850574712641,
+            "bond_visibility": 0.7915299424242394,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "polyhedron_face_visibility_fraction": 0.0,
+            "polyhedron_ligand_collapse_fraction": 0.0,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.3272783299594677,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              0.600696482069963,
+              -0.7994771644198292,
+              0.0
+            ],
+            [
+              -0.7167650504969129,
+              -0.5385497716081056,
+              0.4429582439542301
+            ],
+            [
+              -0.3541350008329148,
+              -0.2660834588471945,
+              -0.8965422433510787
+            ]
+          ],
+          "target": [
+            4.674869167250551,
+            4.07579048829235,
+            2.1006078194474957
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1584
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9210275927687916,
+        "occupancy_height": 0.9204545454545454,
+        "foreground_fraction": 0.07772419725321723,
+        "path": "alpha_SiO2_vesta_ballstick.png",
+        "depth_peeling": false,
+        "ssim_vs_v4": 0.6915190167876417
+      },
+      "vesta_coordination": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          3,
+          2,
+          1
+        ],
+        "atoms": 25,
+        "displayed_elements": {
+          "Si": 6,
+          "O": 19
+        },
+        "bonds": 24,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "4": 6
+        },
+        "camera": {
+          "candidate": "principal_2_tilt_right-10",
+          "score": {
+            "label": "principal_2_tilt_right-10",
+            "direction_cartesian": [
+              0.0580916677483679,
+              0.136735073016367,
+              0.9889028657787489
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.823496707817278,
+            "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 1.0,
+            "atom_occlusion_fraction": 0.0,
+            "bond_visibility": 0.8051392946456325,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.021591840850883122,
+            "polyhedron_depth_ratio": 0.6931962467549999,
+            "polyhedron_overlap_fraction": 0.0010604340133571301,
+            "polyhedron_face_visibility_fraction": 0.27409897446458825,
+            "polyhedron_ligand_collapse_fraction": 0.0,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.240218160312207,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              0.9203811610361238,
+              -0.3910224014168459,
+              0.0
+            ],
+            [
+              -0.3866831733448071,
+              -0.9101675677573947,
+              0.14856352868243936
+            ],
+            [
+              -0.0580916677483679,
+              -0.136735073016367,
+              -0.9889028657787489
+            ]
+          ],
+          "target": [
+            2.596482062264704,
+            2.1246589534196554,
+            1.8174312686960563
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1695
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9191740412979351,
+        "foreground_fraction": 0.2533311440993126,
+        "path": "alpha_SiO2_vesta_coordination.png",
+        "depth_peeling": true,
+        "ssim_vs_v4": 0.6889278252419787
       }
     },
     "Eu2FeGe2OS6": {
       "journal_clean": {
         "display": "hybrid",
+        "framing": "auto",
         "repeat": [
           1,
           1,
           2
         ],
         "atoms": 33,
+        "displayed_elements": {
+          "Eu": 4,
+          "Fe": 1,
+          "Ge": 1,
+          "S": 23,
+          "O": 4
+        },
         "bonds": 40,
         "polyhedra": 6,
         "clipped_polyhedra": 0,
@@ -1192,6 +2514,7 @@
             "roll_degrees": 90.0,
             "score": 1.691323545840905,
             "atom_overlap_fraction": 0.06060606060606061,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 1.0,
             "atom_occlusion_fraction": 0.0,
             "bond_visibility": 0.8300676310211976,
@@ -1249,12 +2572,20 @@
       },
       "journal_vivid": {
         "display": "hybrid",
+        "framing": "auto",
         "repeat": [
           1,
           1,
           2
         ],
         "atoms": 33,
+        "displayed_elements": {
+          "Eu": 4,
+          "Fe": 1,
+          "Ge": 1,
+          "S": 23,
+          "O": 4
+        },
         "bonds": 40,
         "polyhedra": 6,
         "clipped_polyhedra": 0,
@@ -1274,6 +2605,7 @@
             "roll_degrees": 90.0,
             "score": 1.6823491868665459,
             "atom_overlap_fraction": 0.06060606060606061,
+            "projection_crowding_fraction": 0.0,
             "atom_visibility_fraction": 0.9743589743589743,
             "atom_occlusion_fraction": 0.02564102564102566,
             "bond_visibility": 0.8300676310211976,
@@ -1328,44 +2660,228 @@
         "foreground_fraction": 0.4774813109630436,
         "path": "Eu2FeGe2OS6_journal_vivid.png",
         "depth_peeling": true
+      },
+      "vesta_ballstick": {
+        "display": "hybrid",
+        "framing": "auto",
+        "repeat": [
+          1,
+          1,
+          2
+        ],
+        "atoms": 85,
+        "displayed_elements": {
+          "Eu": 8,
+          "Fe": 4,
+          "Ge": 8,
+          "S": 53,
+          "O": 12
+        },
+        "bonds": 112,
+        "polyhedra": 0,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {},
+        "camera": {
+          "candidate": "lattice_+-+_roll90_tilt_up+10",
+          "score": {
+            "label": "lattice_+-+_roll90_tilt_up+10",
+            "direction_cartesian": [
+              0.7061461919896369,
+              -0.706146191989637,
+              0.052106727752464305
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.1821985804440223,
+            "atom_overlap_fraction": 0.1411764705882353,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 0.8360655737704918,
+            "atom_occlusion_fraction": 0.16393442622950816,
+            "bond_visibility": 0.7877648432441448,
+            "projected_bond_crossing_fraction": 0.16964285714285715,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "polyhedron_face_visibility_fraction": 0.0,
+            "polyhedron_ligand_collapse_fraction": 0.0,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.0978129095476035,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              0.03684502053920874,
+              -0.03684502053920883,
+              -0.9986415217298601
+            ],
+            [
+              -0.7071067811865476,
+              -0.7071067811865475,
+              6.114915715410575e-17
+            ],
+            [
+              -0.706146191989637,
+              0.7061461919896371,
+              -0.05210672775246431
+            ]
+          ],
+          "target": [
+            4.023515966058203,
+            4.023515966058201,
+            6.146000000000002
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1915
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9205518553758325,
+        "occupancy_height": 0.9201044386422976,
+        "foreground_fraction": 0.13975351089227467,
+        "path": "Eu2FeGe2OS6_vesta_ballstick.png",
+        "depth_peeling": false
+      },
+      "vesta_coordination": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          1,
+          1,
+          2
+        ],
+        "atoms": 33,
+        "displayed_elements": {
+          "Eu": 4,
+          "Fe": 1,
+          "Ge": 1,
+          "S": 23,
+          "O": 4
+        },
+        "bonds": 40,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "4": 2,
+          "8": 4
+        },
+        "camera": {
+          "candidate": "principal_3_roll90_tilt_right+10",
+          "score": {
+            "label": "principal_3_roll90_tilt_right+10",
+            "direction_cartesian": [
+              -0.049009396161621255,
+              -0.04209411627658982,
+              -0.9979109000621079
+            ],
+            "roll_degrees": 90.0,
+            "score": 1.6914568848268259,
+            "atom_overlap_fraction": 0.06060606060606061,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 1.0,
+            "atom_occlusion_fraction": 0.0,
+            "bond_visibility": 0.8298243581010771,
+            "projected_bond_crossing_fraction": 0.0,
+            "polyhedron_projected_area": 0.04846838560111617,
+            "polyhedron_depth_ratio": 0.5694074224477034,
+            "polyhedron_overlap_fraction": 0.06374935662683141,
+            "polyhedron_face_visibility_fraction": 0.23270410596928784,
+            "polyhedron_ligand_collapse_fraction": 0.03571428571428571,
+            "center_ligand_collapse_fraction": 0.041666666666666664,
+            "projected_aspect": 1.0007337239660048,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              0.0020648373895424993,
+              -0.9991136498791782,
+              0.04204344267138232
+            ],
+            [
+              0.9987961831797456,
+              6.117806666544824e-17,
+              -0.049052874182579635
+            ],
+            [
+              0.049009396161621255,
+              0.04209411627658982,
+              0.9979109000621079
+            ]
+          ],
+          "target": [
+            4.594130934897053,
+            4.73030738051829,
+            5.189558513305556
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          2101
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9195621132793907,
+        "foreground_fraction": 0.477786845193105,
+        "path": "Eu2FeGe2OS6_vesta_coordination.png",
+        "depth_peeling": true
       }
     },
     "Ce6Cd23Te": {
       "journal_clean": {
         "display": "network",
+        "framing": "motif",
         "repeat": [
           1,
           1,
           1
         ],
-        "atoms": 148,
-        "bonds": 392,
+        "atoms": 12,
+        "displayed_elements": {
+          "Cd": 12
+        },
+        "bonds": 33,
         "polyhedra": 0,
         "clipped_polyhedra": 0,
         "ligands_per_shell": {},
         "camera": {
-          "candidate": "lattice_++-_roll90",
+          "candidate": "direct_b",
           "score": {
-            "label": "lattice_++-_roll90",
+            "label": "direct_b",
             "direction_cartesian": [
-              0.5773502691896258,
-              0.5773502691896258,
-              -0.5773502691896257
+              1.6081226496766366e-16,
+              1.0,
+              6.123233995736766e-17
             ],
-            "roll_degrees": 90.0,
-            "score": 0.3458270007154104,
-            "atom_overlap_fraction": 0.7027027027027027,
-            "atom_visibility_fraction": 0.7005988023952096,
-            "atom_occlusion_fraction": 0.29940119760479045,
-            "bond_visibility": 0.7657887501924157,
-            "projected_bond_crossing_fraction": 0.3239795918367347,
+            "roll_degrees": 0.0,
+            "score": 1.2496606880656835,
+            "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 1.0,
+            "atom_occlusion_fraction": 0.0,
+            "bond_visibility": 0.8042253425253291,
+            "projected_bond_crossing_fraction": 0.2727272727272727,
             "polyhedron_projected_area": 0.0,
             "polyhedron_depth_ratio": 0.0,
             "polyhedron_overlap_fraction": 0.0,
             "polyhedron_face_visibility_fraction": 0.0,
             "polyhedron_ligand_collapse_fraction": 0.0,
             "center_ligand_collapse_fraction": 0.0,
-            "projected_aspect": 1.149332561634704,
+            "projected_aspect": 1.0000000000000002,
             "layer_separation": 0.0,
             "layer_normal_vertical_fraction": 0.0,
             "layer_spacing_angstrom": 0.0,
@@ -1373,78 +2889,83 @@
           },
           "rotation": [
             [
-              -0.40824829046386296,
-              -0.4082482904638631,
-              -0.8164965809277261
+              1.0,
+              -1.6081226496766366e-16,
+              0.0
             ],
             [
-              0.7071067811865476,
-              -0.7071067811865476,
-              4.9995996217394886e-17
+              -9.846911277814267e-33,
+              -6.123233995736766e-17,
+              1.0
             ],
             [
-              -0.5773502691896258,
-              -0.5773502691896258,
-              0.5773502691896257
+              -1.6081226496766366e-16,
+              -1.0,
+              -6.123233995736766e-17
             ]
           ],
           "target": [
-            7.081600000000001,
-            7.0816,
-            7.081600000000001
+            3.540800000000001,
+            2.667001376,
+            3.5408
           ],
           "padding": 0.08,
           "projection": "orthographic"
         },
         "pixels": [
           2102,
-          1829
+          2102
         ],
         "dpi": [
           599.9988,
           599.9988
         ],
         "occupancy_width": 0.9205518553758325,
-        "occupancy_height": 0.9196282121377802,
-        "foreground_fraction": 0.11571577278844539,
+        "occupancy_height": 0.9205518553758325,
+        "foreground_fraction": 0.12084272963721741,
         "path": "Ce6Cd23Te_journal_clean.png",
         "depth_peeling": false
       },
       "journal_vivid": {
         "display": "network",
+        "framing": "motif",
         "repeat": [
           1,
           1,
           1
         ],
-        "atoms": 148,
-        "bonds": 392,
+        "atoms": 12,
+        "displayed_elements": {
+          "Cd": 12
+        },
+        "bonds": 33,
         "polyhedra": 0,
         "clipped_polyhedra": 0,
         "ligands_per_shell": {},
         "camera": {
-          "candidate": "lattice_++-_roll90",
+          "candidate": "direct_b",
           "score": {
-            "label": "lattice_++-_roll90",
+            "label": "direct_b",
             "direction_cartesian": [
-              0.5773502691896258,
-              0.5773502691896258,
-              -0.5773502691896257
+              1.6081226496766366e-16,
+              1.0,
+              6.123233995736766e-17
             ],
-            "roll_degrees": 90.0,
-            "score": 0.3458270007154104,
-            "atom_overlap_fraction": 0.7027027027027027,
-            "atom_visibility_fraction": 0.7005988023952096,
-            "atom_occlusion_fraction": 0.29940119760479045,
-            "bond_visibility": 0.7657887501924157,
-            "projected_bond_crossing_fraction": 0.3239795918367347,
+            "roll_degrees": 0.0,
+            "score": 1.2496606880656835,
+            "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 1.0,
+            "atom_occlusion_fraction": 0.0,
+            "bond_visibility": 0.8042253425253291,
+            "projected_bond_crossing_fraction": 0.2727272727272727,
             "polyhedron_projected_area": 0.0,
             "polyhedron_depth_ratio": 0.0,
             "polyhedron_overlap_fraction": 0.0,
             "polyhedron_face_visibility_fraction": 0.0,
             "polyhedron_ligand_collapse_fraction": 0.0,
             "center_ligand_collapse_fraction": 0.0,
-            "projected_aspect": 1.149332561634704,
+            "projected_aspect": 1.0000000000000002,
             "layer_separation": 0.0,
             "layer_normal_vertical_fraction": 0.0,
             "layer_spacing_angstrom": 0.0,
@@ -1452,55 +2973,1065 @@
           },
           "rotation": [
             [
-              -0.40824829046386296,
-              -0.4082482904638631,
-              -0.8164965809277261
+              1.0,
+              -1.6081226496766366e-16,
+              0.0
             ],
             [
-              0.7071067811865476,
-              -0.7071067811865476,
-              4.9995996217394886e-17
+              -9.846911277814267e-33,
+              -6.123233995736766e-17,
+              1.0
             ],
             [
-              -0.5773502691896258,
-              -0.5773502691896258,
-              0.5773502691896257
+              -1.6081226496766366e-16,
+              -1.0,
+              -6.123233995736766e-17
             ]
           ],
           "target": [
-            7.081600000000001,
-            7.0816,
-            7.081600000000001
+            3.540800000000001,
+            2.667001376,
+            3.5408
           ],
           "padding": 0.08,
           "projection": "orthographic"
         },
         "pixels": [
           2102,
-          1829
+          2102
         ],
         "dpi": [
           599.9988,
           599.9988
         ],
         "occupancy_width": 0.9205518553758325,
-        "occupancy_height": 0.9196282121377802,
-        "foreground_fraction": 0.12084484094140341,
+        "occupancy_height": 0.9205518553758325,
+        "foreground_fraction": 0.1273679364766101,
         "path": "Ce6Cd23Te_journal_vivid.png",
         "depth_peeling": false
+      },
+      "vesta_ballstick": {
+        "display": "network",
+        "framing": "motif",
+        "repeat": [
+          1,
+          1,
+          1
+        ],
+        "atoms": 12,
+        "displayed_elements": {
+          "Cd": 12
+        },
+        "bonds": 33,
+        "polyhedra": 0,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {},
+        "camera": {
+          "candidate": "direct_b",
+          "score": {
+            "label": "direct_b",
+            "direction_cartesian": [
+              1.6081226496766366e-16,
+              1.0,
+              6.123233995736766e-17
+            ],
+            "roll_degrees": 0.0,
+            "score": 1.2496606880656835,
+            "atom_overlap_fraction": 0.0,
+            "projection_crowding_fraction": 0.0,
+            "atom_visibility_fraction": 1.0,
+            "atom_occlusion_fraction": 0.0,
+            "bond_visibility": 0.8042253425253291,
+            "projected_bond_crossing_fraction": 0.2727272727272727,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "polyhedron_face_visibility_fraction": 0.0,
+            "polyhedron_ligand_collapse_fraction": 0.0,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.0,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              1.0,
+              -1.6081226496766366e-16,
+              0.0
+            ],
+            [
+              -9.846911277814267e-33,
+              -6.123233995736766e-17,
+              1.0
+            ],
+            [
+              -1.6081226496766366e-16,
+              -1.0,
+              -6.123233995736766e-17
+            ]
+          ],
+          "target": [
+            3.540800000000001,
+            2.667001376,
+            3.5408
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          2102
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9205518553758325,
+        "occupancy_height": 0.9205518553758325,
+        "foreground_fraction": 0.14505939248651775,
+        "path": "Ce6Cd23Te_vesta_ballstick.png",
+        "depth_peeling": false
+      },
+      "vesta_coordination": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          1,
+          1,
+          1
+        ],
+        "atoms": 148,
+        "displayed_elements": {
+          "Ce": 24,
+          "Cd": 114,
+          "Te": 10
+        },
+        "bonds": 392,
+        "polyhedra": 0,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {},
+        "camera": {
+          "candidate": "lattice_+++_roll90",
+          "score": {
+            "label": "lattice_+++_roll90",
+            "direction_cartesian": [
+              0.5773502691896258,
+              0.5773502691896257,
+              0.5773502691896258
+            ],
+            "roll_degrees": 90.0,
+            "score": 0.6054534129017979,
+            "atom_overlap_fraction": 0.5135135135135135,
+            "projection_crowding_fraction": 0.10810810810810811,
+            "atom_visibility_fraction": 1.0,
+            "atom_occlusion_fraction": 0.0,
+            "bond_visibility": 0.7657887501924157,
+            "projected_bond_crossing_fraction": 0.32908163265306123,
+            "polyhedron_projected_area": 0.0,
+            "polyhedron_depth_ratio": 0.0,
+            "polyhedron_overlap_fraction": 0.0,
+            "polyhedron_face_visibility_fraction": 0.0,
+            "polyhedron_ligand_collapse_fraction": 0.0,
+            "center_ligand_collapse_fraction": 0.0,
+            "projected_aspect": 1.1519691617878518,
+            "layer_separation": 0.0,
+            "layer_normal_vertical_fraction": 0.0,
+            "layer_spacing_angstrom": 0.0,
+            "projected_layer_spacing_fraction": 0.0
+          },
+          "rotation": [
+            [
+              0.40824829046386313,
+              0.40824829046386296,
+              -0.816496580927726
+            ],
+            [
+              0.7071067811865475,
+              -0.7071067811865476,
+              4.9995996217394874e-17
+            ],
+            [
+              -0.5773502691896258,
+              -0.5773502691896257,
+              -0.5773502691896258
+            ]
+          ],
+          "target": [
+            6.137386666666663,
+            6.137386666666665,
+            6.137386666666665
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1825
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9205518553758325,
+        "occupancy_height": 0.9194520547945205,
+        "foreground_fraction": 0.08725154125881418,
+        "path": "Ce6Cd23Te_vesta_coordination.png",
+        "depth_peeling": false
       }
+    }
+  },
+  "bond_policy_comparison": {
+    "BaTiO3": {
+      "all_bonds": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          3,
+          2,
+          1
+        ],
+        "atoms": 39,
+        "displayed_elements": {
+          "Ba": 4,
+          "Ti": 6,
+          "O": 29
+        },
+        "bonds": 62,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "6": 6
+        },
+        "camera": {
+          "candidate": "explicit",
+          "score": null,
+          "rotation": [
+            [
+              0.848048096156426,
+              0.5299192642332049,
+              0.0
+            ],
+            [
+              -0.44939702314958346,
+              0.7191855733945387,
+              0.5299192642332049
+            ],
+            [
+              0.28081442660546124,
+              -0.44939702314958346,
+              0.848048096156426
+            ]
+          ],
+          "target": [
+            5.521652062184487,
+            4.59549163210367,
+            0.6068532008402543
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1640
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9189024390243903,
+        "foreground_fraction": 0.3155194820264092,
+        "path": "BaTiO3_all_bonds.png",
+        "depth_peeling": true
+      },
+      "center_ligand_only": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          3,
+          2,
+          1
+        ],
+        "atoms": 39,
+        "displayed_elements": {
+          "Ba": 4,
+          "Ti": 6,
+          "O": 29
+        },
+        "bonds": 36,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "6": 6
+        },
+        "camera": {
+          "candidate": "explicit",
+          "score": null,
+          "rotation": [
+            [
+              0.848048096156426,
+              0.5299192642332049,
+              0.0
+            ],
+            [
+              -0.44939702314958346,
+              0.7191855733945387,
+              0.5299192642332049
+            ],
+            [
+              0.28081442660546124,
+              -0.44939702314958346,
+              0.848048096156426
+            ]
+          ],
+          "target": [
+            5.521652062184487,
+            4.59549163210367,
+            0.6068532008402543
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1640
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9189024390243903,
+        "foreground_fraction": 0.29397089879557214,
+        "path": "BaTiO3_center_ligand_only.png",
+        "depth_peeling": true
+      },
+      "polyhedron_edges_only": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          3,
+          2,
+          1
+        ],
+        "atoms": 39,
+        "displayed_elements": {
+          "Ba": 4,
+          "Ti": 6,
+          "O": 29
+        },
+        "bonds": 0,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "6": 6
+        },
+        "camera": {
+          "candidate": "explicit",
+          "score": null,
+          "rotation": [
+            [
+              0.848048096156426,
+              0.5299192642332049,
+              0.0
+            ],
+            [
+              -0.44939702314958346,
+              0.7191855733945387,
+              0.5299192642332049
+            ],
+            [
+              0.28081442660546124,
+              -0.44939702314958346,
+              0.848048096156426
+            ]
+          ],
+          "target": [
+            5.521652062184487,
+            4.59549163210367,
+            0.6068532008402543
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          1640
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9189024390243903,
+        "foreground_fraction": 0.29397089879557214,
+        "path": "BaTiO3_polyhedron_edges_only.png",
+        "depth_peeling": true
+      }
+    },
+    "MgAl2O4": {
+      "all_bonds": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          1,
+          1,
+          1
+        ],
+        "atoms": 28,
+        "displayed_elements": {
+          "Mg": 1,
+          "Al": 5,
+          "O": 22
+        },
+        "bonds": 34,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "4": 1,
+          "6": 5
+        },
+        "camera": {
+          "candidate": "explicit",
+          "score": null,
+          "rotation": [
+            [
+              0.848048096156426,
+              0.5299192642332049,
+              0.0
+            ],
+            [
+              -0.44939702314958346,
+              0.7191855733945387,
+              0.5299192642332049
+            ],
+            [
+              0.28081442660546124,
+              -0.44939702314958346,
+              0.848048096156426
+            ]
+          ],
+          "target": [
+            2.1369057654726378,
+            7.5003031096804245,
+            3.2669608428173467
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          2047
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9193942354665364,
+        "foreground_fraction": 0.40909557836140886,
+        "path": "MgAl2O4_all_bonds.png",
+        "depth_peeling": true
+      },
+      "center_ligand_only": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          1,
+          1,
+          1
+        ],
+        "atoms": 28,
+        "displayed_elements": {
+          "Mg": 1,
+          "Al": 5,
+          "O": 22
+        },
+        "bonds": 34,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "4": 1,
+          "6": 5
+        },
+        "camera": {
+          "candidate": "explicit",
+          "score": null,
+          "rotation": [
+            [
+              0.848048096156426,
+              0.5299192642332049,
+              0.0
+            ],
+            [
+              -0.44939702314958346,
+              0.7191855733945387,
+              0.5299192642332049
+            ],
+            [
+              0.28081442660546124,
+              -0.44939702314958346,
+              0.848048096156426
+            ]
+          ],
+          "target": [
+            2.1369057654726378,
+            7.5003031096804245,
+            3.2669608428173467
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          2047
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9193942354665364,
+        "foreground_fraction": 0.40909557836140886,
+        "path": "MgAl2O4_center_ligand_only.png",
+        "depth_peeling": true
+      },
+      "polyhedron_edges_only": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          1,
+          1,
+          1
+        ],
+        "atoms": 28,
+        "displayed_elements": {
+          "Mg": 1,
+          "Al": 5,
+          "O": 22
+        },
+        "bonds": 0,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "4": 1,
+          "6": 5
+        },
+        "camera": {
+          "candidate": "explicit",
+          "score": null,
+          "rotation": [
+            [
+              0.848048096156426,
+              0.5299192642332049,
+              0.0
+            ],
+            [
+              -0.44939702314958346,
+              0.7191855733945387,
+              0.5299192642332049
+            ],
+            [
+              0.28081442660546124,
+              -0.44939702314958346,
+              0.848048096156426
+            ]
+          ],
+          "target": [
+            2.1369057654726378,
+            7.5003031096804245,
+            3.2669608428173467
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          2047
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9193942354665364,
+        "foreground_fraction": 0.40909557836140886,
+        "path": "MgAl2O4_polyhedron_edges_only.png",
+        "depth_peeling": true
+      }
+    },
+    "LiFePO4": {
+      "all_bonds": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          1,
+          1,
+          1
+        ],
+        "atoms": 27,
+        "displayed_elements": {
+          "Li": 2,
+          "Fe": 2,
+          "P": 2,
+          "O": 21
+        },
+        "bonds": 32,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "4": 2,
+          "6": 4
+        },
+        "camera": {
+          "candidate": "explicit",
+          "score": null,
+          "rotation": [
+            [
+              0.848048096156426,
+              0.5299192642332049,
+              0.0
+            ],
+            [
+              -0.44939702314958346,
+              0.7191855733945387,
+              0.5299192642332049
+            ],
+            [
+              0.28081442660546124,
+              -0.44939702314958346,
+              0.848048096156426
+            ]
+          ],
+          "target": [
+            -0.42927521481876507,
+            3.195773466064779,
+            1.8356479575517648
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          2184
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9189560439560439,
+        "foreground_fraction": 0.4703509303889894,
+        "path": "LiFePO4_all_bonds.png",
+        "depth_peeling": true
+      },
+      "center_ligand_only": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          1,
+          1,
+          1
+        ],
+        "atoms": 27,
+        "displayed_elements": {
+          "Li": 2,
+          "Fe": 2,
+          "P": 2,
+          "O": 21
+        },
+        "bonds": 32,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "4": 2,
+          "6": 4
+        },
+        "camera": {
+          "candidate": "explicit",
+          "score": null,
+          "rotation": [
+            [
+              0.848048096156426,
+              0.5299192642332049,
+              0.0
+            ],
+            [
+              -0.44939702314958346,
+              0.7191855733945387,
+              0.5299192642332049
+            ],
+            [
+              0.28081442660546124,
+              -0.44939702314958346,
+              0.848048096156426
+            ]
+          ],
+          "target": [
+            -0.42927521481876507,
+            3.195773466064779,
+            1.8356479575517648
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          2184
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9189560439560439,
+        "foreground_fraction": 0.4703509303889894,
+        "path": "LiFePO4_center_ligand_only.png",
+        "depth_peeling": true
+      },
+      "polyhedron_edges_only": {
+        "display": "coordination",
+        "framing": "auto",
+        "repeat": [
+          1,
+          1,
+          1
+        ],
+        "atoms": 27,
+        "displayed_elements": {
+          "Li": 2,
+          "Fe": 2,
+          "P": 2,
+          "O": 21
+        },
+        "bonds": 0,
+        "polyhedra": 6,
+        "clipped_polyhedra": 0,
+        "ligands_per_shell": {
+          "4": 2,
+          "6": 4
+        },
+        "camera": {
+          "candidate": "explicit",
+          "score": null,
+          "rotation": [
+            [
+              0.848048096156426,
+              0.5299192642332049,
+              0.0
+            ],
+            [
+              -0.44939702314958346,
+              0.7191855733945387,
+              0.5299192642332049
+            ],
+            [
+              0.28081442660546124,
+              -0.44939702314958346,
+              0.848048096156426
+            ]
+          ],
+          "target": [
+            -0.42927521481876507,
+            3.195773466064779,
+            1.8356479575517648
+          ],
+          "padding": 0.08,
+          "projection": "orthographic"
+        },
+        "pixels": [
+          2102,
+          2184
+        ],
+        "dpi": [
+          599.9988,
+          599.9988
+        ],
+        "occupancy_width": 0.9196003805899143,
+        "occupancy_height": 0.9189560439560439,
+        "foreground_fraction": 0.4703509303889894,
+        "path": "LiFePO4_polyhedron_edges_only.png",
+        "depth_peeling": true
+      }
+    }
+  },
+  "dense_framing": {
+    "unit_cell": {
+      "display": "network",
+      "framing": "unit_cell",
+      "repeat": [
+        1,
+        1,
+        1
+      ],
+      "atoms": 148,
+      "displayed_elements": {
+        "Ce": 24,
+        "Cd": 114,
+        "Te": 10
+      },
+      "bonds": 392,
+      "polyhedra": 0,
+      "clipped_polyhedra": 0,
+      "ligands_per_shell": {},
+      "camera": {
+        "candidate": "lattice_++-_roll90",
+        "score": {
+          "label": "lattice_++-_roll90",
+          "direction_cartesian": [
+            0.5773502691896258,
+            0.5773502691896258,
+            -0.5773502691896257
+          ],
+          "roll_degrees": 90.0,
+          "score": 0.25603283159921747,
+          "atom_overlap_fraction": 0.7027027027027027,
+          "projection_crowding_fraction": 0.3310810810810811,
+          "atom_visibility_fraction": 0.6804733727810651,
+          "atom_occlusion_fraction": 0.3195266272189349,
+          "bond_visibility": 0.7657887501924157,
+          "projected_bond_crossing_fraction": 0.3239795918367347,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "polyhedron_face_visibility_fraction": 0.0,
+          "polyhedron_ligand_collapse_fraction": 0.0,
+          "center_ligand_collapse_fraction": 0.0,
+          "projected_aspect": 1.1490452425900477,
+          "layer_separation": 0.0,
+          "layer_normal_vertical_fraction": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0
+        },
+        "rotation": [
+          [
+            -0.40824829046386296,
+            -0.4082482904638631,
+            -0.8164965809277261
+          ],
+          [
+            0.7071067811865476,
+            -0.7071067811865476,
+            4.9995996217394886e-17
+          ],
+          [
+            -0.5773502691896258,
+            -0.5773502691896258,
+            0.5773502691896257
+          ]
+        ],
+        "target": [
+          7.081600000000001,
+          7.0816,
+          7.081600000000001
+        ],
+        "padding": 0.08,
+        "projection": "orthographic"
+      },
+      "pixels": [
+        2102,
+        1830
+      ],
+      "dpi": [
+        599.9988,
+        599.9988
+      ],
+      "occupancy_width": 0.9205518553758325,
+      "occupancy_height": 0.919672131147541,
+      "foreground_fraction": 0.1349934748587086,
+      "path": "Ce6Cd23Te_unit_cell.png",
+      "depth_peeling": false
+    },
+    "local_coordination": {
+      "display": "coordination",
+      "framing": "local_coordination",
+      "repeat": [
+        1,
+        1,
+        1
+      ],
+      "atoms": 7,
+      "displayed_elements": {
+        "Te": 1,
+        "Ce": 6
+      },
+      "bonds": 6,
+      "polyhedra": 1,
+      "clipped_polyhedra": 0,
+      "ligands_per_shell": {
+        "6": 1
+      },
+      "camera": {
+        "candidate": "lattice_+++_roll90_tilt_up-10",
+        "score": {
+          "label": "lattice_+++_roll90_tilt_up-10",
+          "direction_cartesian": [
+            0.49768744962693934,
+            0.4976874496269393,
+            0.7103621646510078
+          ],
+          "roll_degrees": 90.0,
+          "score": 1.9102883400769013,
+          "atom_overlap_fraction": 0.0,
+          "projection_crowding_fraction": 0.0,
+          "atom_visibility_fraction": 1.0,
+          "atom_occlusion_fraction": 0.0,
+          "bond_visibility": 0.8164965809277261,
+          "projected_bond_crossing_fraction": 0.0,
+          "polyhedron_projected_area": 0.3207494287733495,
+          "polyhedron_depth_ratio": 0.534522483824849,
+          "polyhedron_overlap_fraction": 0.0,
+          "polyhedron_face_visibility_fraction": 0.25000000000000006,
+          "polyhedron_ligand_collapse_fraction": 0.0,
+          "center_ligand_collapse_fraction": 0.0,
+          "projected_aspect": 0.9957252906917817,
+          "layer_separation": 0.0,
+          "layer_normal_vertical_fraction": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0
+        },
+        "rotation": [
+          [
+            0.5023019037230825,
+            0.5023019037230824,
+            -0.7038363410852941
+          ],
+          [
+            0.7071067811865475,
+            -0.7071067811865476,
+            4.309754611168451e-17
+          ],
+          [
+            -0.49768744962693934,
+            -0.4976874496269393,
+            -0.7103621646510078
+          ]
+        ],
+        "target": [
+          7.081600000000001,
+          7.0816,
+          7.081600000000001
+        ],
+        "padding": 0.08,
+        "projection": "orthographic"
+      },
+      "pixels": [
+        2102,
+        2111
+      ],
+      "dpi": [
+        599.9988,
+        599.9988
+      ],
+      "occupancy_width": 0.9196003805899143,
+      "occupancy_height": 0.9199431549028896,
+      "foreground_fraction": 0.6375016282343269,
+      "path": "Ce6Cd23Te_local_coordination.png",
+      "depth_peeling": true
+    },
+    "motif": {
+      "display": "network",
+      "framing": "motif",
+      "repeat": [
+        1,
+        1,
+        1
+      ],
+      "atoms": 12,
+      "displayed_elements": {
+        "Cd": 12
+      },
+      "bonds": 33,
+      "polyhedra": 0,
+      "clipped_polyhedra": 0,
+      "ligands_per_shell": {},
+      "camera": {
+        "candidate": "direct_b",
+        "score": {
+          "label": "direct_b",
+          "direction_cartesian": [
+            1.6081226496766366e-16,
+            1.0,
+            6.123233995736766e-17
+          ],
+          "roll_degrees": 0.0,
+          "score": 1.2496606880656835,
+          "atom_overlap_fraction": 0.0,
+          "projection_crowding_fraction": 0.0,
+          "atom_visibility_fraction": 1.0,
+          "atom_occlusion_fraction": 0.0,
+          "bond_visibility": 0.8042253425253291,
+          "projected_bond_crossing_fraction": 0.2727272727272727,
+          "polyhedron_projected_area": 0.0,
+          "polyhedron_depth_ratio": 0.0,
+          "polyhedron_overlap_fraction": 0.0,
+          "polyhedron_face_visibility_fraction": 0.0,
+          "polyhedron_ligand_collapse_fraction": 0.0,
+          "center_ligand_collapse_fraction": 0.0,
+          "projected_aspect": 1.0,
+          "layer_separation": 0.0,
+          "layer_normal_vertical_fraction": 0.0,
+          "layer_spacing_angstrom": 0.0,
+          "projected_layer_spacing_fraction": 0.0
+        },
+        "rotation": [
+          [
+            1.0,
+            -1.6081226496766366e-16,
+            0.0
+          ],
+          [
+            -9.846911277814267e-33,
+            -6.123233995736766e-17,
+            1.0
+          ],
+          [
+            -1.6081226496766366e-16,
+            -1.0,
+            -6.123233995736766e-17
+          ]
+        ],
+        "target": [
+          3.540800000000001,
+          2.667001376,
+          3.5408
+        ],
+        "padding": 0.08,
+        "projection": "orthographic"
+      },
+      "pixels": [
+        2102,
+        2102
+      ],
+      "dpi": [
+        599.9988,
+        599.9988
+      ],
+      "occupancy_width": 0.9205518553758325,
+      "occupancy_height": 0.9205518553758325,
+      "foreground_fraction": 0.14505939248651775,
+      "path": "Ce6Cd23Te_motif.png",
+      "depth_peeling": false
     }
   },
   "fixed_cases": {
     "BaTiO3": {
       "display": "coordination",
+      "framing": "auto",
       "repeat": [
         1,
         1,
         1
       ],
       "atoms": 8,
-      "bonds": 9,
+      "displayed_elements": {
+        "Ba": 1,
+        "Ti": 1,
+        "O": 6
+      },
+      "bonds": 6,
       "polyhedra": 1,
       "clipped_polyhedra": 0,
       "ligands_per_shell": {
@@ -1527,23 +4058,27 @@
           ]
         ],
         "target": [
-          1.1871273448626947,
-          2.2342067151424825,
-          0.7908553362365541
+          1.1901172279102459,
+          2.2435750014246905,
+          0.7948297307183032
         ],
         "padding": 0.08,
         "projection": "orthographic"
       },
-      "ssim_pyvista_vs_matplotlib": 0.6806406677815963
+      "ssim_pyvista_vs_matplotlib": 0.7431470768033115
     },
     "Si": {
       "display": "network",
+      "framing": "auto",
       "repeat": [
         1,
         1,
         1
       ],
       "atoms": 17,
+      "displayed_elements": {
+        "Si": 17
+      },
       "bonds": 16,
       "polyhedra": 0,
       "clipped_polyhedra": 0,
@@ -1569,14 +4104,14 @@
           ]
         ],
         "target": [
-          1.3094054892047278,
-          2.895718855582587,
-          1.10091336347939
+          1.2983429219287879,
+          2.861056196338417,
+          1.0862081038969185
         ],
         "padding": 0.08,
         "projection": "orthographic"
       },
-      "ssim_pyvista_vs_matplotlib": 0.8382418376063844
+      "ssim_pyvista_vs_matplotlib": 0.8314258028498799
     }
   },
   "four_panel_pdf": {
@@ -1592,7 +4127,7 @@
     ],
     "fonts": [
       "FAGARN+DejaVuSans-Bold",
-      "GXFOBL+DejaVuSans"
+      "BXHNRF+DejaVuSans"
     ],
     "has_type3_fonts": false,
     "font_detection": "available",

@@ -343,8 +343,8 @@ class PyVistaRenderer:
                     smooth_shading=True,
                     style="wireframe" if style == "wireframe" else "surface",
                     show_edges=(style == "wireframe"),
-                    ambient=0.18,
-                    diffuse=0.82,
+                    ambient=figure_style.atoms.ambient if figure_style is not None else 0.18,
+                    diffuse=1.0 - (figure_style.atoms.ambient if figure_style is not None else 0.18),
                     specular=(
                         figure_style.atoms.specular
                         if figure_style is not None

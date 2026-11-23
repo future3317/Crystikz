@@ -10,7 +10,7 @@ from itertools import product
 import numpy as np
 from scipy.spatial import ConvexHull, QhullError
 
-from crystalfig.analysis.coordination import CoordinationAnalyzer
+from crystalfig.analysis.coordination import CoordinationAnalyzer, CoordinationShell
 from crystalfig.geometry.planes import MillerPlane
 from crystalfig.geometry.polyhedra import (
     build_polyhedron,
@@ -148,6 +148,8 @@ class SceneOptions:
     show_axes: bool = False
     show_atoms: bool = True
     show_bonds: bool = False
+    bond_display_policy: str | None = None
+    bond_display_centers: tuple[int, ...] = ()
     show_polyhedra: bool = False
     show_legend: bool = False
     atom_style: str = "shaded"
@@ -162,6 +164,9 @@ class SceneOptions:
     selected_sites: list[int] | None = None
     center_region: tuple[float, float] | None = None
     center_limit: int | None = None
+    local_shell_center: int | None = None
+    motif_instances: tuple[tuple[int, tuple[int, int, int]], ...] = ()
+    show_all_cell_atoms: bool = False
     defect_sites: list[int] | None = None
     atom_overrides: list[AtomStyleOverride] = None  # type: ignore[assignment]
     bond_overrides: list[BondStyleOverride] = None  # type: ignore[assignment]
@@ -225,21 +230,32 @@ class SceneBuilder:
             polyhedra = self._polyhedra(structure, bonds)
             scene.extend(polyhedra, group="polyhedra")
 
+        local_shell = None
+        if self.options.local_shell_center is not None:
+            local_shell = CoordinationAnalyzer().analyze(
+                structure, [self.options.local_shell_center], bonds or []
+            )[0]
+        local_geometry = local_shell is not None or bool(self.options.motif_instances and not polyhedra)
         if self.options.show_bonds and bonds:
             bond_origins = None
-            bond_indices = None
-            display_bonds = bonds
-            if self.options.display_boundary == "polyhedra_complete" and polyhedra:
+            selected = self._select_display_bonds(bonds, polyhedra)
+            display_bonds = bonds if selected is None else [bond for _, bond in selected]
+            bond_indices = None if selected is None else [index for index, _ in selected]
+            if local_geometry or (self.options.display_boundary == "polyhedra_complete" and polyhedra):
                 display_bonds, bond_origins, bond_indices = self._motif_bond_instances(
-                    structure, bonds, polyhedra
+                    structure, display_bonds, polyhedra, source_indices=bond_indices, local_shell=local_shell,
                 )
             scene.extend(
-                self._bonds(structure, display_bonds, bond_origins, bond_indices),
+                self._bonds(
+                    structure, display_bonds, bond_origins, bond_indices,
+                    reduced_weight=self.options.bond_display_policy == "center_ligand_only",
+                    keep_full_segments=local_geometry,
+                ),
                 group="bonds",
             )
 
         if self.options.show_atoms:
-            scene.extend(self._atoms(structure, polyhedra), group="atoms")
+            scene.extend(self._atoms(structure, polyhedra, local_shell), group="atoms")
             scene.extend(
                 self._expand_image_atoms(structure, bonds or [], polyhedra),
                 group="image_atoms",
@@ -376,10 +392,29 @@ class SceneBuilder:
         # Clamp very large radii so A-sites do not swallow the cage.
         return min(base * factor, max_radius)
 
-    def _atoms(self, structure: CrystalStructure, polyhedra: list[Polyhedron]) -> list[Sphere]:
+    def _atoms(
+        self, structure: CrystalStructure, polyhedra: list[Polyhedron],
+        local_shell: CoordinationShell | None = None,
+    ) -> list[Sphere]:
+        if local_shell is not None:
+            instances = [(local_shell.center_index, (0, 0, 0))] + list(zip(
+                local_shell.ligand_indices, local_shell.ligand_image_offsets, strict=True
+            ))
+            return [
+                sphere for index, offset in dict.fromkeys(instances)
+                if (sphere := self._make_sphere(structure, index, offset)) is not None
+            ]
+        if self.options.motif_instances and not polyhedra:
+            return [
+                sphere for index, offset in self.options.motif_instances
+                if (sphere := self._make_sphere(structure, index, offset)) is not None
+            ]
         centers: set[int] = {poly.center_site for poly in polyhedra}
         visible_images = None
-        if self.options.display_boundary == "polyhedra_complete" and polyhedra:
+        if (
+            self.options.display_boundary == "polyhedra_complete" and polyhedra
+            and not self.options.show_all_cell_atoms
+        ):
             visible_images = {(poly.center_site, (0, 0, 0)) for poly in polyhedra}
             visible_images.update(
                 (meta["site_index"], tuple(meta.get("image_offset", (0, 0, 0))))
@@ -439,6 +474,9 @@ class SceneBuilder:
         mode = self.options.display_boundary
         images: dict[tuple[int, tuple[int, int, int]], None] = {}
 
+        if self.options.local_shell_center is not None or (self.options.motif_instances and not polyhedra):
+            return []
+
         if mode == "connected":
             for bond in bonds:
                 image = self._display_jimage(structure, bond.i, bond.j, bond.jimage)
@@ -452,6 +490,8 @@ class SceneBuilder:
                     frac = self._fold_to_unit_cell(structure.sites[meta["site_index"]].frac_coords)[0] + np.asarray(offset)
                     if any(offset) and np.all(frac >= -1.0) and np.all(frac <= 2.0):
                         images[(meta["site_index"], offset)] = None
+            if self.options.show_all_cell_atoms:
+                images.update(self._cell_complete_images(structure))
         else:  # cell_complete (default)
             # Strictly display the closure of the canonical cell.  Cross-cell
             # bonds are routed to boundary replicas inside [0,1]^3 by _bonds(),
@@ -529,11 +569,13 @@ class SceneBuilder:
         structure: CrystalStructure,
         bonds: list[NeighborBond],
         polyhedra: list[Polyhedron],
+        source_indices: list[int] | None = None,
+        local_shell: CoordinationShell | None = None,
     ) -> tuple[list[NeighborBond], list[tuple[int, int, int]], list[int]]:
         """Keep graph edges whose periodic endpoint images are in the motif."""
         retained = {
             (sphere.metadata["site_index"], tuple(sphere.metadata["image_offset"]))
-            for sphere in self._atoms(structure, polyhedra)
+            for sphere in self._atoms(structure, polyhedra, local_shell)
         }
         retained.update(
             (sphere.metadata["site_index"], tuple(sphere.metadata["image_offset"]))
@@ -547,7 +589,8 @@ class SceneBuilder:
         origins = []
         indices = []
         seen = set()
-        for bond_index, bond in enumerate(bonds):
+        for local_index, bond in enumerate(bonds):
+            bond_index = source_indices[local_index] if source_indices is not None else local_index
             relative = self._display_jimage(structure, bond.i, bond.j, bond.jimage)
             for origin in origins_by_site.get(bond.i, []):
                 partner = tuple(origin[axis] + relative[axis] for axis in range(3))
@@ -569,6 +612,8 @@ class SceneBuilder:
         bonds: list[NeighborBond],
         image_origins: list[tuple[int, int, int]] | None = None,
         source_indices: list[int] | None = None,
+        reduced_weight: bool = False,
+        keep_full_segments: bool = False,
     ) -> list[Bond]:
         cylinders = []
         for local_index, bond in enumerate(bonds):
@@ -595,7 +640,7 @@ class SceneBuilder:
                 clipped_start, clipped_end = clipped
                 start = structure.lattice.frac_to_cart(clipped_start)
                 end = structure.lattice.frac_to_cart(clipped_end)
-            elif self.options.display_boundary in ("connected", "polyhedra_complete"):
+            elif self.options.display_boundary in ("connected", "polyhedra_complete") and not keep_full_segments:
                 clipped = _clip_segment_box(start=start_frac, end=partner_frac, lower=-1.0, upper=2.0)
                 if clipped is None:
                     continue
@@ -606,8 +651,8 @@ class SceneBuilder:
                 end = structure.lattice.frac_to_cart(partner_frac)
 
             color = self._bond_color(bond)
-            width = self._bond_width(bond)
-            opacity = self._bond_opacity(bond)
+            width = self._bond_width(bond) * (0.65 if reduced_weight else 1.0)
+            opacity = self._bond_opacity(bond) * (0.65 if reduced_weight else 1.0)
             visible = True
             for override in self.options.bond_overrides:
                 if override.matches(bond_index, bond, site_i, site_j):
@@ -640,6 +685,45 @@ class SceneBuilder:
                 },
             ))
         return cylinders
+
+    def _select_display_bonds(
+        self, bonds: list[NeighborBond], polyhedra: list[Polyhedron]
+    ) -> list[tuple[int, NeighborBond]] | None:
+        policy = self.options.bond_display_policy
+        if policy in (None, "all_bonds"):
+            return None
+        if policy == "hidden":
+            return []
+        if policy == "center_ligand_only":
+            shell_pairs = set()
+            for polyhedron in polyhedra:
+                center = polyhedron.center_site
+                for vertex in polyhedron.vertex_metadata:
+                    ligand = vertex.get("site_index")
+                    if ligand is None:
+                        continue
+                    delta = tuple(int(value) for value in vertex["image_offset"])
+                    shell_pairs.add((center, ligand, delta))
+            if shell_pairs:
+                selected = []
+                for bond_index, bond in enumerate(bonds):
+                    image = self._display_jimage(
+                        self._display_structure, bond.i, bond.j, bond.jimage
+                    )
+                    pair = (bond.i, bond.j, image)
+                    reverse = (bond.j, bond.i, tuple(-value for value in image))
+                    if pair in shell_pairs or reverse in shell_pairs:
+                        selected.append((bond_index, bond))
+                return selected
+            centers = set(self.options.bond_display_centers)
+            selected = [
+                (index, bond) for index, bond in enumerate(bonds)
+                if bond.i in centers or bond.j in centers
+            ]
+            return selected
+        if policy == "polyhedron_edges_only":
+            return []
+        raise ValueError(f"Unknown bond display policy: {policy!r}")
 
     def _bond_color(self, bond: NeighborBond) -> str:
         return self.theme.bond_color

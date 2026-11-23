@@ -132,6 +132,43 @@ class TestCrystalFigure:
         }
         assert {"Ba", "Ti", "O"} <= elements
 
+    def test_coordination_bond_policy_limits_rendering_not_connectivity(self):
+        figure = CrystalFigure(perovskite_structure()).publication(
+            intent="coordination", centers=["Ti"], region="cell"
+        )
+        scene = figure.build_scene()
+        centers = set(figure._display_plan.selected_centers)
+        bonds = scene.get_group("bonds").primitives
+        assert bonds
+        assert all(bond.site_i in centers or bond.site_j in centers for bond in bonds)
+        assert len(figure._scene_options.bonds) > len(bonds)
+
+        figure.style_bonds(indices=[12], width=0.123)
+        overridden = figure.build_scene().get_group("bonds").primitives
+        assert any(bond.radius == pytest.approx(0.123) for bond in overridden)
+
+        hidden = CrystalFigure(perovskite_structure()).publication(
+            intent="coordination", centers=["Ti"], region="cell",
+            bond_display_policy="hidden",
+        )
+        assert hidden.build_scene().get_group("bonds") is None
+        assert hidden._scene_options.bonds
+
+    def test_polyhedron_edge_bond_policy_draws_only_ligand_edges(self):
+        figure = CrystalFigure(perovskite_structure()).publication(
+            intent="coordination", centers=["Ti"], region="cell",
+            bond_display_policy="polyhedron_edges_only",
+        )
+        scene = figure.build_scene()
+        polyhedron = scene.get_group("polyhedra").primitives[0]
+        ligand_sites = {item["site_index"] for item in polyhedron.vertex_metadata}
+        bonds = scene.get_group("bonds")
+        assert len(polyhedron.vertex_metadata) == 6
+        assert bonds is None or all(
+            bond.site_i in ligand_sites and bond.site_j in ligand_sites
+            for bond in bonds.primitives
+        )
+
     def test_figure_grid_saves_labeled_structure_panels(self, tmp_path):
         grid = FigureGrid(rows=1, cols=2)
         grid.add_structure(perovskite_structure(), 0, 0, strategy="cutoff", show_bonds=False)

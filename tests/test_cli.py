@@ -56,7 +56,8 @@ class TestCLI:
         yaml_settings = {
             "input": str(cif_path),
             "display": {
-                "intent": "network", "region": "cell", "show_unit_cell": False,
+                "framing": "local_coordination", "framing_site": 0,
+                "bond_display_policy": "polyhedron_edges_only", "show_unit_cell": False,
             },
             "style": "journal_clean",
             "camera": {"mode": "auto"},
@@ -69,12 +70,16 @@ class TestCLI:
             cli_figure = _configure_figure(vars(args), tmp_path)
             assert cli_figure.config == yaml_figure.config
             assert cli_figure._scene_options.show_axes is yaml_figure._scene_options.show_axes
+            scene = cli_figure.build_scene()
+            assert scene.metadata["framing"] == "local_coordination"
+            assert scene.get_group("bonds") is None
             return 0
 
         monkeypatch.setattr(cli_module, "cmd_render", compare)
         assert main([
             "render", str(cif_path), "-o", str(tmp_path / "out.svg"),
-            "--intent", "network", "--region", "cell", "--style", "journal_clean",
+            "--framing", "local_coordination", "--framing-site", "0",
+            "--bond-display-policy", "polyhedron_edges_only", "--style", "journal_clean",
             "--backend", "matplotlib", "--quality", "preview", "--dpi", "144",
             "--no-cell", "--show-axes", "--view-preset", "auto",
         ]) == 0
