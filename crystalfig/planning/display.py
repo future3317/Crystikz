@@ -9,12 +9,23 @@ import numpy as np
 
 from crystalfig.analysis.coordination import CoordinationAnalyzer
 from crystalfig.analysis.structure_intent import StructureIntentAnalyzer
+from crystalfig.geometry.periodic import nearest_image
+from crystalfig.model.site import element_symbol
 from crystalfig.model.structure import CrystalStructure
 from crystalfig.neighbors.base import NeighborStrategy
 
 BondDisplayPolicy = Literal[
     "all_bonds", "center_ligand_only", "polyhedron_edges_only", "hidden"
 ]
+
+
+@dataclass(frozen=True)
+class MotifConfig:
+    max_atoms: int = 12
+    strategy: str = "species_balanced"
+    seed_site: int | None = None
+    required_species: tuple[str, ...] = ()
+    strict_species_coverage: bool = False
 
 
 @dataclass(frozen=True)
@@ -32,6 +43,7 @@ class DisplayConfig:
     framing: str = "auto"
     framing_site: int | None = None
     bond_display_policy: BondDisplayPolicy | None = None
+    motif: MotifConfig = MotifConfig()
 
 
 @dataclass(frozen=True)
@@ -50,6 +62,10 @@ class DisplayPlan:
     layer_normal: tuple[float, float, float] | None = None
     layer_translations: tuple[tuple[float, float, float], ...] = ()
     framing: str = "auto"
+    motif_species: tuple[str, ...] = ()
+    motif_missing_species: tuple[str, ...] = ()
+    motif_selected_sites: tuple[int, ...] = ()
+    motif_strategy: str | None = None
 
 
 class DisplayPlanner:
@@ -228,18 +244,7 @@ class DisplayPlanner:
     @staticmethod
     def representative_motif_instances(structure, bonds, limit=12):
         """Grow a compact connected motif in the periodic site-image graph."""
-        adjacency = {index: [] for index in range(structure.num_sites)}
-        site_images = np.floor(structure.frac_coords).astype(int)
-        for bond in bonds:
-            image = tuple(
-                int(bond.jimage[axis] + site_images[bond.j, axis] - site_images[bond.i, axis])
-                for axis in range(3)
-            )
-            adjacency[bond.i].append((bond.j, image))
-            adjacency[bond.j].append((bond.i, tuple(-value for value in image)))
-        adjacency = {
-            index: list(dict.fromkeys(entries)) for index, entries in adjacency.items()
-        }
+        adjacency = DisplayPlanner._motif_adjacency(structure, bonds)
         if not structure.num_sites:
             return ()
         quotient = {
@@ -285,6 +290,141 @@ class DisplayPlanner:
                 if len(selected) == limit:
                     break
         return tuple(selected)
+
+    @staticmethod
+    def _motif_adjacency(structure, bonds):
+        adjacency = {index: [] for index in range(structure.num_sites)}
+        site_images = np.floor(structure.frac_coords).astype(int)
+        for bond in bonds:
+            image = tuple(int(bond.jimage[a] + site_images[bond.j, a] - site_images[bond.i, a]) for a in range(3))
+            adjacency[bond.i].append((bond.j, image))
+            adjacency[bond.j].append((bond.i, tuple(-value for value in image)))
+        return {index: list(dict.fromkeys(entries)) for index, entries in adjacency.items()}
+
+    @staticmethod
+    def plan_motif(structure, bonds, config: MotifConfig | None = None):
+        """Choose periodic site images while preserving the real bond graph."""
+        config = config or MotifConfig()
+        if config.max_atoms < 1:
+            raise ValueError("motif max_atoms must be positive")
+        if config.strategy not in {"species_balanced", "largest_component", "centered"}:
+            raise ValueError("motif strategy must be species_balanced, largest_component, or centered")
+        if config.seed_site is not None and not 0 <= config.seed_site < structure.num_sites:
+            raise ValueError(f"motif seed site index {config.seed_site} is outside the structure")
+        required_species = config.required_species or tuple(sorted({
+            element_symbol(species)
+            for site in structure.sites for species, occupancy in site.occupancy.items()
+            if occupancy > 0
+        }))
+        if not structure.num_sites:
+            if config.strict_species_coverage and config.required_species:
+                raise ValueError(
+                    "Motif could not include required species: "
+                    + ", ".join(config.required_species)
+                    + "; increase motif.max_atoms or use framing='unit_cell'"
+                )
+            return (), (), required_species
+        if config.strategy == "largest_component":
+            instances = DisplayPlanner.representative_motif_instances(
+                structure, bonds, limit=config.max_atoms
+            )
+        else:
+            adjacency = DisplayPlanner._motif_adjacency(structure, bonds)
+            elements = [site.dominant_element for site in structure.sites]
+            folded = np.asarray([site.frac_coords % 1.0 for site in structure.sites])
+            available_species = set(elements)
+            if config.seed_site is not None:
+                start = config.seed_site
+            else:
+                start_candidates = range(structure.num_sites)
+                if config.strategy == "species_balanced":
+                    start_candidates = [
+                        i for i, element in enumerate(elements)
+                        if element in required_species
+                    ] or start_candidates
+                start = min(start_candidates, key=lambda i: (
+                    np.linalg.norm(folded[i] - 0.5), i
+                ))
+            selected = [(start, (0, 0, 0))]
+            visited = set(selected)
+            seed_shell = set(adjacency[start])
+            if all(elements[index] == elements[start] for index, _ in seed_shell):
+                seed_shell.clear()
+            while len(selected) < config.max_atoms:
+                counts = {}
+                for index, _ in selected:
+                    species = elements[index]
+                    counts[species] = counts.get(species, 0) + 1
+                candidates = []
+                for index, offset in selected:
+                    for other, image in adjacency[index]:
+                        node = (other, tuple(offset[a] + image[a] for a in range(3)))
+                        if node not in visited:
+                            candidates.append(node)
+                missing_renderable = [
+                    species for species in required_species
+                    if species in available_species and counts.get(species, 0) == 0
+                ]
+                if config.strategy == "species_balanced" and missing_renderable:
+                    missing_frontier = [
+                        node for node in candidates
+                        if elements[node[0]] in missing_renderable
+                    ]
+                    candidates = missing_frontier
+                    if not candidates:
+                        for species in missing_renderable:
+                            nearest = None
+                            for index in range(structure.num_sites):
+                                if elements[index] != species:
+                                    continue
+                                for selected_index, selected_offset in selected:
+                                    image_cart, image = nearest_image(
+                                        folded[selected_index] + np.asarray(selected_offset),
+                                        folded[index], structure.lattice,
+                                    )
+                                    offset = tuple(image)
+                                    node = (index, offset)
+                                    if node in visited:
+                                        continue
+                                    reference_cart = structure.lattice.frac_to_cart(
+                                        folded[selected_index] + np.asarray(selected_offset)
+                                    )
+                                    distance = np.linalg.norm(image_cart - reference_cart)
+                                    candidate = (distance, index, offset)
+                                    if nearest is None or candidate < nearest:
+                                        nearest = candidate
+                            if nearest is not None:
+                                candidates.append((nearest[1], nearest[2]))
+                elif config.strategy == "species_balanced":
+                    remaining_shell = seed_shell - visited
+                    if 0 < len(remaining_shell) <= config.max_atoms - len(selected):
+                        candidates = remaining_shell
+                if not candidates:
+                    break
+                def rank(node, counts=counts):
+                    index, offset = node
+                    species = elements[index]
+                    if config.strategy == "centered":
+                        delta = folded[index] + np.asarray(offset) - folded[start]
+                        distance = np.linalg.norm(structure.lattice.frac_to_cart(delta))
+                        return (distance, -len(adjacency[index]), index, offset)
+                    return (counts.get(species, 0),
+                            0 if offset == (0, 0, 0) else 1,
+                            -len(adjacency[index]), index, offset)
+                node = min(set(candidates), key=rank)
+                visited.add(node)
+                selected.append(node)
+            instances = tuple(selected)
+
+        species = tuple(sorted({structure.sites[i].dominant_element for i, _ in instances}))
+        missing = tuple(item for item in required_species if item not in species)
+        if missing and config.strict_species_coverage:
+            raise ValueError(
+                "Motif could not include required species: "
+                + ", ".join(missing)
+                + "; increase motif.max_atoms or use framing='unit_cell'"
+            )
+        return instances, species, missing
 
     @staticmethod
     def local_center(structure, bonds):

@@ -99,9 +99,10 @@ grid.add_structure(layered, 0, 1, title="MoS₂")
 grid.save("crystals.pdf", dpi=600)
 ```
 
-更多实际输出见 [Journal 与 VESTA 图库](gallery/publication_review/comparison_contact_sheet.png)、
-[键线和取景对比](gallery/publication_review/coordination_comparison.png)、
-[后端对比](gallery/publication_review/backend_comparison.png)。
+[预设展示](gallery/publication_review/comparison_contact_sheet.png)采用各预设默认的构图和视角。
+[受控样式对照](gallery/publication_review/controlled_style_benchmark.png)固定原子位置和半径、键连接、
+多面体几何和相机，用于比较样式。另见[键线和取景对比](gallery/publication_review/coordination_comparison.png)
+及[后端对比](gallery/publication_review/backend_comparison.png)。
 
 ## 命令行与批处理
 
@@ -141,13 +142,21 @@ figures:
 
 用 `DisplayConfig` 配置取景、邻居策略和键线。`framing="local_coordination"` 可与从 0 开始的
 `framing_site` 一起使用，显示指定原子位点的配位环境。`region=(2, 2, 1)` 可选取超胞。
-对密集网络，自动取景可选用连通片段。配位壳默认保留配体的周期镜像。
+自动 motif 取景优先在原子预算内覆盖元素，可以从推断键图的多个连通分量选取真实片段。
+使用 `DisplayConfig(framing="motif", motif=MotifConfig(strict_species_coverage=True))` 要求元素覆盖，
+也可以用 `required_species` 指定需要覆盖的元素。`largest_component` 只取一个连通片段，
+`centered` 与从 0 开始的 `seed_site` 配合选取指定中心附近的片段。
+`build_scene().metadata["motif_coverage"]` 提供已选和缺失的元素。混合占位按主占位元素绘制，
+覆盖报告会列出有正占有率但未出现在 motif 中的元素。
+motif 展示选取的原子，完整晶胞组成请用 `unit_cell` 展示。配位壳默认保留配体的周期镜像。
 可用的键线策略有 `all_bonds`、`center_ligand_only`、`polyhedron_edges_only` 和 `hidden`。
 
 可选预设包括 `journal_clean`、`journal_vivid`、`vesta_ballstick`、`vesta_coordination`
 及 `layered_crystal`。使用 `CameraConfig` 固定视角，使用 `crystalfig.styles.get_style()`
 分别调整原子、键、多面体、晶胞和光照参数。论文出图前请按研究目标核对推断的配位关系。
 如果默认的 CrystalNN 邻居模型不适合该结构，可指定距离截断或手动邻居。
+自动 `vesta_coordination` 未生成有效多面体时，场景元数据会记录请求样式、实际采用的球棍样式、
+配位中心数量和回退原因。
 
 ## 参与贡献
 

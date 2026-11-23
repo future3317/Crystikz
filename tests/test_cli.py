@@ -58,6 +58,8 @@ class TestCLI:
             "display": {
                 "framing": "local_coordination", "framing_site": 0,
                 "bond_display_policy": "polyhedron_edges_only", "show_unit_cell": False,
+                "motif": {"max_atoms": 9, "strategy": "centered", "seed_site": 0,
+                          "required_species": ["Na", "Cl"], "strict_species_coverage": True},
             },
             "style": "journal_clean",
             "camera": {"mode": "auto"},
@@ -81,6 +83,8 @@ class TestCLI:
             "--framing", "local_coordination", "--framing-site", "0",
             "--bond-display-policy", "polyhedron_edges_only", "--style", "journal_clean",
             "--backend", "matplotlib", "--quality", "preview", "--dpi", "144",
+            "--motif-max-atoms", "9", "--motif-strategy", "centered", "--motif-seed-site", "0",
+            "--motif-required-species", "Na", "Cl", "--strict-motif-species-coverage",
             "--no-cell", "--show-axes", "--view-preset", "auto",
         ]) == 0
 

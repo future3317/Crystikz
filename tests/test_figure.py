@@ -17,11 +17,13 @@ from crystalfig.examples.presets import (
 )
 from crystalfig.figure import FigureGrid
 from crystalfig.figure.builder import CrystalFigure
+from crystalfig.figure.config import FigureConfig
 from crystalfig.geometry.planes import MillerPlane
 from crystalfig.io.loader import load_structure
 from crystalfig.model.lattice import Lattice
 from crystalfig.model.site import Site
 from crystalfig.model.structure import CrystalStructure
+from crystalfig.planning.display import DisplayConfig
 from crystalfig.scene.camera import Camera
 
 
@@ -107,12 +109,92 @@ class TestCrystalFigure:
         assert any("no valid polyhedra" in message for message in figure.diagnostics)
         assert len(scene.get_group("atoms").primitives) == 1
 
+    def test_vesta_coordination_fallback_reports_effective_style_and_preserves_bond_choice(self):
+        structure = CrystalStructure(Lattice.cubic(4.0), [Site([0, 0, 0], "He")])
+        figure = CrystalFigure(structure).publication(
+            style="vesta_coordination", strategy="cutoff", show_bonds=False
+        )
+        scene = figure.build_scene()
+
+        assert scene.metadata["requested_style"] == "vesta_coordination"
+        assert scene.metadata["effective_style"] == "vesta_ballstick"
+        assert scene.metadata["coordination_centers_detected"] == []
+        assert scene.metadata["coordination_fallback_reason"]
+        assert scene.metadata["effective_style_settings"]["atom_material"] == "ceramic"
+        assert scene.metadata["effective_style_settings"]["atom_radius_scale"] == pytest.approx(0.34)
+        assert figure.theme.atom_radius_scale == pytest.approx(0.34)
+        assert not scene.get_group("bonds")
+        assert any("effective style is 'vesta_ballstick'" in message for message in figure.diagnostics)
+        assert any("atom radius scale 0.34" in message for message in figure.diagnostics)
+
+        figure.quality("preview")
+        assert figure.theme.atom_radius_scale == pytest.approx(0.28)
+        assert figure.build_scene().metadata["effective_style_settings"]["atom_radius_scale"] == pytest.approx(0.34)
+        assert figure.theme.render_quality == "preview"
+
+        figure.add_polyhedra(centers=["He"], strategy="cutoff")
+        updated_scene = figure.build_scene()
+        assert updated_scene.metadata["effective_style"] == "vesta_coordination"
+        assert updated_scene.metadata["coordination_fallback_reason"] is None
+        assert figure.theme.atom_radius_scale == pytest.approx(0.28)
+
+    def test_vesta_coordination_fallback_displays_default_bond_network(self):
+        structure = CrystalStructure(
+            Lattice.cubic(10.0),
+            [Site([0, 0, 0], "He"), Site([0.15, 0, 0], "He")],
+        )
+        figure = CrystalFigure(structure).publication(
+            style="vesta_coordination", strategy="cutoff"
+        )
+        scene = figure.build_scene()
+        bonds = scene.get_group("bonds")
+
+        assert scene.metadata["coordination_fallback_reason"]
+        assert bonds and bonds.primitives
+
+    def test_vesta_coordination_does_not_fallback_for_explicit_network_or_disabled_shell(self):
+        structure = CrystalStructure(Lattice.cubic(4.0), [Site([0, 0, 0], "He")])
+        for options in ({"intent": "network"}, {"coordination_shell": "none"}):
+            figure = CrystalFigure(structure).publication(style="vesta_coordination", **options)
+            scene = figure.build_scene()
+            assert scene.metadata["coordination_fallback_reason"] is None
+            assert scene.metadata["effective_style"] == "vesta_coordination"
+
+    def test_configured_vesta_coordination_uses_automatic_fallback(self):
+        structure = CrystalStructure(Lattice.cubic(4.0), [Site([0, 0, 0], "He")])
+        figure = CrystalFigure(structure).configure(FigureConfig(
+            display=DisplayConfig(neighbor_strategy="cutoff", show_bonds=False),
+            style="vesta_coordination",
+        ))
+
+        scene = figure.build_scene()
+
+        assert scene.metadata["requested_style"] == "vesta_coordination"
+        assert scene.metadata["effective_style"] == "vesta_ballstick"
+        assert scene.metadata["coordination_fallback_reason"]
+        assert not scene.get_group("bonds")
+
     def test_auto_minimal_keeps_cell_and_detected_bond_context(self):
         figure = CrystalFigure(triclinic_structure()).publication(intent="auto")
         scene = figure.build_scene()
         assert scene.metadata["selected_intent"] == "minimal"
         assert scene.get_group("cell")
         assert scene.get_group("bonds")
+
+    def test_automatic_motif_uses_the_selected_sites_even_for_hybrid_intent(self):
+        figure = CrystalFigure(perovskite_structure()).configure(FigureConfig(
+            display=DisplayConfig(max_atoms=4),
+        ))
+        scene = figure.build_scene()
+        atoms = scene.get_group("atoms").primitives
+
+        assert scene.metadata["framing"] == "motif"
+        assert scene.metadata["selected_intent"] == "hybrid"
+        assert len(atoms) <= 4
+        assert scene.metadata["motif_coverage"]["selected_species"] == sorted({
+            atom.metadata["element"] for atom in atoms
+        })
+        assert not scene.get_group("polyhedra")
 
     def test_layered_camera_exposes_plane_and_layer_spacing(self):
         figure = CrystalFigure(mos2_structure()).publication(intent="layered")

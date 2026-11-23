@@ -43,7 +43,11 @@ def preflight_pdf(path: str) -> PreflightReport:
 
     if shutil.which("pdfinfo"):
         try:
-            result = subprocess.run(["pdfinfo", str(path_obj)], capture_output=True, text=True, shell=False)
+            result = subprocess.run(
+                ["pdfinfo", "-enc", "UTF-8", "-isodates", str(path_obj)],
+                capture_output=True,
+                encoding="utf-8",
+            )
             report.raw["pdfinfo"] = result.stdout
             if result.returncode != 0:
                 report.warnings.append(f"pdfinfo exited with status {result.returncode}.")

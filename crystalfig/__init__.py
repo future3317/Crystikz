@@ -16,6 +16,7 @@ from crystalfig.figure import (
     DisplayPlan,
     FigureConfig,
     FigureGrid,
+    MotifConfig,
     RenderConfig,
     plot_structure,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "FigureGrid",
     "plot_structure",
     "DisplayConfig",
+    "MotifConfig",
     "DisplayPlan",
     "BondDisplayPolicy",
     "CameraConfig",

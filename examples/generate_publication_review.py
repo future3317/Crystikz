@@ -21,12 +21,15 @@ from crystalfig import (
     DisplayConfig,
     FigureConfig,
     FigureGrid,
+    MotifConfig,
     RenderConfig,
 )
 from crystalfig.export.exporter import Exporter, RenderOptions
 from crystalfig.export.preflight import preflight_export
 from crystalfig.io.loader import load_structure
+from crystalfig.scene.builder import SceneBuilder
 from crystalfig.scene.primitives import Bond, Polyhedron, Sphere
+from crystalfig.styles.presets import get_style
 
 OUT = ROOT / "gallery" / "publication_review"
 WIDTH_MM = 89
@@ -97,6 +100,14 @@ def read_scene(figure, scene):
     polyhedra = [item for item in primitives if isinstance(item, Polyhedron)]
     atoms = [item for item in primitives if isinstance(item, Sphere)]
     return {
+        **{
+            key: scene.metadata[key]
+            for key in (
+                "requested_style", "effective_style", "coordination_centers_detected",
+                "coordination_fallback_reason", "effective_style_settings", "motif_coverage",
+            )
+            if key in scene.metadata
+        },
         "display": figure._display_plan.intent,
         "framing": figure._display_plan.framing,
         "repeat": figure._display_plan.repeat,
@@ -107,7 +118,7 @@ def read_scene(figure, scene):
         "clipped_polyhedra": sum(bool(item.metadata.get("clipped")) for item in polyhedra),
         "ligands_per_shell": dict(Counter(len(poly.vertex_metadata) for poly in polyhedra)),
         "camera": {
-            "candidate": scene.metadata.get("camera_used"),
+            "candidate": scene.metadata.get("camera_used", "explicit"),
             "score": scene.metadata.get("camera_score_components"),
             "rotation": figure.camera.rotation_matrix().tolist(),
             "target": figure.camera.target.tolist(),
@@ -126,9 +137,10 @@ def new_figure(structure, style, *, display=None, camera=None):
     ))
 
 
-def render_panel(figure, path, options):
-    scene = figure.build_scene()
-    result = Exporter(scene, figure.theme, camera=figure.camera).export(
+def render_panel(figure, path, options, *, scene=None, theme=None):
+    if scene is None:
+        scene = figure.build_scene()
+    result = Exporter(scene, theme or figure.theme, camera=figure.camera).export(
         path, options=options, backend="pyvista",
     )
     details = read_scene(figure, scene) | image_metrics(path) | {
@@ -138,6 +150,60 @@ def render_panel(figure, path, options):
     if details["polyhedra"] and not details["depth_peeling"]:
         raise RuntimeError(f"VTK did not depth-peel {path.name}")
     return thumbnail(path), details
+
+
+def scene_geometry(scene):
+    """Record geometry and connectivity while ignoring appearance fields."""
+    spheres, bonds, polyhedra = [], [], []
+    for item in scene.all_primitives():
+        if isinstance(item, Sphere):
+            spheres.append((tuple(item.position), item.radius, item.metadata))
+        elif isinstance(item, Bond):
+            bonds.append((tuple(item.start), tuple(item.end), item.site_i, item.site_j, item.jimage))
+        elif isinstance(item, Polyhedron):
+            polyhedra.append((
+                item.center_site, [tuple(p) for p in item.vertices], item.faces,
+                item.vertex_metadata, item.face_metadata,
+            ))
+    return spheres, bonds, polyhedra
+
+
+def controlled_styles(materials, out, options, camera):
+    """Resolve each display once, then vary style with the same view and geometry."""
+    rows, cases = [], {}
+    for name, intent in (("BaTiO3", "coordination"), ("MgAl2O4", "coordination"), ("Si", "network")):
+        figure = new_figure(
+            materials[name], "journal_clean",
+            display=DisplayConfig(intent=intent, show_unit_cell=False), camera=camera,
+        )
+        reference = figure.build_scene()
+        expected = scene_geometry(reference)
+        frame = figure.camera.scene_frame(reference)
+        target = figure.camera.target.copy()
+        cases[name] = {}
+        panels = []
+        style_columns = (*STYLES[:2], STYLES[3] if intent == "coordination" else STYLES[2])
+        for style, label in style_columns:
+            theme = get_style(style).to_legacy_theme()
+            theme.render_quality = figure.theme.render_quality
+            theme.atom_radius_scale = figure.theme.atom_radius_scale
+            theme.atom_radius_scale_polyhedron = figure.theme.atom_radius_scale_polyhedron
+            theme.atom_radius_scale_polyhedron_center = figure.theme.atom_radius_scale_polyhedron_center
+            scene = SceneBuilder(
+                figure.structure, theme, theme.palette, figure._scene_options, camera=figure.camera,
+            ).build()
+            if scene_geometry(scene) != expected or figure.camera.scene_frame(scene) != frame:
+                raise RuntimeError(f"Controlled geometry or camera frame changed for {name} / {style}")
+            panel, details = render_panel(
+                figure, out / f"{name}_controlled_{style}.png", options, scene=scene, theme=theme,
+            )
+            if not np.allclose(figure.camera.target, target, rtol=0, atol=1e-12):
+                raise RuntimeError(f"Controlled camera target changed for {name} / {style}")
+            panels.append((f"{name} / {label}", panel))
+            cases[name][style] = details | {"face_opacity": theme.polyhedron_face_opacity}
+        rows.append(panels)
+    make_sheet(rows, out / "controlled_style_benchmark.png")
+    return cases
 
 
 def main():
@@ -164,6 +230,8 @@ def main():
         for style, label in STYLES:
             figure = new_figure(structure, style)
             panel, details = render_panel(figure, out / f"{name}_{style}.png", options)
+            if details.get("coordination_fallback_reason"):
+                label = f"{label} → Ballstick"
             row.append((label, panel))
             if old is not None:
                 details["ssim_vs_v4"] = ssim(old, panel)
@@ -174,6 +242,7 @@ def main():
     focus_rows = []
     manifest["bond_policy_comparison"] = {}
     fixed_camera = CameraConfig(mode="fixed", elevation=32, azimuth=32)
+    manifest["controlled_style_benchmark"] = controlled_styles(materials, out, options, fixed_camera)
     for name in ("BaTiO3", "MgAl2O4", "LiFePO4"):
         display = DisplayConfig(intent="coordination")
         panels = []
@@ -195,13 +264,16 @@ def main():
     ce_panels = []
     manifest["dense_framing"] = {}
     for framing, label, style in (
-        ("unit_cell", "Full cell", "vesta_ballstick"),
-        ("local_coordination", "Local coordination", "vesta_coordination"),
-        ("motif", "Connected motif", "vesta_ballstick"),
+        ("unit_cell", "Ce₆Cd₂₃Te / Full cell", "vesta_ballstick"),
+        ("local_coordination", "Ce₆Cd₂₃Te / Local shell", "vesta_coordination"),
+        ("motif", "Ce–Cd–Te / Species-balanced motif", "vesta_ballstick"),
     ):
-        figure = new_figure(materials["Ce6Cd23Te"], style, display=DisplayConfig(framing=framing))
+        figure = new_figure(
+            materials["Ce6Cd23Te"], style,
+            display=DisplayConfig(framing=framing, motif=MotifConfig(strict_species_coverage=True)),
+        )
         panel, details = render_panel(figure, out / f"Ce6Cd23Te_{framing}.png", options)
-        ce_panels.append((f"Ce₆Cd₂₃Te / {label}", panel))
+        ce_panels.append((label, panel))
         manifest["dense_framing"][framing] = details
     focus_rows.append(ce_panels)
     make_sheet(focus_rows, out / "coordination_comparison.png")
@@ -240,7 +312,8 @@ def main():
         ("MoS2", "MoS₂ · S–Mo–S", "layered_crystal", DisplayConfig(intent="layered")),
         ("Eu2FeGe2OS6", "Eu₂FeGe₂OS₆", "vesta_coordination",
          DisplayConfig(intent="coordination", region="cell", centers=("Fe", "Ge"), show_unit_cell=True)),
-        ("Ce6Cd23Te", "Ce₆Cd₂₃Te · motif", "vesta_ballstick", DisplayConfig(framing="motif")),
+        ("Ce6Cd23Te", "Ce–Cd–Te · motif", "vesta_ballstick",
+         DisplayConfig(framing="motif", motif=MotifConfig(strict_species_coverage=True))),
     )):
         grid.add_structure(new_figure(materials[name], style, display=display), 0, col, title=title)
     grid.save(out / "paper_four_panel.png", dpi=DPI)

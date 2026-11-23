@@ -17,7 +17,7 @@ from crystalfig.export.preflight import preflight_pdf
 from crystalfig.figure.builder import plot_structure
 from crystalfig.figure.config import CameraConfig, FigureConfig, RenderConfig
 from crystalfig.io.loader import load_structure
-from crystalfig.planning.display import DisplayConfig
+from crystalfig.planning.display import DisplayConfig, MotifConfig
 from crystalfig.styles.presets import PRESETS
 
 
@@ -37,6 +37,11 @@ def _add_render_args(parser: argparse.ArgumentParser):
     parser.add_argument("--region", choices=("auto", "cell", "motif", "supercell"))
     parser.add_argument("--framing", choices=("auto", "unit_cell", "local_coordination", "motif"))
     parser.add_argument("--framing-site", type=int, help="Structure site index for local coordination framing")
+    parser.add_argument("--motif-max-atoms", type=int)
+    parser.add_argument("--motif-strategy", choices=("species_balanced", "largest_component", "centered"))
+    parser.add_argument("--motif-seed-site", type=int)
+    parser.add_argument("--motif-required-species", nargs="+")
+    parser.add_argument("--strict-motif-species-coverage", action="store_true")
     parser.add_argument("--centers", nargs="+", default=None, help="Coordination center species or indices")
     parser.add_argument("--neighbor-strategy", default=None, help="Coordination neighbor strategy")
     parser.add_argument("--bond-display-policy", choices=("all_bonds", "center_ligand_only", "polyhedron_edges_only", "hidden"))
@@ -83,6 +88,11 @@ def _configure_figure(config: dict, base_dir: Path):
         or config.get("intent") is not None
         or config.get("region") is not None
         or config.get("framing") is not None
+        or config.get("motif_strategy") is not None
+        or config.get("motif_max_atoms") is not None
+        or config.get("motif_seed_site") is not None
+        or config.get("motif_required_species") is not None
+        or config.get("strict_motif_species_coverage")
         or config.get("bond_display_policy") is not None
         or selected_style in PRESETS
     )
@@ -104,6 +114,28 @@ def _configure_figure(config: dict, base_dir: Path):
             return resolve_strategy(value)
 
         display_values = dict(config.get("display") or {})
+        motif_values = display_values.pop("motif", {})
+        if isinstance(motif_values, MotifConfig):
+            motif_config = motif_values
+        else:
+            motif_values = dict(motif_values or {})
+            if isinstance(motif_values.get("required_species"), list):
+                motif_values["required_species"] = tuple(motif_values["required_species"])
+            motif_config = MotifConfig(**motif_values)
+        motif_updates = {
+            "max_atoms": config.get("motif_max_atoms"),
+            "strategy": config.get("motif_strategy"),
+            "seed_site": config.get("motif_seed_site"),
+            "required_species": config.get("motif_required_species"),
+            "strict_species_coverage": True if config.get("strict_motif_species_coverage") else None,
+        }
+        motif_config = MotifConfig(**{
+            key: tuple(value) if key == "required_species" and isinstance(value, list) else value
+            for key, value in {
+                field: motif_updates[field] if motif_updates[field] is not None else getattr(motif_config, field)
+                for field in motif_updates
+            }.items()
+        })
         if isinstance(display_values.get("centers"), list):
             display_values["centers"] = tuple(display_values["centers"])
         if isinstance(display_values.get("region"), list):
@@ -173,7 +205,7 @@ def _configure_figure(config: dict, base_dir: Path):
         if config.get("transparent"):
             render_values["transparent"] = True
         figure.configure(FigureConfig(
-            display=DisplayConfig(**display_values),
+            display=DisplayConfig(**display_values, motif=motif_config),
             style=config.get("style") or "journal_clean",
             camera=CameraConfig(**camera_values),
             render=RenderConfig(**render_values),

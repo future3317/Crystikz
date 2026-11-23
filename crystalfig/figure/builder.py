@@ -17,7 +17,12 @@ from crystalfig.model.structure import CrystalStructure
 from crystalfig.neighbors.base import NeighborBond, NeighborStrategy
 from crystalfig.neighbors.strategies import CovalentRadiiStrategy, CrystalNNStrategy, CutoffStrategy
 from crystalfig.planning.camera import CameraPlanner
-from crystalfig.planning.display import BondDisplayPolicy, DisplayConfig, DisplayPlanner
+from crystalfig.planning.display import (
+    BondDisplayPolicy,
+    DisplayConfig,
+    DisplayPlanner,
+    MotifConfig,
+)
 from crystalfig.renderers.matplotlib_renderer import MatplotlibRenderer
 from crystalfig.scene.builder import (
     Annotation,
@@ -49,6 +54,10 @@ class CrystalFigure:
         self._scene_options = SceneOptions()
         self._auto_view = False
         self._nature_auto = False
+        self._requested_style = getattr(self.theme.figure_style, "name", self.theme.name)
+        self._coordination_fallback_reason = None
+        self._fallback_previous_theme = None
+        self._fallback_previous_palette = None
         self.diagnostics: list[str] = []
         self.config = None
         if camera is None:
@@ -102,7 +111,17 @@ class CrystalFigure:
             show_unit_cell=display.show_unit_cell,
             coordination_shell=display.coordination_shell,
             display_budget={**budget, "max_bonds": max(200, display.max_atoms * 4)},
+            motif_config=display.motif,
         )
+        self._requested_style = style.name
+        if style.name == "vesta_coordination":
+            self._vesta_coordination_auto = (
+                not bool(display.centers)
+                and display.intent in {"auto", "coordination"}
+                and display.coordination_shell != "none"
+                and display.framing != "motif"
+            )
+            self._nature_auto = self._vesta_coordination_auto
         self.theme = configured_theme
         self.theme.render_quality = config.render.quality
         self.palette = configured_theme.palette
@@ -342,6 +361,9 @@ class CrystalFigure:
         show_bonds: bool | None = None,
         color_by_center: bool = False,
     ) -> CrystalFigure:
+        self._restore_requested_theme()
+        self._coordination_fallback_reason = None
+        self._nature_auto = False
         self._scene_options.show_polyhedra = True
 
         strat = None
@@ -550,6 +572,7 @@ class CrystalFigure:
         return self
 
     def style(self, name: str) -> CrystalFigure:
+        self._restore_requested_theme()
         from crystalfig.styles.presets import PRESETS, get_style
 
         if name in PRESETS:
@@ -561,12 +584,30 @@ class CrystalFigure:
             self.palette = self.theme.palette.copy()
         if self.theme.camera_preset:
             self.view_preset(self.theme.camera_preset)
+        self._requested_style = name
+        self._vesta_coordination_auto = False
+        self._nature_auto = False
+        self._coordination_fallback_reason = None
         return self
+
+    def _restore_requested_theme(self) -> None:
+        if self._fallback_previous_theme is not None:
+            self.theme = self._fallback_previous_theme
+            self.palette = self._fallback_previous_palette
+            self._fallback_previous_theme = None
+            self._fallback_previous_palette = None
+            self._coordination_fallback_reason = None
+            self.diagnostics = [
+                message for message in self.diagnostics
+                if "coordination geometry produced no valid polyhedra" not in message
+                and "automatic coordination detection produced no valid polyhedra" not in message
+            ]
 
     def quality(self, name: str) -> CrystalFigure:
         """Select preview, standard, or publication rendering effort."""
         if name not in {"preview", "standard", "publication"}:
             raise ValueError("quality must be preview, standard, or publication")
+        self._restore_requested_theme()
         self.theme.render_quality = name
         return self
 
@@ -596,6 +637,7 @@ class CrystalFigure:
         display_budget: dict[str, int | float] | None = None,
         framing: str = "auto",
         framing_site: int | None = None,
+        motif_config: MotifConfig | None = None,
     ) -> CrystalFigure:
         """Plan a material-agnostic publication view from periodic structure features.
 
@@ -603,6 +645,7 @@ class CrystalFigure:
         the selected neighbor model. Automatic neighbors and centers remain
         visualization heuristics, not unique chemical assignments.
         """
+        self._restore_requested_theme()
         named_figure_style = None
         if isinstance(style, str) and style in {"vesta_ballstick", "vesta_coordination", "layered_crystal"}:
             from crystalfig.styles.presets import get_style
@@ -613,6 +656,7 @@ class CrystalFigure:
             if candidate_style.name in {"vesta_ballstick", "vesta_coordination", "layered_crystal"}:
                 named_figure_style = candidate_style
         bond_strategy = self._make_bond_strategy(strategy)
+        requested_centers_were_explicit = centers is not None
         if bond_display_policy not in {None, "all_bonds", "center_ligand_only", "polyhedron_edges_only", "hidden"}:
             raise ValueError("bond_display_policy must be all_bonds, center_ligand_only, polyhedron_edges_only, or hidden")
         selected_bonds = bond_strategy.get_bonds(self.structure)
@@ -634,6 +678,12 @@ class CrystalFigure:
             elif named_figure_style.name == "layered_crystal":
                 selected_intent, intent_confidence = "layered", 1.0
         requested_style = style or ("nature" if polyhedra is not None else mode)
+        self._requested_style = named_figure_style.name if named_figure_style is not None else requested_style
+        self._vesta_coordination_auto = (
+            self._requested_style == "vesta_coordination" and not requested_centers_were_explicit
+        )
+        requested_vesta_auto = self._vesta_coordination_auto
+        self._coordination_fallback_reason = None
         theme_style = requested_style if requested_style in {"journal_clean", "journal_vivid"} else None
         selected_style = (
             {"vesta_ballstick": "ballstick", "vesta_coordination": "nature", "layered_crystal": "ballstick"}[named_figure_style.name]
@@ -660,14 +710,6 @@ class CrystalFigure:
             "polyhedra": "polyhedra_clean",
             "minimal": "overview_minimal",
         }
-        theme = theme_style or theme_by_style.get(selected_style, "ballstick_clean")
-        default_boundary = (
-            "polyhedra_complete"
-            if selected_style == "nature" or framing == "local_coordination"
-            else "connected"
-        )
-        if selected_style == "polyhedra":
-            default_boundary = "polyhedra_complete"
         budget = {"max_atoms": 60, "max_polyhedra": 8, "max_bonds": 200}
         if display_budget:
             unknown = set(display_budget) - set(budget)
@@ -685,12 +727,22 @@ class CrystalFigure:
         ):
             framing = "motif"
             region = "motif"
+        if framing == "motif":
+            selected_style = "ballstick"
+        theme = theme_style or theme_by_style.get(selected_style, "ballstick_clean")
+        default_boundary = (
+            "polyhedra_complete"
+            if selected_style in {"nature", "polyhedra"} or framing == "local_coordination"
+            else "connected"
+        )
         estimated_degree = max(
             1.0,
             2.0 * len(selected_bonds)
             / max(self.structure.num_sites, 1),
         )
         spec = polyhedra
+        if framing == "motif":
+            spec = None
         if isinstance(spec, dict):
             centers = spec.get("centers", centers)
             polyhedron_alpha = spec.get("alpha", polyhedron_alpha)
@@ -743,6 +795,7 @@ class CrystalFigure:
             self.structure.make_supercell(display_scaling)
             if not is_unit_cell else self.structure
         )
+        self._display_structure = final_structure
         final_bonds = (
             bond_strategy.get_bonds(final_structure)
             if final_structure is not self.structure else selected_bonds
@@ -770,13 +823,22 @@ class CrystalFigure:
             else None
         )
         self._scene_options.show_all_cell_atoms = framing == "unit_cell"
-        self._scene_options.motif_instances = (
-            DisplayPlanner.representative_motif_instances(
-                final_structure, final_bonds,
-                limit=min(12, int(budget["max_atoms"])),
+        self._scene_options.motif_instances = ()
+        if framing == "motif":
+            motif_config = motif_config or MotifConfig()
+            motif_config = replace(
+                motif_config, max_atoms=min(motif_config.max_atoms, int(budget["max_atoms"]))
             )
-            if framing == "motif" else ()
-        )
+            instances, motif_species, motif_missing = DisplayPlanner.plan_motif(
+                final_structure, final_bonds, motif_config
+            )
+            self._scene_options.motif_instances = instances
+            self._display_plan = replace(
+                self._display_plan, motif_species=motif_species,
+                motif_missing_species=motif_missing,
+                motif_selected_sites=tuple(dict.fromkeys(int(i) for i, _ in instances)),
+                motif_strategy=motif_config.strategy,
+            )
         self._bond_policy_was_explicit = bond_display_policy is not None
         render_bonds = self._display_plan.show_bonds
         show_cell_frame = self._display_plan.show_cell
@@ -807,7 +869,12 @@ class CrystalFigure:
             else:
                 self.view_preset(camera)
         self.diagnostics = []
-        self._nature_auto = False
+        self._nature_auto = (
+            bool(self._vesta_coordination_auto)
+            and selected_intent == "coordination"
+            and coordination_shell != "none"
+            and framing != "motif"
+        )
         self._scene_options.show_atoms = show_atoms
         self._scene_options.show_legend = show_legend
         self._scene_options.show_bonds = bool(render_bonds)
@@ -866,13 +933,23 @@ class CrystalFigure:
                 color_by_center=selected_style == "nature",
                 show_bonds=render_bonds,
             )
-            if centers == "auto":
+            if (
+                centers == "auto"
+                and coordination_shell != "none"
+                and framing != "motif"
+                and (
+                    not requested_vesta_auto
+                    or selected_intent in {"coordination", "hybrid"}
+                )
+            ):
                 self._nature_auto = True
                 self.diagnostics.append(
                 "Automatic coordination candidates are inferred from periodic neighbors and geometry; verify their chemical interpretation."
                 )
         self._scene_options.bonds = final_bonds
         self._scene_options.bond_strategy = bond_strategy
+        self._requested_style = named_figure_style.name if named_figure_style is not None else requested_style
+        self._vesta_coordination_auto = requested_vesta_auto
         return self
 
     def _periodic_translation_vectors(self, bonds) -> np.ndarray:
@@ -902,23 +979,57 @@ class CrystalFigure:
     # Build & export
     # ------------------------------------------------------------------
     def build_scene(self) -> Scene:
+        self._restore_requested_theme()
         scene_options = self._scene_options
         builder = SceneBuilder(self.structure, self.theme, self.palette, scene_options, camera=self.camera)
         scene = builder.build()
         poly_group = scene.get_group("polyhedra")
+        detected_centers = [
+            {"site_index": int(index), "species": self._display_structure.sites[index].dominant_species}
+            for index in dict.fromkeys(getattr(getattr(self, "_display_plan", None), "selected_centers", ()))
+        ]
         if getattr(self, "_nature_auto", False) and (poly_group is None or not poly_group.primitives):
-            message = "Automatic coordination geometry produced no valid polyhedra; showing the bond network instead."
+            reason = "automatic coordination detection produced no valid polyhedra"
+            self._coordination_fallback_reason = reason
+            is_vesta = self._requested_style == "vesta_coordination"
+            center_summary = ", ".join(
+                f"{center['species']} at site {center['site_index']}"
+                for center in detected_centers
+            ) or "none"
+            message = (
+                f"Requested style '{self._requested_style}' detected coordination centers: {center_summary}; "
+                f"{reason}, so the effective style is 'vesta_ballstick'."
+                if is_vesta else
+                "Automatic coordination geometry produced no valid polyhedra; showing the bond network instead."
+            )
+            if is_vesta:
+                from crystalfig.styles.presets import get_style
+
+                self._fallback_previous_theme = self.theme
+                self._fallback_previous_palette = self.palette
+                requested_background = self.theme.background
+                requested_transparency = self.theme.transparent
+                requested_quality = self.theme.render_quality
+                requested_palette = self.palette
+                self.theme = get_style("vesta_ballstick").to_legacy_theme()
+                self.theme.background = requested_background
+                self.theme.transparent = requested_transparency
+                self.theme.render_quality = requested_quality
+                self.palette = requested_palette
+                self.theme.palette = requested_palette
+                material = self.theme.figure_style.atoms.material
+                message += (
+                    f" Settings: atom material {material}, "
+                    f"atom radius scale {self.theme.atom_radius_scale:g}, "
+                    f"bond radius {self.theme.bond_width:g}."
+                )
             if message not in self.diagnostics:
                 self.diagnostics.append(message)
             scene_options = replace(
                 self._scene_options,
-                show_bonds=True,
                 bond_display_policy=(
                     self._scene_options.bond_display_policy
-                    if (
-                        getattr(self, "_bond_policy_was_explicit", False)
-                        or not self._scene_options.show_bonds
-                    )
+                    if self._bond_policy_was_explicit or not self._scene_options.show_bonds
                     else "all_bonds"
                 ),
                 display_boundary=(
@@ -958,6 +1069,14 @@ class CrystalFigure:
                 "image_atom_policy": plan.image_atoms,
                 "cell_frame_policy": plan.cell_frame,
                 "framing": plan.framing,
+                **({"motif_coverage": {
+                    "strategy": plan.motif_strategy,
+                    "selected_species": list(plan.motif_species),
+                    "missing_species": list(plan.motif_missing_species),
+                    "complete": not plan.motif_missing_species,
+                    "selected_sites": list(plan.motif_selected_sites),
+                    "atoms_visible": self._scene_options.show_atoms,
+                }} if plan.framing == "motif" else {}),
             })
         scene.metadata["camera_used"] = selected_view["label"] if selected_view else "explicit"
         scene.metadata["camera_score"] = selected_view["score"] if selected_view else None
@@ -970,6 +1089,20 @@ class CrystalFigure:
         polys = polyhedra.primitives if polyhedra else []
         scene.metadata["num_real_polyhedra"] = sum(not poly.metadata.get("clipped", False) for poly in polys)
         scene.metadata["num_clipped_polyhedra"] = sum(bool(poly.metadata.get("clipped", False)) for poly in polys)
+        scene.metadata["requested_style"] = self._requested_style
+        scene.metadata["effective_style"] = (
+            "vesta_ballstick"
+            if self._coordination_fallback_reason and self._requested_style == "vesta_coordination"
+            else self._requested_style
+        )
+        scene.metadata["coordination_centers_detected"] = detected_centers
+        scene.metadata["coordination_fallback_reason"] = self._coordination_fallback_reason
+        if self._coordination_fallback_reason and self._requested_style == "vesta_coordination":
+            scene.metadata["effective_style_settings"] = {
+                "atom_material": self.theme.figure_style.atoms.material,
+                "atom_radius_scale": self.theme.atom_radius_scale,
+                "bond_radius": self.theme.bond_width,
+            }
         return scene
 
     def draw(self, ax, options: RenderOptions | None = None) -> None:

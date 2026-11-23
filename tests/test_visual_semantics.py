@@ -1,5 +1,6 @@
 """Scientific display-planning regressions for publication figures."""
 
+import json
 from collections import Counter
 from math import prod
 from pathlib import Path
@@ -198,6 +199,11 @@ def test_explicit_framing_choices_on_dense_cell_fixture():
     local_without_hull_scene = local_without_hull.build_scene()
     automatic_scene = automatic.build_scene()
     assert len(motif_scene.get_group("atoms").primitives) < len(unit_scene.get_group("atoms").primitives)
+    coverage = motif_scene.metadata["motif_coverage"]
+    json.dumps(coverage)
+    assert coverage["strategy"] == "species_balanced"
+    assert coverage["selected_species"] == ["Cd", "Ce", "Te"]
+    assert coverage["complete"]
     motif_atoms = motif_scene.get_group("atoms").primitives
     motif_positions = [sphere.position for sphere in motif_atoms]
     motif_edges = []
@@ -218,7 +224,10 @@ def test_explicit_framing_choices_on_dense_cell_fixture():
         if expanded == reachable:
             break
         reachable = expanded
-    assert len(reachable) == len(motif_atoms)
+    # Species coverage can include a physically disconnected component; the
+    # scene keeps only real bond endpoints and does not bridge that component.
+    assert motif_edges
+    assert len(reachable) < len(motif_atoms)
     coordination_cell = CrystalFigure(structure).publication(
         framing="unit_cell", style="vesta_coordination", intent="coordination"
     ).build_scene()

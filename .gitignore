@@ -87,6 +87,7 @@ gallery/publication_review/*.png
 gallery/publication_review/*.svg
 gallery/publication_review/*.pdf
 !gallery/publication_review/comparison_contact_sheet.png
+!gallery/publication_review/controlled_style_benchmark.png
 !gallery/publication_review/coordination_comparison.png
 !gallery/publication_review/backend_comparison.png
 !gallery/publication_review/paper_four_panel.png

@@ -106,9 +106,11 @@ grid.add_structure(layered, 0, 1, title="MoS₂")
 grid.save("crystals.pdf", dpi=600)
 ```
 
-More rendered examples are available in the [journal and VESTA gallery](gallery/publication_review/comparison_contact_sheet.png),
-the [bond and framing comparison](gallery/publication_review/coordination_comparison.png), and the
-[backend comparison](gallery/publication_review/backend_comparison.png).
+The [preset showcase](gallery/publication_review/comparison_contact_sheet.png) uses each preset's
+default composition and camera. The [controlled style benchmark](gallery/publication_review/controlled_style_benchmark.png)
+holds atom positions and radii, bond connectivity, polyhedron geometry, and camera fixed so you can
+compare appearance. See also the [bond and framing comparison](gallery/publication_review/coordination_comparison.png)
+and [backend comparison](gallery/publication_review/backend_comparison.png).
 
 ## CLI and batch rendering
 
@@ -149,8 +151,16 @@ figures:
 
 `DisplayConfig` controls framing, neighbor selection, and bond visibility. Use
 `framing="local_coordination"` with a zero-based `framing_site` for a specific site's
-neighborhood, or `region=(2, 2, 1)` for a supercell. Automatic framing can select a connected
-motif for dense networks. Coordination shells retain periodic ligand images by default.
+neighborhood, or `region=(2, 2, 1)` for a supercell. Automatic motif framing prioritizes
+element coverage within the atom budget and can include multiple components of the
+inferred bond graph. Use `DisplayConfig(framing="motif", motif=MotifConfig(strict_species_coverage=True))`
+to require coverage. Set `required_species` to target a subset of elements, select
+`largest_component` for a connected fragment, or use `centered` with a zero-based
+`seed_site` for a site-centered fragment. Read `build_scene().metadata["motif_coverage"]`
+for the selected and missing elements. For mixed-occupancy sites, the renderer shows
+the dominant element and coverage reports any positive-occupancy elements absent from the motif.
+Motifs show selected atoms. Use `unit_cell` to show the full cell composition.
+Coordination shells retain periodic ligand images by default.
 Available bond policies are `all_bonds`, `center_ligand_only`, `polyhedron_edges_only`, and `hidden`.
 
 Choose `journal_clean`, `journal_vivid`, `vesta_ballstick`, `vesta_coordination`, or
@@ -158,6 +168,8 @@ Choose `journal_clean`, `journal_vivid`, `vesta_ballstick`, `vesta_coordination`
 for independent control over the atom, bond, polyhedron, cell, and lighting settings.
 Check inferred neighbors against the intended coordination when preparing a scientific figure.
 Use a cutoff or manual neighbors when the default CrystalNN model is unsuitable.
+If automatic `vesta_coordination` finds no valid polyhedra, scene metadata records the
+requested style, effective ballstick style, center count, and fallback reason.
 
 ## Contributing
 
