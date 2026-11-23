@@ -1,272 +1,183 @@
-# crystalfig
+# Crystikz
 
-**Publication-oriented crystal structure figures for Python.** `crystalfig` turns CIF files and
-crystal structures into reusable ball-and-stick, coordination-polyhedron, layered, and unit-cell
-visualizations. A shared structure and scene model feeds editable vector renderers and an optional
-depth-buffered 3D renderer.
+English · [简体中文](README.zh-CN.md)
 
-![Four crystals rendered in PyVista with vector titles and element keys](gallery/publication_review/paper_four_panel.png)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](#installation)
+[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-[Journal and VESTA benchmarks](gallery/publication_review/comparison_contact_sheet.png) · [Bond and framing comparisons](gallery/publication_review/coordination_comparison.png) · [Same scene in two backends](gallery/publication_review/backend_comparison.png) · [14-structure diagnostic gallery](gallery/showcase/contact_sheet.png)
+Crystikz is a Python library for reproducible crystal structure figures. Install it as
+`crystalfig` and use it from Python, the command line, or YAML batch files. It turns
+crystallographic structures into ball-and-stick networks, coordination polyhedra, and layered
+views for papers and presentations.
 
-![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![CI](https://github.com/future3317/Crystikz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/future3317/Crystikz/actions/workflows/ci.yml)
+![Four crystal structures with panel titles and element legends](gallery/publication_review/paper_four_panel.png)
 
-## Install
+## Features
+
+- Read CIF, POSCAR, CSSR, JSON, and YAML files, or use pymatgen `Structure` and ASE `Atoms` objects.
+- Choose a complete unit cell, supercell, local coordination shell, or connected motif. Automatic
+  framing and view selection use the periodic geometry and bond graph.
+- Export editable vector geometry or depth-buffered 3D images. Combine figures with vector
+  panel labels, titles, and element legends in a hybrid PDF.
+
+## Installation
+
+Requires Python 3.10 or later and Git. Version 0.2.0 is a release candidate. Install from
+GitHub while the PyPI release is pending.
 
 ```bash
 python -m pip install "crystalfig @ git+https://github.com/future3317/Crystikz.git"
 ```
 
-Version 0.2.0 is prepared but not yet published to PyPI. When the project is published there,
-the installation command will become `python -m pip install crystalfig`.
-
-Install optional integrations only when needed:
+For PyVista/VTK rendering, including the 3D examples below:
 
 ```bash
-python -m pip install "crystalfig[render3d] @ git+https://github.com/future3317/Crystikz.git"  # PyVista/VTK
-python -m pip install "crystalfig[ase] @ git+https://github.com/future3317/Crystikz.git"       # ASE
-python -m pip install "crystalfig[reciprocal] @ git+https://github.com/future3317/Crystikz.git" # seekpath
-python -m pip install "crystalfig[latex] @ git+https://github.com/future3317/Crystikz.git"     # PDF helpers
-python -m pip install "crystalfig[all] @ git+https://github.com/future3317/Crystikz.git"       # all extras
+python -m pip install "crystalfig[render3d] @ git+https://github.com/future3317/Crystikz.git"
 ```
 
-The base installation includes CIF/POSCAR loading, pymatgen structures, Matplotlib and SVG
-rendering. PyVista and VTK are intentionally optional because they add a large 3D runtime.
+The base package supports SVG, Matplotlib, and TikZ geometry. The `ase` and `reciprocal` extras
+provide ASE and seekpath integration. TikZ-to-PDF compilation requires a LaTeX installation.
+PDF preflight uses Poppler tools such as `pdfinfo` and `pdffonts`. Run `crystalfig doctor` to
+inspect the local setup.
 
 ## Quick start
 
-Render a CIF as a high-resolution 3D PNG or as a PDF with a 3D image and editable annotations.
-Install the `render3d` extra for these outputs.
+Draw silicon and export an SVG using a bundled structure. For your own structure, use
+`CrystalFigure.from_file("structure.cif")` or pass a pymatgen structure to `from_structure()`.
+
+```python
+from crystalfig import CrystalFigure, DisplayConfig, FigureConfig, RenderConfig
+from crystalfig.examples.presets import diamond_structure
+
+silicon = CrystalFigure.from_structure(diamond_structure(conventional=True))
+silicon.configure(FigureConfig(
+    style="journal_clean",
+    display=DisplayConfig(intent="network", framing="unit_cell"),
+    render=RenderConfig(backend="svg", width_mm=89),
+))
+silicon.export("silicon.svg")
+```
+
+## Examples
+
+### Coordination polyhedron
+
+Render the complete TiO₆ shell from a periodic BaTiO₃ structure as a 600 DPI PNG. The
+`center_ligand_only` policy emphasizes bonds in the displayed shell.
 
 ```python
 from crystalfig import CrystalFigure, DisplayConfig, FigureConfig
+from crystalfig.examples.presets import perovskite_structure
 
-figure = CrystalFigure.from_file("structure.cif").configure(FigureConfig(
-    display=DisplayConfig(intent="auto", region="auto"),
-    style="journal_clean",
-))
-figure.export("structure.png")  # 89 mm wide, 600 DPI
-figure.export("structure.pdf")  # Hybrid PDF
-```
-
-Use the vector backend for editable geometry or a base installation.
-
-```python
-from crystalfig import CrystalFigure
-
-figure = (
-    CrystalFigure.from_file("BaTiO3.cif", theme="polyhedra_clean")
-    .add_polyhedra(centers="Ti", strategy="crystalnn")
-    .show_unit_cell()
-)
-result = figure.export("BaTiO3.pdf", width=89)
-print(result.vector_status)  # "pure"
-```
-
-Use the same API with a pymatgen `Structure` or (with the `ase` extra) ASE `Atoms`:
-
-```python
-from pymatgen.core import Structure
-from crystalfig import CrystalFigure
-
-structure = Structure.from_file("BaTiO3.cif")
-figure = CrystalFigure.from_structure(structure).quick()
-figure.export("BaTiO3.svg", width=89)
-```
-
-`CrystalFigure` is reusable and backend-independent: adjust the cell, view, bonds, polyhedra,
-style and annotations before exporting. For example, `view([1, 1, 0])` sets a crystallographic
-view direction, while `supercell((2, 2, 1))` expands the displayed structure.
-
-The display planner selects a network, coordination, layered, ionic or minimal view. It chooses a
-finite periodic region, keeps coordination shells complete by default and fits the camera to the
-scene. For an explicit coordination motif, choose the center species or site indices.
-
-```python
-figure = CrystalFigure.from_file("BaTiO3.cif").configure(FigureConfig(
-    display=DisplayConfig(intent="coordination", region="motif", centers=("Ti",)),
+titanate = CrystalFigure.from_structure(perovskite_structure()).configure(FigureConfig(
     style="vesta_coordination",
+    display=DisplayConfig(
+        framing="local_coordination",
+        centers=("Ti",),
+        coordination_shell="complete",
+        bond_display_policy="center_ligand_only",
+    ),
 ))
-figure.export("motif.png", transparent=True)
+titanate.export("tio6.png", width=89, dpi=600)
 ```
 
-`DisplayConfig` supports `region="cell"` for one cell, `region="motif"` for a local view and a
-tuple such as `region=(2, 2, 1)` for a finite supercell. `coordination_shell="complete"` retains
-periodic ligands across the cell boundary. `show_partial` explicitly clips the hull and marks
-artificial faces. `CrystalNN` is a candidate neighbor model. Choose a cutoff or manual neighbors
-when the scientific interpretation requires a different shell.
+### Multipanel PDF
 
-Use `framing="unit_cell"` for a complete cell, `framing="local_coordination"` for a single
-periodic neighborhood, and `framing="motif"` for a representative connected fragment.
-`framing_site` optionally specifies a zero-based site index for local coordination. For dense
-networks, automatic framing can select a motif when the full cell exceeds the display budget.
-
-Set `bond_display_policy` in `DisplayConfig` or `publication()` to control chemical bond lines.
-The coordination default, `center_ligand_only`, keeps the sticks for the displayed shells and
-draws them thinner and lighter. `all_bonds` draws all bonds in the displayed region.
-`polyhedron_edges_only` uses the existing polyhedron outlines without sticks, while `hidden`
-hides chemical bonds in any view. Polyhedron appearance is controlled by the selected style.
-
-Create a polyhedron-led view when coordination is the intended scientific message:
+Place a coordination framework beside a layered structure. The hybrid backend embeds the
+3D panels as images and preserves the titles and legends as vector text and marks.
 
 ```python
-from crystalfig import CrystalFigure, FigureGrid
+from crystalfig import CrystalFigure, DisplayConfig, FigureConfig, FigureGrid
+from crystalfig.examples.presets import mos2_structure, perovskite_structure
 
-figure = CrystalFigure.from_file("structure.cif").publication(
-    intent="coordination",
-    coordination_shell="complete",
-    palette="publication",
-    camera="optimize",
-    background="white",
-)
-figure.save("structure.svg")  # PNG and PDF are also supported
-```
-
-Automatic intent and center selection are geometry/chemistry heuristics, not a chemical assignment;
-the chosen strategy and any fallback are recorded in diagnostics and scene metadata. The scene
-metadata distinguishes the camera actually used from the recommended candidates. The legacy
-`boundary="cell"` option remains available for explicitly clipped views; the new complete-shell
-policy does not clip a coordination polyhedron to the cell.
-
-Compose multiple structures with a shared Matplotlib figure:
-
-```python
-grid = FigureGrid(
-    rows=1, cols=2, panel_labels=True, backend="hybrid",
-    width_mm=183, height_mm=70, legend_mode="panel",
-)
-grid.add_structure(CrystalFigure.from_file("phase-a.cif"), 0, 0, title="Phase A", intent="auto")
-grid.add_structure(CrystalFigure.from_file("phase-b.cif"), 0, 1, title="Phase B", intent="auto")
-grid.save("phases.pdf", dpi=300)
-```
-
-`FigureGrid` supports `vector`, `pyvista`, and `hybrid` structure panels. Hybrid panels rasterize
-the depth-buffered PyVista scene and keep panel labels, titles, legends, and captions as vector
-overlays in the fixed-size output. `grid.last_export_metadata["vector_status"]` reports whether
-the saved document is pure vector, hybrid, or raster.
-
-## Choose an output backend
-
-| Backend | Formats | Output | Use it for |
-| --- | --- | --- | --- |
-| `matplotlib` (default) | PDF, EPS, PGF, PNG, TIFF | Vector for PDF/EPS/PGF; raster for PNG/TIFF | Conventional paper figures and Matplotlib integration |
-| `svg` | SVG | Editable vector | Editing paths and labels in a vector graphics editor |
-| `tikz` | TEX/TIKZ | LaTeX drawing commands | Figures that should use the paper's LaTeX fonts |
-| `pyvista` (optional) | PNG, hybrid PDF | High-resolution 3D image plus vector annotations in PDF | Complex 3D structures and mesh occlusion |
-| `matplotlib3d` | PDF, SVG, EPS, PGF, PNG, TIFF | Projected 3D preview; hybrid for vector formats | Previewing the legacy Matplotlib 3D projection |
-
-With `FigureConfig`, PyVista handles PNG and PDF by default. SVG and TikZ use their vector
-renderers. The legacy fluent API continues to choose a backend from the output extension.
-
-```python
-figure.export("BaTiO3.png", backend="pyvista", width=89, dpi=600)
-figure.export("BaTiO3.svg", backend="svg", width=89)
-hybrid = figure.export_hybrid_pdf("BaTiO3-hybrid.pdf", width=89, dpi=600)
-print(hybrid.vector_status)  # "hybrid": 3D image plus vector annotations
-```
-
-The SVG, TikZ, and Matplotlib vector paths are useful for editable figures. PyVista exports PNG;
-`export_hybrid_pdf()` embeds its high-resolution image in a PDF with vector annotations. A hybrid
-or raster result is not a pure-vector figure. PyVista requires a working VTK off-screen rendering
-environment; unsupported transparency/depth-peeling capabilities are reported by the renderer.
-
-## Styles and views
-
-Publication presets pair atom and bond dimensions with separate element and coordination colors.
-
-```python
-figure = CrystalFigure.from_file("MoS2.cif").configure(FigureConfig(
+oxide = CrystalFigure.from_structure(perovskite_structure()).configure(FigureConfig(
+    display=DisplayConfig(intent="coordination", centers=("Ti",)),
+    style="journal_vivid",
+))
+layered = CrystalFigure.from_structure(mos2_structure()).configure(FigureConfig(
     display=DisplayConfig(intent="layered"),
     style="layered_crystal",
 ))
-figure.export("MoS2.png", backend="pyvista", width=89, dpi=600)
+
+grid = FigureGrid(rows=1, cols=2, backend="hybrid", width_mm=183, height_mm=64,
+                  legend_mode="panel")
+grid.add_structure(oxide, 0, 0, title="BaTiO₃")
+grid.add_structure(layered, 0, 1, title="MoS₂")
+grid.save("crystals.pdf", dpi=600)
 ```
 
-Choose `vesta_ballstick`, `vesta_coordination`, `journal_clean`, `journal_vivid` or
-`layered_crystal`. The VESTA presets use larger ceramic spheres, stronger highlights and
-thin cylindrical bonds. For custom appearance, use `crystalfig.styles.get_style()` and
-`dataclasses.replace()` to adjust atom, bond, polyhedron, cell or lighting settings independently.
-`CameraConfig(mode="fixed", elevation=30, azimuth=35)` records an explicit view. Existing
-`FigureTheme` presets and crystallographic view presets are available through the fluent API.
+More rendered examples are available in the [journal and VESTA gallery](gallery/publication_review/comparison_contact_sheet.png),
+the [bond and framing comparison](gallery/publication_review/coordination_comparison.png), and the
+[backend comparison](gallery/publication_review/backend_comparison.png).
 
-## Command line
+## CLI and batch rendering
+
+Replace `structure.cif` with your input file. The last two commands inspect the local
+environment and the PDF created by the preceding multipanel example.
 
 ```bash
-crystalfig render BaTiO3.cif -o BaTiO3.pdf --bonds crystalnn --polyhedra Ti --width 89
-crystalfig render BaTiO3.cif -o motif.png --intent coordination --region motif --centers Ti --style vesta_coordination
-crystalfig render dense.cif -o local.png --framing local_coordination --framing-site 0 --style vesta_coordination
-crystalfig inspect BaTiO3.cif
+crystalfig inspect structure.cif
+crystalfig render structure.cif -o structure.svg --backend svg --framing unit_cell
+crystalfig render structure.cif -o detail.png --backend pyvista --style vesta_coordination --framing local_coordination --framing-site 0
 crystalfig doctor
-crystalfig preflight BaTiO3.pdf
+crystalfig preflight crystals.pdf
 ```
 
-`crystalfig render --help` lists rendering options. The Python API also supports YAML batch
-rendering with `crystalfig batch figures.yaml`. Batch paths are relative to the YAML file:
+Save the following as `figures.yaml` and run `crystalfig batch figures.yaml`. The input and
+output paths resolve relative to the YAML file.
 
 ```yaml
 figures:
-  - input: structures/sample.cif
-    output: figures/sample.pdf
-    style: journal_vivid
+  - input: structure.cif
+    output: figures/structure.svg
+    style: journal_clean
     display:
-      framing: local_coordination
-      neighbor_strategy: crystalnn
-      bond_display_policy: center_ligand_only
-    camera:
-      mode: auto
+      framing: unit_cell
     render:
-      backend: pyvista
+      backend: svg
       width_mm: 89
-      dpi: 600
 ```
 
-## Capabilities
+## Rendering and scientific controls
 
-- Read CIF, POSCAR, CSSR, JSON and YAML structures; accept pymatgen `Structure` and optional ASE
-  `Atoms` objects.
-- Build conventional/primitive cells, supercells, periodic images, bonds, coordination polyhedra,
-  Miller-plane intersections and basic Brillouin-zone geometry.
-- Style atoms, bonds and sites; add vectors and labels; draw into an existing Matplotlib axes.
-- Export at figure widths specified in millimetres, with configurable DPI and transparent
-  backgrounds where supported by the selected renderer.
-- Inspect the curated [four-panel hybrid figure](gallery/showcase/paper_four_panel.png), the
-  [14-structure diagnostic showcase](gallery/showcase/contact_sheet.png), the
-  [baseline diagnostic sheet](gallery/baseline/contact_sheet.png), and the
-  [rendered format comparisons](gallery/showcase/).
+| Backend | Output | Use case |
+| --- | --- | --- |
+| `svg` | SVG | Editable vector geometry |
+| `matplotlib` | PDF, EPS, PGF, PNG, TIFF | Vector figures and Matplotlib integration |
+| `tikz` | TeX/TikZ | LaTeX typesetting |
+| `pyvista` | PNG, hybrid PDF | Depth-buffered 3D shading and translucent surfaces |
 
-## Scientific and rendering notes
+`DisplayConfig` controls framing, neighbor selection, and bond visibility. Use
+`framing="local_coordination"` with a zero-based `framing_site` for a specific site's
+neighborhood, or `region=(2, 2, 1)` for a supercell. Automatic framing can select a connected
+motif for dense networks. Coordination shells retain periodic ligand images by default.
+Available bond policies are `all_bonds`, `center_ligand_only`, `polyhedron_edges_only`, and `hidden`.
 
-Bond detection depends on the selected strategy and input structure; it is not a universal
-chemical-bond assignment. Check coordination and periodic images for the material and use case.
-Vector renderers use projected drawing order and cannot provide full per-pixel 3D occlusion for
-intersecting transparent geometry. Use PyVista for depth-buffered 3D output when that distinction
-matters. PyVista output is raster; use SVG, TikZ or Matplotlib when editable vector geometry is
-required.
+Choose `journal_clean`, `journal_vivid`, `vesta_ballstick`, `vesta_coordination`, or
+`layered_crystal`. Use `CameraConfig` for a fixed view and `crystalfig.styles.get_style()`
+for independent control over the atom, bond, polyhedron, cell, and lighting settings.
+Check inferred neighbors against the intended coordination when preparing a scientific figure.
+Use a cutoff or manual neighbors when the default CrystalNN model is unsuitable.
 
-`crystalfig` complements crystallographic editors such as VESTA, atomistic analysis tools such as
-OVITO, and general 3D software such as Blender. It focuses on repeatable Python figure generation
-from crystal structure data.
+## Contributing
 
-## Development
-
-Use Python 3.11 for development and validation.
+Use Python 3.11 for local development and validation. Report bugs and propose changes
+through [GitHub Issues](https://github.com/future3317/Crystikz/issues). For a rendering issue,
+include a minimal structure, the render command, and the backend.
 
 ```bash
 git clone https://github.com/future3317/Crystikz.git
 cd Crystikz
-python -m pip install -e '.[dev]'
+python -m pip install -e ".[dev,render3d]"
+python -m ruff check .
 python -m pytest tests -q
-python -m ruff check crystalfig tests examples
-python -m build --wheel
-python examples/generate_publication_review.py  # requires render3d and Poppler
 ```
 
-For the release candidate wheel install, CLI, and export smoke checks, run
-`python scripts/check_release.py`. See [PUBLISHING.md](PUBLISHING.md) for the v0.2.0 release
-checklist and current PyPI status.
+See the [changelog](CHANGELOG.md), [migration guide](MIGRATION.md), and
+[release verification instructions](PUBLISHING.md). Regenerate the publication benchmark
+with `python examples/generate_publication_review.py` using PyVista and Poppler.
 
-## License
+## License and attribution
 
-MIT. See [LICENSE](LICENSE).
+Crystikz is distributed under the [MIT License](LICENSE), copyright © 2026 AI4Materials Group.
+Dataset and dependency attributions are listed in the [third-party notices](THIRD_PARTY_NOTICES.md).

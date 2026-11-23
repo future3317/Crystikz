@@ -310,10 +310,6 @@ def main(argv=None):
 
 def generate_reference_gallery():
 
-    # Publication defaults: no legend, no axes unless needed.
-    def _pub(fig):
-        return fig.theme.show_legend is False and fig.theme.show_axes is False
-
     # 1. NaCl rocksalt ball-and-stick (conventional cell is more intuitive)
     fig = (
         CrystalFigure(rocksalt_structure(conventional=True))

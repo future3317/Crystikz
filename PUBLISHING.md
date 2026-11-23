@@ -8,12 +8,11 @@ repository owner has prepared the project metadata, account, and trusted publish
 
 ## Local checks
 
-Use the repository's project environment and run:
+Use a Git checkout and a Python 3.11 development environment with the `dev` and `render3d` extras.
 
 ```bash
 python -m pytest tests -q
 python -m ruff check .
-python -m build --no-isolation --wheel
 python scripts/check_release.py
 python examples/generate_gallery.py --baseline-only
 python examples/generate_gallery.py --showcase-only
@@ -28,13 +27,12 @@ benchmark also requires Poppler to inspect PDF dimensions, fonts, and image obje
 
 ## CI acceptance
 
-The `CI` workflow must pass all four supported Python test jobs, the wheel-install smoke job, and
-the Linux `visual-gallery` job. The visual artifact must include the baseline diagnostic sheet,
-the diagnostic gallery, and the nine-structure publication benchmark at 89 mm and 600 DPI. Compare
-the seven repeated structures to the frozen v4 renders, check the two sourced Mat2Seq structures,
-and inspect the hybrid PDF at its intended width. SSIM flags changed images for review. Verify
-periodic neighbors, coordination geometry, and camera composition before accepting a visual change.
-Keep the job URL with the release notes.
+For a release, verify the Python 3.11 test job, the wheel-install smoke job, and the Linux
+`visual-gallery` job. The visual artifact includes the baseline and diagnostic galleries and the
+nine-structure publication benchmark. Inspect the 89 mm, 600 DPI exports across the Journal and
+VESTA presets, the bond and framing comparisons, and the hybrid PDF at its intended width.
+Verify periodic neighbors, coordination geometry, and camera composition before accepting a
+visual change. Keep the run URL with the release notes.
 
 ## Version and uploads
 

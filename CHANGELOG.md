@@ -6,6 +6,8 @@
 
 - `FigureConfig`, `DisplayConfig`, `CameraConfig`, and `RenderConfig` for reproducible Python and YAML figures.
 - Composable 3D styles, five publication presets, and separate element and coordination colors.
+- Independent bond display policies for all bonds, center–ligand sticks, polyhedron edges, or hidden bonds.
+- Full-cell, local coordination, and connected motif framing with projection crowding in camera ranking.
 - Explicit cell, motif and supercell views, connected coordination shells, and depth-aware camera ranking.
 - Nine-structure publication benchmark with two experimental Mat2Seq reference CIFs and same-scene backend comparisons.
 - Optional PyVista/VTK mesh rendering and hybrid PDF export.

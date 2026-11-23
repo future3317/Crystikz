@@ -52,6 +52,8 @@ crystalfig = "crystalfig.cli.main:main"
 [project.urls]
 Homepage = "https://github.com/future3317/Crystikz"
 Documentation = "https://github.com/future3317/Crystikz#readme"
+Issues = "https://github.com/future3317/Crystikz/issues"
+Changelog = "https://github.com/future3317/Crystikz/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["."]

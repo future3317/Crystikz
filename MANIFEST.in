@@ -1,9 +1,11 @@
 include LICENSE
 include README.md
-include IMPLEMENTATION_REPORT.md
-include VISUAL_REFACTOR_REPORT.md
+include README.zh-CN.md
+include CHANGELOG.md
 include MIGRATION.md
+include PUBLISHING.md
 include THIRD_PARTY_NOTICES.md
+exclude IMPLEMENTATION_REPORT.md VISUAL_REFACTOR_REPORT.md 任务要求.md
 recursive-include crystalfig *.py
 recursive-exclude tests *
 recursive-exclude examples *

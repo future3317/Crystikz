@@ -97,6 +97,8 @@ class TestCLI:
             assert main(["inspect", str(cif_path)]) == 0
             out = capsys.readouterr().out
             assert "Formula" in out
+            assert "angstrom^3" in out
+            assert "alpha=" in out
 
     def test_render(self):
         with tempfile.TemporaryDirectory() as tmpdir:

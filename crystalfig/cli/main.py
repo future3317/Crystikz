@@ -245,9 +245,9 @@ def cmd_inspect(args):
 
     print(f"Formula:   {structure.formula}")
     print(f"Sites:     {structure.num_sites}")
-    print(f"Volume:    {structure.volume:.3f} Å³")
+    print(f"Volume:    {structure.volume:.3f} angstrom^3")
     print(f"Lattice:   a={structure.lattice.lengths[0]:.4f}, b={structure.lattice.lengths[1]:.4f}, c={structure.lattice.lengths[2]:.4f}")
-    print(f"Angles:    α={structure.lattice.angles[0]:.2f}, β={structure.lattice.angles[1]:.2f}, γ={structure.lattice.angles[2]:.2f}")
+    print(f"Angles:    alpha={structure.lattice.angles[0]:.2f}, beta={structure.lattice.angles[1]:.2f}, gamma={structure.lattice.angles[2]:.2f}")
     print(f"Spacegroup: {spg} ({number})")
     print(f"System:    {system}")
     print(f"Species:   {', '.join(structure.unique_species())}")
