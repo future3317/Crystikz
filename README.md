@@ -5,9 +5,9 @@ crystal structures into reusable ball-and-stick, coordination-polyhedron, layere
 visualizations. A shared structure and scene model feeds editable vector renderers and an optional
 depth-buffered 3D renderer.
 
-![Four-panel publication-style crystal rendering showcase](gallery/showcase/paper_four_panel.png)
+![Four crystals rendered in PyVista with vector titles and element keys](gallery/publication_review/paper_four_panel.png)
 
-[View the complete 14-structure regression gallery](gallery/showcase/contact_sheet.png) · [before/after visual review](gallery/showcase/visual_review_before_after.png)
+[Publication benchmark](gallery/publication_review/comparison_contact_sheet.png) · [Same scene in two backends](gallery/publication_review/backend_comparison.png) · [14-structure diagnostic gallery](gallery/showcase/contact_sheet.png)
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -37,7 +37,21 @@ rendering. PyVista and VTK are intentionally optional because they add a large 3
 
 ## Quick start
 
-Render a CIF as an editable vector PDF:
+Render a CIF as a high-resolution 3D PNG or as a PDF with a 3D image and editable annotations.
+Install the `render3d` extra for these outputs.
+
+```python
+from crystalfig import CrystalFigure, DisplayConfig, FigureConfig
+
+figure = CrystalFigure.from_file("structure.cif").configure(FigureConfig(
+    display=DisplayConfig(intent="auto", region="auto"),
+    style="journal_clean",
+))
+figure.export("structure.png")  # 89 mm wide, 600 DPI
+figure.export("structure.pdf")  # Hybrid PDF
+```
+
+Use the vector backend for editable geometry or a base installation.
 
 ```python
 from crystalfig import CrystalFigure
@@ -66,23 +80,23 @@ figure.export("BaTiO3.svg", width=89)
 style and annotations before exporting. For example, `view([1, 1, 0])` sets a crystallographic
 view direction, while `supercell((2, 2, 1))` expands the displayed structure.
 
-For an unknown structure, let the display planner choose a network, coordination, layered, ionic,
-or minimal view. It selects a finite periodic display window without changing the input structure,
-keeps coordination shells complete by default, and optimizes the camera for the resulting scene:
+The display planner selects a network, coordination, layered, ionic or minimal view. It chooses a
+finite periodic region, keeps coordination shells complete by default and fits the camera to the
+scene. For an explicit coordination motif, choose the center species or site indices.
 
 ```python
-figure = CrystalFigure.from_file("unknown_material.cif").publication(
-    intent="auto", region="auto", coordination_shell="complete", camera="optimize"
-)
-figure.export("structure.svg", backend="svg", width=89)
-figure.export("structure.png", backend="pyvista", width=89, dpi=600, transparent=True)
+figure = CrystalFigure.from_file("BaTiO3.cif").configure(FigureConfig(
+    display=DisplayConfig(intent="coordination", region="motif", centers=("Ti",)),
+    style="vesta_coordination",
+))
+figure.export("motif.png", transparent=True)
 ```
 
-`publication()` uses `CrystalNN` candidate neighbors by default; automatic neighbors are a display
-model, not a unique chemical bond assignment. Override the general intent with `network`,
-`coordination`, `layered`, `ionic`, or `minimal`. Set `centers=[...]` to choose coordination sites
-explicitly. `coordination_shell="complete"` keeps real periodic ligand vertices even outside the
-displayed cell; `show_partial` opts into clipped geometry and marks its artificial cut faces.
+`DisplayConfig` supports `region="cell"` for one cell, `region="motif"` for a local view and a
+tuple such as `region=(2, 2, 1)` for a finite supercell. `coordination_shell="complete"` retains
+periodic ligands across the cell boundary. `show_partial` explicitly clips the hull and marks
+artificial faces. `CrystalNN` is a candidate neighbor model. Choose a cutoff or manual neighbors
+when the scientific interpretation requires a different shell.
 
 Create a polyhedron-led view when coordination is the intended scientific message:
 
@@ -129,10 +143,11 @@ the saved document is pure vector, hybrid, or raster.
 | `matplotlib` (default) | PDF, EPS, PGF, PNG, TIFF | Vector for PDF/EPS/PGF; raster for PNG/TIFF | Conventional paper figures and Matplotlib integration |
 | `svg` | SVG | Editable vector | Editing paths and labels in a vector graphics editor |
 | `tikz` | TEX/TIKZ | LaTeX drawing commands | Figures that should use the paper's LaTeX fonts |
-| `pyvista` (optional) | PNG | High-resolution raster with 3D depth buffering | Complex 3D structures and mesh occlusion |
+| `pyvista` (optional) | PNG, hybrid PDF | High-resolution 3D image plus vector annotations in PDF | Complex 3D structures and mesh occlusion |
 | `matplotlib3d` | PDF, SVG, EPS, PGF, PNG, TIFF | Projected 3D preview; hybrid for vector formats | Previewing the legacy Matplotlib 3D projection |
 
-Select a backend explicitly when needed. The default backend is chosen from the output extension.
+With `FigureConfig`, PyVista handles PNG and PDF by default. SVG and TikZ use their vector
+renderers. The legacy fluent API continues to choose a backend from the output extension.
 
 ```python
 figure.export("BaTiO3.png", backend="pyvista", width=89, dpi=600)
@@ -148,26 +163,27 @@ environment; unsupported transparency/depth-peeling capabilities are reported by
 
 ## Styles and views
 
-Built-in semantic themes provide starting points for common figure types:
+Publication presets pair atom and bond dimensions with separate element and coordination colors.
 
 ```python
-figure = (
-    CrystalFigure.from_file("MoS2.cif", theme="layered_clean")
-    .add_bonds(strategy="crystalnn")
-    .view_preset("layer_oblique")
-)
+figure = CrystalFigure.from_file("MoS2.cif").configure(FigureConfig(
+    display=DisplayConfig(intent="layered"),
+    style="layered_crystal",
+))
 figure.export("MoS2.png", backend="pyvista", width=89, dpi=600)
 ```
 
-Themes: `nature`, `ballstick_clean`, `polyhedra_clean`, `layered_clean`, `overview_minimal`, plus
-the `publication` family. View presets include `auto`, `isometric`, `along_a`, `along_b`, `along_c`,
-`front`, `side`, `top`, `layer_top`, `layer_oblique`, and `polyhedron_focus`. Presets are editable defaults; the final
-figure still depends on the structure, selected neighbors, view, labels and export size.
+Choose `vesta_ballstick`, `vesta_coordination`, `journal_clean`, `journal_vivid` or
+`layered_crystal`. For custom appearance, use `crystalfig.styles.get_style()` and
+`dataclasses.replace()` to adjust atom, bond, polyhedron, cell or lighting settings independently.
+`CameraConfig(mode="fixed", elevation=30, azimuth=35)` records an explicit view. Existing
+`FigureTheme` presets and crystallographic view presets are available through the fluent API.
 
 ## Command line
 
 ```bash
 crystalfig render BaTiO3.cif -o BaTiO3.pdf --bonds crystalnn --polyhedra Ti --width 89
+crystalfig render BaTiO3.cif -o motif.png --intent coordination --region motif --centers Ti --style vesta_coordination
 crystalfig inspect BaTiO3.cif
 crystalfig doctor
 crystalfig preflight BaTiO3.pdf
@@ -179,18 +195,18 @@ rendering with `crystalfig batch figures.yaml`. Batch paths are relative to the 
 ```yaml
 figures:
   - input: structures/sample.cif
-    output: figures/sample.svg
-    backend: svg
-    style: ballstick_clean
-    width: 89
-    height: 65
-    dpi: 300
-    quality: standard
-    view_preset: auto
-    show_axes: false
-    show_cell: true
-    bonds:
-      strategy: crystalnn
+    output: figures/sample.pdf
+    style: journal_vivid
+    display:
+      intent: coordination
+      region: motif
+      neighbor_strategy: crystalnn
+    camera:
+      mode: auto
+    render:
+      backend: pyvista
+      width_mm: 89
+      dpi: 600
 ```
 
 ## Capabilities
@@ -229,6 +245,7 @@ python -m pip install -e '.[dev]'
 python -m pytest tests -q
 python -m ruff check crystalfig tests examples
 python -m build --wheel
+python examples/generate_publication_review.py  # requires render3d and Poppler
 ```
 
 For the release candidate wheel install, CLI, and export smoke checks, run

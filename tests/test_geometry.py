@@ -142,6 +142,35 @@ class TestPolyhedra:
         with pytest.raises(GeometryError):
             build_polyhedron(np.zeros(3), [[1, 0, 0], [0, 1, 0]])
 
+    def test_center_must_be_inside_ligand_hull(self):
+        vertices = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]]
+        with pytest.raises(GeometryError, match="outside"):
+            build_polyhedron(np.array([4.0, 0.0, 0.0]), vertices)
+
+    def test_duplicate_ligand_positions_are_collapsed(self):
+        vertices = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1], [1, 1, 1]]
+        polyhedron = build_polyhedron(np.zeros(3), vertices, [4, 5, 6, 7, 8])
+        assert len(polyhedron.vertex_positions) == 4
+        assert polyhedron.vertex_indices == [4, 5, 6, 7]
+
+
+class TestCoordinationAnalysis:
+    def test_shell_keeps_periodic_ligand_cartesian_position(self):
+        from crystalfig.analysis.coordination import CoordinationAnalyzer
+        from crystalfig.model.lattice import Lattice
+        from crystalfig.model.site import Site
+        from crystalfig.model.structure import CrystalStructure
+        from crystalfig.neighbors.base import NeighborBond
+
+        structure = CrystalStructure(Lattice.cubic(4.0), [Site([0.1, 0.2, 0.3], "Cu")])
+        shell = CoordinationAnalyzer().analyze(
+            structure, [0], [NeighborBond(0, 0, (1, 0, 0), 4.0)]
+        )[0]
+        assert shell.coordination_number == 1
+        assert shell.ligand_indices == (0,)
+        assert shell.ligand_image_offsets == ((1, 0, 0),)
+        assert np.allclose(shell.ligand_positions[0], [4.4, 0.8, 1.2])
+
 
 class TestMillerPlane:
     def test_intersection_with_cubic(self):

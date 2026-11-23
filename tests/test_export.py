@@ -8,13 +8,23 @@ from unittest import mock
 import pytest
 
 from crystalfig.examples.presets import rocksalt_structure
-from crystalfig.export.exporter import Exporter, RenderOptions
+from crystalfig.export.exporter import Exporter, ExportResult, RenderOptions
 from crystalfig.export.preflight import preflight_export, preflight_pdf
 from crystalfig.figure.builder import CrystalFigure
 from crystalfig.scene.camera import Camera
 from crystalfig.scene.primitives import Sphere, Text
 from crystalfig.scene.scene import Scene
 from crystalfig.styles.theme import FigureTheme
+
+
+def test_explicit_pyvista_pdf_routes_to_hybrid_export(monkeypatch, tmp_path):
+    exporter = Exporter(Scene(), FigureTheme(), Camera())
+    expected = ExportResult(str(tmp_path / "out.pdf"), "pdf", "hybrid", {})
+    monkeypatch.setattr(
+        exporter, "export_hybrid_pdf",
+        lambda path, options, background_backend: expected,
+    )
+    assert exporter.export("out.pdf", backend="pyvista") is expected
 
 
 class TestPreflight:
@@ -95,9 +105,14 @@ class TestPreflight:
 
         scene = Scene([
             Sphere(position=[0, 0, 0], radius=0.35, metadata={"site_index": 0}),
+            Sphere(position=[0.4, 0.2, 0], radius=0.07, metadata={"site_index": 1}),
             Text(
                 position=[0, 0, 0], text="editable-label", layer="annotation",
                 metadata={"kind": "site_label", "offset": (0, 0)},
+            ),
+            Text(
+                position=[0.4, 0.2, 0], text="world-marker",
+                layer="annotation", metadata={"kind": "world_label"},
             ),
         ])
         exporter = Exporter(scene, FigureTheme(), Camera())
@@ -120,3 +135,13 @@ class TestPreflight:
 
             subprocess.run(["pdftotext", str(path), str(extracted)], check=True)
             assert "editable-label" in extracted.read_text(encoding="utf-8")
+            bbox = tmp_path / "hybrid-bbox.html"
+            subprocess.run(["pdftotext", "-bbox", str(path), str(bbox)], check=True)
+            import xml.etree.ElementTree as ET
+
+            page = ET.parse(bbox).find(".//{http://www.w3.org/1999/xhtml}page")
+            world_word = next(
+                word for word in page.findall(".//{http://www.w3.org/1999/xhtml}word")
+                if word.text == "world-marker"
+            )
+            assert float(world_word.attrib["xMin"]) > float(page.attrib["width"]) * 0.55

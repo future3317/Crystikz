@@ -15,7 +15,10 @@ import yaml
 import crystalfig
 from crystalfig.export.preflight import preflight_pdf
 from crystalfig.figure.builder import plot_structure
+from crystalfig.figure.config import CameraConfig, FigureConfig, RenderConfig
 from crystalfig.io.loader import load_structure
+from crystalfig.planning.display import DisplayConfig
+from crystalfig.styles.presets import PRESETS
 
 
 def _add_render_args(parser: argparse.ArgumentParser):
@@ -25,22 +28,26 @@ def _add_render_args(parser: argparse.ArgumentParser):
     parser.add_argument("--supercell", nargs=3, type=int, default=None, help="Supercell e.g. 2 2 1")
     parser.add_argument("--bonds", default=None, help="Bond strategy: crystalnn, cutoff, covalent, ase")
     parser.add_argument("--polyhedra", default=None, help="Polyhedra center species, e.g. Ti")
-    parser.add_argument("--style", default="ballstick_clean", help="Style preset")
+    parser.add_argument("--style", default=None, help="Style preset")
     parser.add_argument("--backend", default=None, help="Renderer backend (matplotlib, svg, tikz, pyvista)")
     parser.add_argument("--dpi", type=int, default=None, help="Raster resolution")
     parser.add_argument("--height", type=float, default=None, help="Figure height in mm; default follows projected structure")
-    parser.add_argument("--quality", choices=("preview", "standard", "publication"), default="standard")
+    parser.add_argument("--quality", choices=("preview", "standard", "publication"), default=None)
+    parser.add_argument("--intent", choices=("auto", "network", "coordination", "layered", "ionic", "minimal"))
+    parser.add_argument("--region", choices=("auto", "cell", "motif", "supercell"))
+    parser.add_argument("--centers", nargs="+", default=None, help="Coordination center species or indices")
+    parser.add_argument("--neighbor-strategy", default=None, help="Coordination neighbor strategy")
     views = parser.add_mutually_exclusive_group()
     views.add_argument("--view", nargs=3, type=float, default=None, help="View direction e.g. 1 1 0")
     views.add_argument("--view-preset", choices=("auto", "isometric", "along_a", "along_b", "along_c", "layer_top", "layer_oblique", "polyhedron_focus"))
     axes = parser.add_mutually_exclusive_group()
     axes.add_argument("--show-axes", dest="show_axes", action="store_true")
     axes.add_argument("--no-axes", dest="show_axes", action="store_false")
-    parser.set_defaults(show_axes=False)
+    parser.set_defaults(show_axes=None)
     cell = parser.add_mutually_exclusive_group()
     cell.add_argument("--show-cell", dest="show_cell", action="store_true")
     cell.add_argument("--no-cell", dest="show_cell", action="store_false")
-    parser.set_defaults(show_cell=True)
+    parser.set_defaults(show_cell=None)
     parser.add_argument("--transparent", action="store_true", help="Transparent background")
     parser.add_argument("--width", type=float, default=None, help="Figure width in mm")
     parser.add_argument("--latex", action="store_true", help="Compile TikZ via LaTeX to PDF")
@@ -67,11 +74,122 @@ def _configure_figure(config: dict, base_dir: Path):
     input_path = Path(config["input"])
     if not input_path.is_absolute():
         input_path = base_dir / input_path
+    selected_style = config.get("style")
+    use_figure_config = (
+        any(key in config for key in ("display", "camera", "render"))
+        or config.get("intent") is not None
+        or config.get("region") is not None
+        or selected_style in PRESETS
+    )
+    if use_figure_config:
+        figure = plot_structure(input_path)
+
+        def resolve_strategy(value):
+            if isinstance(value, dict):
+                return figure._make_bond_strategy(
+                    value.get("strategy", "crystalnn"),
+                    cutoff=value.get("cutoff", 2.5),
+                    pair_cutoffs=value.get("pair_cutoffs"),
+                )
+            return value
+
+        def resolve_polyhedron_strategy(value):
+            if isinstance(value, str):
+                return figure._make_bond_strategy(value)
+            return resolve_strategy(value)
+
+        display_values = dict(config.get("display") or {})
+        if isinstance(display_values.get("centers"), list):
+            display_values["centers"] = tuple(display_values["centers"])
+        if isinstance(display_values.get("region"), list):
+            display_values["region"] = tuple(display_values["region"])
+        if config.get("intent") is not None:
+            display_values["intent"] = config["intent"]
+        if config.get("region") is not None:
+            display_values["region"] = config["region"]
+        if config.get("centers") is not None:
+            display_values["centers"] = tuple(config["centers"])
+        if config.get("neighbor_strategy") is not None:
+            display_values["neighbor_strategy"] = config["neighbor_strategy"]
+        if config.get("bonds") is not None:
+            display_values["neighbor_strategy"] = resolve_strategy(config["bonds"])
+        polyhedra = config.get("polyhedra")
+        polyhedron_centers = None
+        polyhedron_strategy = None
+        if polyhedra is not None:
+            if isinstance(polyhedra, dict):
+                polyhedron_centers = polyhedra.get("centers")
+                if polyhedra.get("strategy") is not None:
+                    poly_strategy = polyhedra["strategy"]
+                    if isinstance(poly_strategy, str) and (
+                        "cutoff" in polyhedra or "pair_cutoffs" in polyhedra
+                    ):
+                        poly_strategy = {
+                            "strategy": poly_strategy,
+                            "cutoff": polyhedra.get("cutoff", 2.5),
+                            "pair_cutoffs": polyhedra.get("pair_cutoffs"),
+                        }
+                    polyhedron_strategy = resolve_polyhedron_strategy(poly_strategy)
+            else:
+                polyhedron_centers = polyhedra
+            if polyhedron_centers is not None:
+                display_values["centers"] = (
+                    tuple(polyhedron_centers)
+                    if isinstance(polyhedron_centers, list)
+                    else (polyhedron_centers,) if isinstance(polyhedron_centers, str)
+                    else polyhedron_centers
+                )
+        if config.get("show_cell") is not None:
+            display_values["show_unit_cell"] = config["show_cell"]
+        if config.get("supercell") is not None and "region" not in display_values:
+            display_values["region"] = tuple(config["supercell"])
+        if "region" in display_values and display_values["region"] == "supercell":
+            if not config.get("supercell"):
+                raise ValueError("--region supercell requires --supercell REPEAT REPEAT REPEAT")
+            display_values["region"] = tuple(config["supercell"])
+        camera_values = dict(config.get("camera") or {})
+        render_values = dict(config.get("render") or {})
+        if config.get("backend") is not None:
+            render_values["backend"] = config["backend"]
+        if config.get("quality") is not None:
+            render_values["quality"] = config["quality"]
+        if config.get("dpi") is not None:
+            render_values["dpi"] = config["dpi"]
+        if config.get("width") is not None:
+            render_values["width_mm"] = config["width"]
+        if config.get("height") is not None:
+            render_values["height_mm"] = config["height"]
+        if config.get("transparent"):
+            render_values["transparent"] = True
+        figure.configure(FigureConfig(
+            display=DisplayConfig(**display_values),
+            style=config.get("style") or "journal_clean",
+            camera=CameraConfig(**camera_values),
+            render=RenderConfig(**render_values),
+        ))
+        if config.get("show_axes") is not None:
+            figure.show_axes(config["show_axes"])
+        if polyhedron_centers is not None:
+            planned_centers = list(figure._display_plan.selected_centers)
+            centers = planned_centers or (
+                [polyhedron_centers] if isinstance(polyhedron_centers, str) else polyhedron_centers
+            )
+            if not figure._scene_options.polyhedra_specs:
+                figure.add_polyhedra(centers=centers, strategy=polyhedron_strategy)
+            elif polyhedron_strategy is not None:
+                for spec in figure._scene_options.polyhedra_specs:
+                    spec.strategy = polyhedron_strategy
+        if config.get("view_preset"):
+            figure.view_preset(config["view_preset"])
+        elif config.get("view"):
+            figure.view(config["view"])
+        return figure
+
     style = config.get("style") or "ballstick_clean"
     figure = plot_structure(input_path).style(style)
     figure.quality(config.get("quality") or "standard")
-    figure.show_unit_cell(config.get("show_cell", True))
-    figure.show_axes(config.get("show_axes", False))
+    figure.show_unit_cell(True if config.get("show_cell") is None else config["show_cell"])
+    figure.show_axes(False if config.get("show_axes") is None else config["show_axes"])
     if config.get("supercell"):
         figure.supercell(tuple(config["supercell"]))
     if config.get("view_preset"):

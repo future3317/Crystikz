@@ -17,20 +17,24 @@ python -m build --no-isolation --wheel
 python scripts/check_release.py
 python examples/generate_gallery.py --baseline-only
 python examples/generate_gallery.py --showcase-only
+python examples/generate_publication_review.py
 ```
 
 `check_release.py` builds the wheel, installs it and its declared dependencies into a temporary
 virtual environment, checks the installed version and CLI, renders a CIF through the installed
 CLI, and checks PDF/SVG/PNG export metadata. PyVista's real renderer is validated separately by
-the Linux visual-gallery job using the official PyVista headless-display action.
+the Linux visual-gallery job using the official PyVista headless-display action. The publication
+benchmark also requires Poppler to inspect PDF dimensions, fonts, and image objects.
 
 ## CI acceptance
 
 The `CI` workflow must pass all four supported Python test jobs, the wheel-install smoke job, and
 the Linux `visual-gallery` job. The visual artifact must include the baseline diagnostic sheet,
-the eleven-structure publication contact sheet and metrics, and per-structure PNG/SVG/PDF outputs.
-Keep the job URL with the release notes. Never describe a local result as GitHub Actions or PyPI
-verification.
+the diagnostic gallery, and the nine-structure publication benchmark at 89 mm and 600 DPI. Compare
+the seven repeated structures to the frozen v4 renders, check the two sourced Mat2Seq structures,
+and inspect the hybrid PDF at its intended width. SSIM flags changed images for review. Verify
+periodic neighbors, coordination geometry, and camera composition before accepting a visual change.
+Keep the job URL with the release notes.
 
 ## Version and uploads
 

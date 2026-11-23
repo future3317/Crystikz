@@ -6,8 +6,10 @@ from pathlib import Path
 
 from crystalfig.examples.presets import diamond_structure, mos2_structure, perovskite_structure
 from crystalfig.figure.builder import CrystalFigure
+from crystalfig.figure.config import CameraConfig, FigureConfig, RenderConfig
 from crystalfig.io.loader import load_structure
 from crystalfig.neighbors.strategies import CrystalNNStrategy
+from crystalfig.planning.display import DisplayConfig
 
 DATA = Path(__file__).parent.parent / "examples" / "data" / "visual_regression"
 
@@ -46,7 +48,8 @@ def test_auto_planner_covers_representative_local_environments():
             for key in required
         }
         assert len(set(required_colors.values())) == len(required)
-        assert len(displayed) <= max(2, len(environments))
+        assert len(displayed) >= len(required)
+        assert len(displayed) <= figure._display_budget["max_polyhedra"]
         for poly in displayed:
             identities = [
                 (item["site_index"], tuple(item["image_offset"]))
@@ -100,10 +103,13 @@ def test_mos2_neighbor_graph_does_not_bridge_adjacent_trilayers():
 
 
 def test_automatic_hybrid_view_preserves_network_bonds_and_coordination():
-    figure = CrystalFigure(perovskite_structure()).publication(intent="auto")
+    figure = CrystalFigure(perovskite_structure()).configure(FigureConfig(style="journal_vivid"))
     scene = figure.build_scene()
     assert figure._display_plan.intent == "hybrid"
     assert scene.get_group("polyhedra").primitives
+    assert scene.get_group("bonds").primitives
+    score = scene.metadata["camera_score_components"]
+    assert score["center_ligand_collapse_fraction"] < 0.1
 
 
 def test_coordination_crop_hides_distant_cell_frame_unless_requested():
@@ -120,3 +126,38 @@ def test_silicon_camera_avoids_projected_bond_crossings():
     figure = CrystalFigure(diamond_structure(conventional=True)).publication(intent="auto")
     scene = figure.build_scene()
     assert scene.metadata["camera_score_components"]["projected_bond_crossing_fraction"] < 0.1
+    assert 0 <= scene.metadata["camera_score_components"]["atom_visibility_fraction"] <= 1
+
+
+def test_configured_coordination_plan_keeps_connected_bonds_and_camera_settings():
+    figure = CrystalFigure(perovskite_structure()).configure(FigureConfig(
+        display=DisplayConfig(intent="coordination", region="cell"),
+        camera=CameraConfig(mode="fixed", elevation=31, azimuth=47, roll=12),
+        render=RenderConfig(backend="matplotlib", quality="preview"),
+    ))
+    scene = figure.build_scene()
+    assert scene.metadata["selected_intent"] == "coordination"
+    assert scene.get_group("bonds").primitives
+    assert figure.camera.elevation == 31
+    assert figure.camera.azimuth == 47
+    assert figure.camera.roll == 12
+    assert figure.theme.render_quality == "preview"
+    assert scene.metadata["coordination_shell_policy"] == "complete"
+    assert scene.metadata["num_real_polyhedra"] > 0
+
+
+def test_configured_network_motif_expands_beyond_unit_cell():
+    config = FigureConfig(
+        display=DisplayConfig(intent="network", region="motif"),
+        style="vesta_ballstick",
+        render=RenderConfig(backend="matplotlib", quality="preview"),
+    )
+    motif = CrystalFigure(perovskite_structure()).configure(config)
+    cell_config = FigureConfig(
+        display=DisplayConfig(intent="network", region="cell"),
+        style="vesta_ballstick",
+        render=RenderConfig(backend="matplotlib", quality="preview"),
+    )
+    cell = CrystalFigure(perovskite_structure()).configure(cell_config)
+    assert motif._display_plan.repeat != (1, 1, 1)
+    assert cell._display_plan.repeat == (1, 1, 1)

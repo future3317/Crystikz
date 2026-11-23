@@ -47,6 +47,7 @@ class PyVistaRenderer:
 
     def __init__(self, camera=None):
         self.camera = camera
+        self.last_depth_peeling_used = False
 
     def render(self, scene: Scene, theme: FigureTheme, options: RenderOptions) -> str:
         """Render a PNG and return it as a data URI."""
@@ -68,6 +69,7 @@ class PyVistaRenderer:
         fmt: str | None = None,
     ) -> None:
         """Export the scene to a high-resolution PNG file."""
+        self.last_depth_peeling_used = False
         output_format = (fmt or os.path.splitext(os.fspath(path))[1].lstrip(".")).lower()
         if output_format != "png":
             raise RenderError(f"PyVistaRenderer supports PNG export only; received {output_format!r}.")
@@ -83,41 +85,60 @@ class PyVistaRenderer:
         quality = {
             "preview": {"sphere": 12, "tube": 10, "aa": "fxaa", "ssao": False, "kernel": 0, "max_pixels": 4_000_000},
             "standard": {"sphere": 24, "tube": 20, "aa": "ssaa", "ssao": True, "kernel": 64, "max_pixels": 16_000_000},
-            "publication": {"sphere": 48, "tube": 32, "aa": "ssaa", "ssao": True, "kernel": 128, "max_pixels": 36_000_000},
+            "publication": {"sphere": 64, "tube": 40, "aa": "ssaa", "ssao": True, "kernel": 128, "max_pixels": 36_000_000},
         }.get(theme.render_quality)
         if quality is None:
             raise RenderError("render_quality must be preview, standard, or publication.")
+        figure_style = getattr(theme, "figure_style", None)
+        face_opacity = figure_style.polyhedra.face_opacity if figure_style is not None else theme.polyhedron_face_opacity
+        back_opacity = figure_style.polyhedra.back_face_opacity if figure_style is not None else theme.polyhedron_back_opacity
+        peeling_requested = any(
+            isinstance(primitive, Polyhedron)
+            and primitive.faces
+            and primitive.opacity * min(face_opacity, back_opacity) < 1.0
+            for primitive in scene.all_primitives()
+        )
         window_size = self._window_size(options, scene, camera, quality["max_pixels"])
         pv = _pyvista()
         background, transparent = self._background(theme, options)
+        ssao_enabled = quality["ssao"] and not peeling_requested and (
+            figure_style is None or figure_style.lighting.ssao
+        )
 
         plotter = pv.Plotter(off_screen=True, window_size=window_size)
         try:
             plotter.set_background(background)
-            plotter.enable_lightkit()
             self._add_scene(plotter, scene, theme, pv, window_size, options.dpi)
             self._set_camera(plotter, scene, window_size[0] / window_size[1])
+            self._add_lighting(plotter, theme, scene, pv)
+            if peeling_requested:
+                try:
+                    plotter.enable_depth_peeling(number_of_peels=16, occlusion_ratio=0.0)
+                except (AttributeError, RuntimeError) as exc:
+                    warnings.warn(f"VTK depth peeling unavailable: {exc}", RuntimeWarning, stacklevel=2)
             try:
-                plotter.enable_anti_aliasing(quality["aa"])
+                plotter.enable_anti_aliasing("fxaa" if peeling_requested else quality["aa"])
             except (AttributeError, RuntimeError) as exc:
                 warnings.warn(f"VTK anti-aliasing unavailable: {exc}", RuntimeWarning, stacklevel=2)
-            if quality["ssao"]:
+            if ssao_enabled:
                 try:
                     plotter.enable_ssao(radius=0.5, bias=0.005, kernel_size=quality["kernel"])
                 except (AttributeError, RuntimeError) as exc:
                     warnings.warn(f"VTK SSAO unavailable: {exc}", RuntimeWarning, stacklevel=2)
-            if any(isinstance(p, Polyhedron) and p.opacity < 1 for p in scene.all_primitives()):
-                try:
-                    plotter.enable_depth_peeling(number_of_peels=8, occlusion_ratio=0.0)
-                except (AttributeError, RuntimeError) as exc:
-                    warnings.warn(f"VTK depth peeling unavailable: {exc}", RuntimeWarning, stacklevel=2)
-                if not plotter.renderer.GetUseDepthPeeling():
+            plotter.screenshot(os.fspath(path), transparent_background=transparent, window_size=window_size)
+            if peeling_requested:
+                renderer = plotter.renderer
+                self.last_depth_peeling_used = (
+                    bool(renderer.GetLastRenderingUsedDepthPeeling())
+                    if hasattr(renderer, "GetLastRenderingUsedDepthPeeling")
+                    else False
+                )
+                if not self.last_depth_peeling_used:
                     warnings.warn(
-                        "The active VTK render window does not support depth peeling; transparent polyhedra may have approximate occlusion.",
+                        "VTK did not use depth peeling for this render; transparent polyhedra may have approximate occlusion.",
                         RuntimeWarning,
                         stacklevel=2,
                     )
-            plotter.screenshot(os.fspath(path), transparent_background=transparent, window_size=window_size)
             with Image.open(path) as image:
                 image.save(path, dpi=(options.dpi, options.dpi))
         finally:
@@ -157,14 +178,45 @@ class PyVistaRenderer:
         transparent = options.transparent or background == "transparent"
         return ("white" if transparent else background), transparent
 
+    def _add_lighting(self, plotter, theme: FigureTheme, scene: Scene, pv) -> None:
+        """Add key, fill, and rim lights in the current camera coordinate frame."""
+        style = getattr(theme, "figure_style", None)
+        if style is None:
+            plotter.enable_lightkit()
+            return
+        intensities = (style.lighting.key_intensity, style.lighting.fill_intensity, style.lighting.rim_intensity)
+        camera = self.camera
+        plotter.renderer.RemoveAllLights()
+        target = np.asarray(camera.target, dtype=float)
+        rotation = camera.rotation_matrix()
+        sphere = camera.scene_bounding_sphere(scene)
+        radius = sphere[1] if sphere is not None else 1.0
+        distance = max(camera.distance, 2.0 * radius)
+        offset = max(1.5 * radius, 1.0)
+        positions = (
+            target + rotation[2] * distance + rotation[0] * -offset + rotation[1] * offset,
+            target + rotation[2] * distance + rotation[0] * offset,
+            target - rotation[2] * offset + rotation[0] * offset + rotation[1] * offset,
+        )
+        for position, intensity in zip(positions, intensities, strict=True):
+            light = pv.Light(
+                position=position,
+                focal_point=target,
+                color="white",
+                intensity=float(intensity),
+                positional=True,
+            )
+            plotter.add_light(light)
+
     def _add_scene(self, plotter, scene: Scene, theme: FigureTheme, pv, window_size, dpi) -> None:
         quality = {
             "preview": {"sphere": 12, "tube": 10},
             "standard": {"sphere": 24, "tube": 20},
-            "publication": {"sphere": 48, "tube": 32},
+            "publication": {"sphere": 64, "tube": 40},
         }.get(theme.render_quality)
         if quality is None:
             raise RenderError("render_quality must be preview, standard, or publication.")
+        figure_style = getattr(theme, "figure_style", None)
         primitives = sorted(scene.all_primitives(), key=layer_priority)
         atom_radii = {}
         atom_colors = {}
@@ -177,8 +229,18 @@ class PyVistaRenderer:
                     atom_radii[(site, image)] = primitive.radius
                     atom_colors[(site, image)] = primitive.color
 
+        requested_sphere_resolution = (
+            min(quality["sphere"], figure_style.atoms.sphere_resolution)
+            if figure_style is not None
+            else quality["sphere"]
+        )
+        sphere_count = sum(isinstance(primitive, Sphere) for primitive in primitives)
+        sphere_resolution = min(
+            requested_sphere_resolution,
+            max(8, int(math.sqrt(2_500_000 / max(2 * sphere_count, 1)))),
+        )
         source_sphere = pv.Sphere(
-            radius=1.0, theta_resolution=quality["sphere"], phi_resolution=quality["sphere"]
+            radius=1.0, theta_resolution=sphere_resolution, phi_resolution=sphere_resolution
         )
         layer_groups = {}
         legend_items = []
@@ -195,12 +257,22 @@ class PyVistaRenderer:
                 if isinstance(primitive, Sphere):
                     sphere_batches[(primitive.color, primitive.opacity, primitive.render_style)].append(primitive)
                 elif isinstance(primitive, Bond):
-                    start, end = self._clip_bond(primitive, atom_radii)
-                    color_i = atom_colors.get((primitive.site_i, (0, 0, 0)), primitive.color)
-                    color_j = atom_colors.get((primitive.site_j, tuple(primitive.jimage)), primitive.color)
-                    if theme.bond_color_mode == "uniform":
-                        segments = [(0.0, 1.0, primitive.color)]
-                    elif theme.bond_color_mode == "split_soft":
+                    clip_to_atoms = figure_style.bonds.clip_to_atoms if figure_style is not None else True
+                    start, end = (
+                        self._clip_bond(primitive, atom_radii)
+                        if clip_to_atoms
+                        else (np.asarray(primitive.start, dtype=float), np.asarray(primitive.end, dtype=float))
+                    )
+                    metadata = primitive.metadata or {}
+                    start_image = tuple(metadata.get("start_image", (0, 0, 0)))
+                    end_image = tuple(metadata.get("end_image", primitive.jimage))
+                    color_i = atom_colors.get((primitive.site_i, start_image), primitive.color)
+                    color_j = atom_colors.get((primitive.site_j, end_image), primitive.color)
+                    color_mode = figure_style.bonds.color_mode if figure_style is not None else theme.bond_color_mode
+                    if color_mode == "uniform":
+                        color = figure_style.bonds.color if figure_style is not None else theme.bond_color
+                        segments = [(0.0, 1.0, color)]
+                    elif color_mode == "split_soft":
                         from matplotlib.colors import to_hex, to_rgb
 
                         middle = tuple(
@@ -212,8 +284,15 @@ class PyVistaRenderer:
                             (0.45, 0.55, to_hex(middle)),
                             (0.55, 1.0, color_j),
                         ]
-                    else:
+                    elif color_mode in {"element_split", "split"}:
                         segments = [(0.0, 0.5, color_i), (0.5, 1.0, color_j)]
+                    elif color_mode == "gradient":
+                        bond_batches[("gradient", primitive.radius, primitive.opacity)].append(
+                            (start, end, color_i, color_j)
+                        )
+                        continue
+                    else:
+                        raise RenderError(f"Unknown bond color mode {color_mode!r}.")
                     vector = end - start
                     for lower, upper, color in segments:
                         bond_batches[(color, primitive.radius, primitive.opacity)].append(
@@ -224,14 +303,32 @@ class PyVistaRenderer:
                 cloud = pv.PolyData(points)
                 cloud["radius"] = np.asarray([sphere.radius for sphere in spheres])
                 glyphs = cloud.glyph(geom=source_sphere, scale="radius", orient=False)
-                materials = {
-                    "matte": {"pbr": True, "roughness": 0.72, "metallic": 0.0},
-                    "glossy": {"pbr": True, "roughness": 0.32, "metallic": 0.0},
-                    "flat": {"lighting": False},
-                }
-                if theme.atom_material not in materials:
+                material = figure_style.atoms.material if figure_style is not None else theme.atom_material
+                if figure_style is not None:
+                    materials = {
+                        "ceramic": {
+                            "pbr": True,
+                            "roughness": figure_style.atoms.roughness,
+                            "metallic": 0.0,
+                        },
+                        "polished": {
+                            "pbr": True,
+                            "roughness": min(figure_style.atoms.roughness, 0.18),
+                            "metallic": 0.0,
+                        },
+                        "matte": {"pbr": True, "roughness": 0.72, "metallic": 0.0},
+                        "glossy": {"pbr": True, "roughness": 0.32, "metallic": 0.0},
+                        "flat": {"lighting": False},
+                    }
+                else:
+                    materials = {
+                        "matte": {"pbr": True, "roughness": 0.72, "metallic": 0.0},
+                        "glossy": {"pbr": True, "roughness": 0.32, "metallic": 0.0},
+                        "flat": {"lighting": False},
+                    }
+                if material not in materials:
                     raise RenderError(
-                        f"Unknown atom material {theme.atom_material!r}; use matte, glossy, or flat."
+                        f"Unknown atom material {material!r}; use ceramic, polished, matte, glossy, or flat."
                     )
                 plotter.add_mesh(
                     glyphs,
@@ -242,21 +339,48 @@ class PyVistaRenderer:
                     show_edges=(style == "wireframe"),
                     ambient=0.18,
                     diffuse=0.82,
-                    specular=0.16 if theme.atom_material == "glossy" else 0.08,
+                    specular=(
+                        figure_style.atoms.specular
+                        if figure_style is not None
+                        else (0.16 if material == "glossy" else 0.08)
+                    ),
                     specular_power=28,
-                    **materials[theme.atom_material],
+                    **materials[material],
                 )
 
             for (color, radius, opacity), segments in bond_batches.items():
-                points = np.asarray([point for segment in segments for point in segment])
+                gradient = color == "gradient"
+                points = np.asarray([
+                    point
+                    for segment in segments
+                    for point in (segment[:2] if gradient else segment)
+                ])
                 line_cells = np.asarray(
                     [value for index in range(len(segments)) for value in (2, 2 * index, 2 * index + 1)],
                     dtype=np.int64,
                 )
                 lines = pv.PolyData(points)
                 lines.lines = line_cells
+                if gradient:
+                    from matplotlib.colors import to_rgb
+
+                    lines.point_data["bond_rgb"] = np.asarray([
+                        [round(channel * 255) for channel in to_rgb(endpoint_color)]
+                        for segment in segments
+                        for endpoint_color in segment[2:]
+                    ], dtype=np.uint8)
                 tubes = lines.tube(radius=radius, n_sides=quality["tube"], capping=True)
-                plotter.add_mesh(tubes, color=color, opacity=opacity, smooth_shading=True)
+                if gradient:
+                    plotter.add_mesh(
+                        tubes,
+                        scalars="bond_rgb",
+                        rgb=True,
+                        opacity=opacity,
+                        smooth_shading=True,
+                        show_scalar_bar=False,
+                    )
+                else:
+                    plotter.add_mesh(tubes, color=color, opacity=opacity, smooth_shading=True)
 
             for primitive in layer_primitives:
                 if isinstance(primitive, (Sphere, Bond)):
@@ -268,7 +392,7 @@ class PyVistaRenderer:
                         quality["tube"],
                     )
                 elif isinstance(primitive, (CellEdge, Line)):
-                    self._add_line(plotter, pv.Line(primitive.start, primitive.end), primitive)
+                    self._add_line(plotter, pv.Line(primitive.start, primitive.end), primitive, dpi)
                 elif isinstance(primitive, Polyline):
                     points = primitive.points
                     if primitive.closed and len(points) > 2:
@@ -276,7 +400,7 @@ class PyVistaRenderer:
                     if len(points) > 1:
                         mesh = pv.PolyData(np.asarray(points))
                         mesh.lines = np.asarray([len(points), *range(len(points))], dtype=np.int64)
-                        self._add_line(plotter, mesh, primitive)
+                        self._add_line(plotter, mesh, primitive, dpi)
                 elif isinstance(primitive, Polygon) and len(primitive.points) >= 3:
                     face = np.asarray([len(primitive.points), *range(len(primitive.points))], dtype=np.int64)
                     mesh = pv.PolyData(np.asarray(primitive.points), face)
@@ -286,59 +410,47 @@ class PyVistaRenderer:
                         opacity=primitive.opacity,
                         show_edges=primitive.edge_color is not None,
                         edge_color=primitive.edge_color or primitive.color,
-                        line_width=primitive.linewidth,
+                        line_width=max(1.0, primitive.linewidth * dpi / 72),
                     )
                 elif isinstance(primitive, Polyhedron) and primitive.faces:
                     packed_faces = np.asarray(
                         [item for face in primitive.faces for item in (len(face), *face)], dtype=np.int64
                     )
                     mesh = pv.PolyData(np.asarray(primitive.vertices), packed_faces)
+                    from matplotlib.colors import to_rgba
+
+                    style = getattr(theme, "figure_style", None)
+                    face_opacity = style.polyhedra.face_opacity if style is not None else theme.polyhedron_face_opacity
+                    back_opacity = style.polyhedra.back_face_opacity if style is not None else theme.polyhedron_back_opacity
+                    camera_vertices = np.asarray(primitive.vertices) @ self.camera.rotation_matrix().T
                     face_roles = primitive.face_metadata
-                    if face_roles and any(face.get("kind") == "cut_face" for face in face_roles):
-                        mesh.cell_data["face_role"] = np.asarray(
-                            [1 if face.get("kind") == "cut_face" else 0 for face in face_roles],
-                            dtype=np.uint8,
+                    rgba = []
+                    for index, face in enumerate(primitive.faces):
+                        points = camera_vertices[np.asarray(face, dtype=int)]
+                        normal = np.zeros(3)
+                        for point_index in range(len(points)):
+                            normal += np.cross(points[point_index], points[(point_index + 1) % len(points)])
+                        front = normal[2] >= 0
+                        face_role = face_roles[index] if index < len(face_roles) else {}
+                        color = (
+                            "#cbd5df"
+                            if face_role.get("kind") == "cut_face"
+                            else primitive.fill_color or primitive.color
                         )
-                        plotter.add_mesh(
-                            mesh,
-                            scalars="face_role",
-                            cmap=[primitive.fill_color or primitive.color, "#cbd5df"],
-                            clim=(0, 1),
-                            preference="cell",
-                            opacity=primitive.opacity,
-                            smooth_shading=False,
-                            show_edges=False,
-                            show_scalar_bar=False,
-                        )
-                    else:
-                        camera_vertices = np.asarray(primitive.vertices) @ self.camera.rotation_matrix().T
-                        front_faces = []
-                        back_faces = []
-                        for face in primitive.faces:
-                            points = camera_vertices[np.asarray(face, dtype=int)]
-                            normal = np.zeros(3)
-                            for index in range(len(points)):
-                                normal += np.cross(points[index], points[(index + 1) % len(points)])
-                            (front_faces if normal[2] >= 0 else back_faces).append(face)
-                        for faces, opacity in (
-                            (back_faces, primitive.opacity * theme.polyhedron_back_opacity),
-                            (front_faces, primitive.opacity * theme.polyhedron_face_opacity),
-                        ):
-                            if not faces:
-                                continue
-                            packed = np.asarray(
-                                [item for face in faces for item in (len(face), *face)],
-                                dtype=np.int64,
-                            )
-                            face_mesh = pv.PolyData(np.asarray(primitive.vertices), packed)
-                            plotter.add_mesh(
-                                face_mesh,
-                                color=primitive.fill_color or primitive.color,
-                                opacity=opacity,
-                                smooth_shading=False,
-                                show_edges=False,
-                            )
-                    edge_mode = primitive.edge_mode or theme.polyhedron_edge_mode
+                        alpha = primitive.opacity * (face_opacity if front else back_opacity)
+                        rgba.append([round(255 * value) for value in to_rgba(color)[:3]] + [round(255 * alpha)])
+                    mesh.cell_data["face_rgba"] = np.asarray(rgba, dtype=np.uint8)
+                    plotter.add_mesh(
+                        mesh,
+                        scalars="face_rgba",
+                        rgba=True,
+                        smooth_shading=False,
+                        show_edges=False,
+                        show_scalar_bar=False,
+                    )
+                    edge_mode = (
+                        style.polyhedra.edge_mode if style is not None else None
+                    ) or primitive.edge_mode or theme.polyhedron_edge_mode
                     edges = visible_polyhedron_edges(
                         primitive.vertices, primitive.faces, self.camera.rotation_matrix(), edge_mode
                     )
@@ -346,7 +458,9 @@ class PyVistaRenderer:
                     for start_index, end_index, front in edges:
                         if not front and back_mode == "hide":
                             continue
-                        opacity = theme.polyhedron_edge_opacity * (1.0 if front else 0.35)
+                        edge_opacity = style.polyhedra.edge_opacity if style is not None else theme.polyhedron_edge_opacity
+                        edge_width = style.polyhedra.edge_width if style is not None else theme.polyhedron_edge_width
+                        opacity = edge_opacity * (1.0 if front else 0.35)
                         start = np.asarray(primitive.vertices[start_index], dtype=float)
                         end = np.asarray(primitive.vertices[end_index], dtype=float)
                         if not front and back_mode == "dashed":
@@ -356,12 +470,12 @@ class PyVistaRenderer:
                                 edge = pv.Line(start + fraction * vector, start + dash_end * vector)
                                 self._add_styled_line(
                                     plotter, edge, primitive.edge_color or primitive.color,
-                                    opacity, primitive.edge_width,
+                                    opacity, edge_width, dpi,
                                 )
                         else:
                             self._add_styled_line(
                                 plotter, pv.Line(start, end), primitive.edge_color or primitive.color,
-                                opacity, primitive.edge_width,
+                                opacity, edge_width, dpi,
                             )
                 elif isinstance(primitive, (Arrow, Axis)):
                     self._add_arrow(plotter, pv, primitive, quality["tube"])
@@ -427,18 +541,18 @@ class PyVistaRenderer:
         plotter.add_mesh(mesh, color=color, opacity=opacity, smooth_shading=True)
 
     @staticmethod
-    def _add_line(plotter, mesh, primitive) -> None:
+    def _add_line(plotter, mesh, primitive, dpi) -> None:
         PyVistaRenderer._add_styled_line(
-            plotter, mesh, primitive.color, primitive.opacity, primitive.linewidth
+            plotter, mesh, primitive.color, primitive.opacity, primitive.linewidth, dpi
         )
 
     @staticmethod
-    def _add_styled_line(plotter, mesh, color, opacity, linewidth) -> None:
+    def _add_styled_line(plotter, mesh, color, opacity, linewidth, dpi) -> None:
         plotter.add_mesh(
             mesh,
             color=color,
             opacity=opacity,
-            line_width=max(1.0, linewidth),
+            line_width=max(1.0, linewidth * dpi / 72),
             render_lines_as_tubes=True,
         )
 
@@ -484,8 +598,10 @@ class PyVistaRenderer:
         if length <= 1e-12:
             return start, end
         direction = vector / length
-        start_radius = atom_radii.get((getattr(bond, "site_i", -1), (0, 0, 0)), 0.0)
-        end_image = tuple(getattr(bond, "jimage", (0, 0, 0)))
+        metadata = getattr(bond, "metadata", {}) or {}
+        start_image = tuple(metadata.get("start_image", (0, 0, 0)))
+        end_image = tuple(metadata.get("end_image", getattr(bond, "jimage", (0, 0, 0))))
+        start_radius = atom_radii.get((getattr(bond, "site_i", -1), start_image), 0.0)
         end_radius = atom_radii.get((getattr(bond, "site_j", -1), end_image), 0.0)
         if length > start_radius + end_radius:
             start += direction * start_radius

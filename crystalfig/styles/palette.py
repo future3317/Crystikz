@@ -264,18 +264,27 @@ MONOCHROME = ColorPalette(
     },
 )
 
-_JMOL_OVERRIDES = {
-    "O": (255, 13, 13), "N": (48, 80, 248), "C": (128, 128, 128),
-    "H": (255, 255, 255), "S": (255, 255, 48), "P": (255, 128, 0),
-    "Fe": (224, 102, 51), "Cu": (200, 128, 51), "Zn": (125, 128, 176),
-    "Ti": (191, 194, 199), "Ba": (0, 201, 0), "Sr": (0, 255, 0),
-    "Si": (240, 200, 160),
+JMOL = ColorPalette(name="jmol", element_colors=_JMOL_BASE.copy(), accents=MUTED.accents.copy())
+_VESTA_CLASSIC_BASE = {
+    **_JMOL_BASE,
+    "H": (235, 235, 235), "C": (70, 70, 70), "N": (40, 80, 210), "O": (220, 35, 35),
+    "S": (235, 195, 35), "P": (230, 115, 20), "Fe": (190, 80, 45), "Ti": (130, 140, 155),
+    "Ba": (45, 170, 65), "Mo": (70, 145, 165), "W": (45, 120, 190),
 }
-
-JMOL = ColorPalette(
-    name="jmol",
-    element_colors=_JMOL_OVERRIDES,
-    accents=MUTED.accents.copy(),
+VESTA_CLASSIC = ColorPalette(
+    name="vesta_classic", element_colors=_VESTA_CLASSIC_BASE, accents=PUBLICATION.accents.copy()
+)
+COLORBLIND_SAFE = ColorPalette(
+    name="colorblind_safe",
+    element_colors={
+        **PUBLICATION.element_colors,
+        "C": (80, 80, 80), "N": (0, 114, 178), "O": (213, 94, 0),
+        "F": (0, 158, 115), "P": (230, 159, 0), "S": (240, 228, 66),
+        "Cl": (86, 180, 233), "Fe": (204, 121, 167), "Co": (0, 114, 178),
+        "Ni": (0, 158, 115), "Cu": (213, 94, 0), "Zn": (86, 180, 233),
+        "Ti": (117, 112, 179), "Ba": (0, 158, 115),
+    },
+    accents=OKABE_ITO.accents.copy(),
 )
 
 _PALETTES: dict[str, ColorPalette] = {
@@ -284,7 +293,8 @@ _PALETTES: dict[str, ColorPalette] = {
     "publication": PUBLICATION,
     "journal_clean": PUBLICATION,
     "okabe_ito": OKABE_ITO,
-    "colorblind_safe": OKABE_ITO,
+    "colorblind_safe": COLORBLIND_SAFE,
+    "vesta_classic": VESTA_CLASSIC,
     "monochrome": MONOCHROME,
     "jmol": JMOL,
 }

@@ -162,30 +162,44 @@ def build_polyhedron(
     Uses scipy.spatial.ConvexHull to obtain faces.  Faces are triangulated
     and oriented to point outward from the center.
     """
+    center = np.asarray(center, dtype=float)
     vertices = [np.asarray(v, dtype=float) for v in vertices]
+    if any(vertex.shape != (3,) or not np.all(np.isfinite(vertex)) for vertex in vertices):
+        raise GeometryError("Polyhedron vertices must be finite 3D coordinates.")
+    if center.shape != (3,) or not np.all(np.isfinite(center)):
+        raise GeometryError("Polyhedron center must be a finite 3D coordinate.")
+    # Collapse coincident ligand coordinates while keeping the first ligand's
+    # metadata index, so the mesh and its vertex identities remain aligned.
+    unique_vertices = []
+    unique_indices = []
+    seen = set()
+    for index, vertex in enumerate(vertices):
+        key = tuple(np.round(vertex, 8))
+        if key not in seen:
+            seen.add(key)
+            unique_vertices.append(vertex)
+            if vertex_indices is not None:
+                unique_indices.append(vertex_indices[index])
+    vertices = unique_vertices
     if len(vertices) < 4:
-        raise GeometryError("Need at least 4 vertices to build a polyhedron.")
+        raise GeometryError("Need at least 4 unique ligand vertices to build a polyhedron.")
+    if np.linalg.matrix_rank(np.asarray(vertices) - center) < 3:
+        raise GeometryError("Degenerate coordination geometry.")
 
-    points = np.array([center] + vertices)
     try:
-        hull = ConvexHull(points)
+        hull = ConvexHull(np.asarray(vertices))
     except Exception as exc:
         raise GeometryError(f"ConvexHull failed: {exc}") from exc
-
-    # The central atom is inside the ligand hull for ordinary coordination
-    # geometries. Exclude the center-incident facets, then orient the remaining
-    # ligand faces independently of Qhull's simplex ordering.
-    raw_faces = [
-        [int(vertex - 1) for vertex in face]
-        for face in hull.simplices
-        if 0 not in face
-    ]
-    raw_faces = merge_coplanar_faces(vertices, raw_faces)
+    if np.any(hull.equations[:, :3] @ center + hull.equations[:, 3] > 1e-7):
+        raise GeometryError("Center lies outside the coordination ligand hull.")
+    raw_faces = merge_coplanar_faces(vertices, hull.simplices)
+    if not raw_faces or not validate_mesh_winding(vertices, raw_faces):
+        raise GeometryError("Invalid coordination polyhedron face winding.")
 
     return CoordinationPolyhedron(
         center_index=center_index,
         center_position=np.asarray(center, dtype=float),
-        vertex_indices=vertex_indices or list(range(len(vertices))),
+        vertex_indices=unique_indices if vertex_indices is not None else list(range(len(vertices))),
         vertex_positions=vertices,
         faces=raw_faces,
         volume=float(hull.volume),

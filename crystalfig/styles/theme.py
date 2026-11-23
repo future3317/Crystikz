@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from crystalfig.styles.palette import ColorPalette, get_palette
+
+if TYPE_CHECKING:
+    from crystalfig.styles.specs import FigureStyle
 
 
 @dataclass
@@ -49,6 +52,7 @@ class FigureTheme:
     transparent: bool = False
     use_tex: bool = False
     custom_preamble: str = ""
+    figure_style: FigureStyle | None = None
 
     @classmethod
     def from_preset(cls, name: str) -> FigureTheme:
@@ -180,7 +184,7 @@ class FigureTheme:
             "two_column": cls(name="two_column", figure_width=183.0),
             "square": cls(name="square", figure_width=120.0, figure_height=120.0),
             "wide": cls(name="wide", figure_width=240.0),
-            "colorblind_safe": cls(name="colorblind_safe", palette=get_palette("okabe_ito")),
+            "colorblind_safe": cls(name="colorblind_safe", palette=get_palette("colorblind_safe")),
             "monochrome": cls(name="monochrome", palette=get_palette("monochrome")),
         }
         if name not in presets:

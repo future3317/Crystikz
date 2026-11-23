@@ -140,6 +140,13 @@ class TestCrystalFigure:
             path = grid.save(tmp_path / f"panels.{suffix}", dpi=120)
             assert path.is_file() and path.stat().st_size > 1000
 
+    def test_figure_grid_keeps_preconfigured_figure(self):
+        figure = CrystalFigure(rocksalt_structure())
+        figure.show_axes(True)
+        grid = FigureGrid(rows=1, cols=1).add_structure(figure, 0, 0)
+        assert grid._panels[(0, 0)][0] is figure
+        assert figure._scene_options.show_axes is True
+
     def test_hybrid_figure_grid_renders_pyvista_scene_at_fixed_size(self, tmp_path):
         pytest.importorskip("pyvista")
         grid = FigureGrid(
@@ -153,6 +160,7 @@ class TestCrystalFigure:
         from PIL import Image
         with Image.open(path) as image:
             assert image.size == (420, 330)
+        assert grid.last_export_metadata["embedded_panel_dpi"][0] == pytest.approx(120, abs=0.1)
 
     def test_from_pymatgen_structure(self):
         """Passing a pymatgen Structure directly must use the adapter."""

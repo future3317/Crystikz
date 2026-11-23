@@ -89,6 +89,55 @@ def test_pixel_limit_rejects_oversized_renders():
         PyVistaRenderer._window_size(RenderOptions(width=1000, dpi=2000, max_pixels=1000))
 
 
+def test_bond_cylinder_is_clipped_to_endpoint_atom_radii():
+    bond = Bond(start=[0, 0, 0], end=[2, 0, 0], site_i=0, site_j=1)
+    start, end = PyVistaRenderer._clip_bond(bond, {(0, (0, 0, 0)): 0.4, (1, (0, 0, 0)): 0.3})
+    np.testing.assert_allclose(start, [0.4, 0, 0])
+    np.testing.assert_allclose(end, [1.7, 0, 0])
+
+    translated = Bond(
+        start=[2, 0, 0], end=[4, 0, 0], site_i=0, site_j=1, jimage=(-1, 0, 0),
+        metadata={"start_image": (2, 0, 0), "end_image": (1, 0, 0)},
+    )
+    start, end = PyVistaRenderer._clip_bond(
+        translated,
+        {(0, (2, 0, 0)): 0.25, (1, (1, 0, 0)): 0.5},
+    )
+    np.testing.assert_allclose(start, [2.25, 0, 0])
+    np.testing.assert_allclose(end, [3.5, 0, 0])
+
+
+@pytest.mark.optional
+@pytest.mark.skipif(importlib.util.find_spec("pyvista") is None, reason="PyVista is optional")
+def test_gradient_bond_tube_carries_interpolatable_endpoint_rgb():
+    import pyvista as pv
+
+    from crystalfig.styles.specs import BondStyle, FigureStyle
+
+    style = FigureStyle(bonds=BondStyle(color_mode="gradient"))
+    theme = style.to_legacy_theme()
+    scene = Scene([
+        Sphere(position=[0, 0, 0], radius=0.2, color="#ff0000", metadata={"site_index": 0}),
+        Sphere(position=[1, 0, 0], radius=0.2, color="#0000ff", metadata={"site_index": 1}),
+        Bond(start=[0, 0, 0], end=[1, 0, 0], radius=0.07, site_i=0, site_j=1),
+    ])
+
+    class MeshRecorder:
+        def __init__(self):
+            self.meshes = []
+
+        def add_mesh(self, mesh, **kwargs):
+            self.meshes.append((mesh, kwargs))
+
+    recorder = MeshRecorder()
+    PyVistaRenderer()._add_scene(recorder, scene, theme, pv, (48, 48), 48)
+    mesh, options = next((mesh, options) for mesh, options in recorder.meshes if options.get("scalars") == "bond_rgb")
+    colors = np.asarray(mesh.point_data["bond_rgb"])
+    assert options["rgb"] is True
+    assert np.any(np.all(colors == [255, 0, 0], axis=1))
+    assert np.any(np.all(colors == [0, 0, 255], axis=1))
+
+
 @pytest.mark.optional
 @pytest.mark.skipif(importlib.util.find_spec("pyvista") is None, reason="PyVista is optional")
 def test_exports_scene_as_png_with_requested_pixel_size(tmp_path):
@@ -137,3 +186,100 @@ def test_exports_scene_as_png_with_requested_pixel_size(tmp_path):
         assert pixels.shape == (20, 40, 4)
         assert pixels[0, 0, 3] == 0
         assert np.any(pixels[:, :, 3] == 255)
+
+
+@pytest.mark.optional
+@pytest.mark.skipif(importlib.util.find_spec("pyvista") is None, reason="PyVista is optional")
+def test_publication_style_renders_pbr_atoms_and_transparent_polyhedra(tmp_path):
+    from dataclasses import replace
+
+    from crystalfig.styles.presets import get_style
+
+    style = get_style("vesta_coordination")
+    theme = style.to_legacy_theme()
+    theme.render_quality = "publication"
+    scene = Scene([
+        Sphere(position=[-0.6, 0, 0], radius=0.42, color="#bd5149", metadata={"site_index": 0}),
+        Sphere(position=[0.6, 0, 0], radius=0.3, color="#4f82b5", metadata={"site_index": 1}),
+        Bond(start=[-0.6, 0, 0], end=[0.6, 0, 0], radius=0.08, site_i=0, site_j=1),
+        Polyhedron(
+            vertices=[[-0.6, 0, 0], [0.6, 0, 0], [0, 0.9, 0], [0, 0.3, 0.8]],
+            faces=[[0, 2, 1], [0, 1, 3], [1, 2, 3], [2, 0, 3]],
+            fill_color="#d88932",
+            edge_color="#693f21",
+            opacity=1.0,
+        ),
+    ])
+    output = tmp_path / "pbr-coordination.png"
+    PyVistaRenderer(camera=Camera()).export(
+        scene,
+        str(output),
+        theme,
+        RenderOptions(width=25.4, height=25.4, dpi=48, transparent=True),
+    )
+    from PIL import Image
+
+    with Image.open(output) as image:
+        pixels = np.asarray(image)
+        assert image.size == (48, 48)
+        assert np.any(pixels[:, :, 3] > 0)
+        assert np.unique(pixels.reshape(-1, pixels.shape[-1]), axis=0).shape[0] > 8
+
+    polished = replace(
+        style,
+        atoms=replace(style.atoms, material="polished", roughness=0.12, specular=0.55),
+    ).to_legacy_theme()
+    polished_output = tmp_path / "pbr-polished.png"
+    PyVistaRenderer(camera=Camera()).export(
+        scene,
+        str(polished_output),
+        polished,
+        RenderOptions(width=25.4, height=25.4, dpi=48, transparent=True),
+    )
+    with Image.open(polished_output) as image:
+        polished_pixels = np.asarray(image)
+    assert np.count_nonzero(pixels != polished_pixels) > 0
+
+
+@pytest.mark.optional
+@pytest.mark.skipif(importlib.util.find_spec("pyvista") is None, reason="PyVista is optional")
+def test_depth_peeling_composites_overlapping_transparent_faces_independent_of_actor_order(tmp_path):
+    from crystalfig.styles.specs import FigureStyle, PolyhedronStyle
+
+    style = FigureStyle(polyhedra=PolyhedronStyle(face_opacity=0.38, back_face_opacity=0.12))
+    theme = style.to_legacy_theme()
+    vertices = np.array([[-0.8, -0.7, 0], [0.8, -0.7, 0], [0, 0.8, 0], [0, 0, 1.1]])
+    faces = [[0, 2, 1], [0, 1, 3], [1, 2, 3], [2, 0, 3]]
+    rear = Polyhedron(vertices=vertices, faces=faces, fill_color="#d55e00", opacity=1.0)
+    front = Polyhedron(
+        vertices=vertices + np.array([0.05, 0.0, 0.3]),
+        faces=faces,
+        fill_color="#0072b2",
+        opacity=1.0,
+    )
+    outputs = []
+    for index, primitives in enumerate(([rear, front], [front, rear])):
+        renderer = PyVistaRenderer(camera=Camera())
+        path = tmp_path / f"overlap-{index}.png"
+        renderer.export(
+            Scene(list(primitives)),
+            str(path),
+            theme,
+            RenderOptions(width=25.4, height=25.4, dpi=48, transparent=True),
+        )
+        from PIL import Image
+
+        with Image.open(path) as image:
+            outputs.append(np.asarray(image).copy())
+        assert renderer.last_depth_peeling_used
+
+    assert np.any(outputs[0][:, :, 3] > 0)
+    assert np.unique(outputs[0].reshape(-1, 4), axis=0).shape[0] > 8
+    np.testing.assert_allclose(outputs[0], outputs[1], atol=2)
+    renderer.export(
+        Scene([Sphere(position=[0, 0, 0], radius=0.5, color="#4f82b5")]),
+        str(tmp_path / "opaque-network.png"),
+        theme,
+        RenderOptions(width=25.4, height=25.4, dpi=24),
+    )
+    assert not renderer.last_depth_peeling_used

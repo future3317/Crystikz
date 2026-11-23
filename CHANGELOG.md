@@ -4,6 +4,10 @@
 
 ### Added
 
+- `FigureConfig`, `DisplayConfig`, `CameraConfig`, and `RenderConfig` for reproducible Python and YAML figures.
+- Composable 3D styles, five publication presets, and separate element and coordination colors.
+- Explicit cell, motif and supercell views, connected coordination shells, and depth-aware camera ranking.
+- Nine-structure publication benchmark with two experimental Mat2Seq reference CIFs and same-scene backend comparisons.
 - Optional PyVista/VTK mesh rendering and hybrid PDF export.
 - Shared scene fitting, deterministic structure-derived view selection, and three render-quality levels.
 - A generic `CrystalFigure.publication()` entry point and matching Python, CLI, and YAML batch options.
@@ -18,6 +22,6 @@
 ### Known limits
 
 - Bond strategies infer candidate neighbors; users must verify coordination for their scientific interpretation.
-- PyVista produces raster PNG. Hybrid PDFs contain a raster scene with vector annotations.
+- PyVista writes raster PNG and hybrid PDF. Hybrid PDFs contain a raster scene with vector annotations.
 - Automatic label collision avoidance and volumetric data rendering are not implemented.
 - PyPI publication is pending; install from the repository until a release is uploaded.

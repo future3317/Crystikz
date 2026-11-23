@@ -50,7 +50,7 @@ jobs:
           sudo apt-get install -y poppler-utils
 
       - name: Install build dependencies
-        run: python -m pip install --upgrade pip build wheel
+        run: python -m pip install --upgrade pip build "setuptools>=77" wheel
 
       - name: Build and verify a clean wheel installation
         run: python scripts/check_release.py
@@ -68,6 +68,11 @@ jobs:
 
       - name: Install gallery dependencies
         run: python -m pip install -e ".[dev,render3d]"
+
+      - name: Install PDF inspection tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
 
       - name: Render vector baseline without OpenGL
         run: python examples/generate_gallery.py --baseline-only
@@ -89,11 +94,15 @@ jobs:
           plotter.close()
           PY
 
-      - name: Render real PyVista polyhedron smoke test
-        run: python -m pytest tests/test_pyvista_renderer.py -q -k exports_scene_as_png_with_requested_pixel_size 2>&1 | tee pyvista-smoke.log
+      - name: Test actual PyVista rendering and hybrid PDF
+        shell: bash
+        run: python -m pytest tests/test_pyvista_renderer.py tests/test_export.py -q 2>&1 | tee pyvista-smoke.log
 
       - name: Render 11-structure publication gallery
         run: python examples/generate_gallery.py --showcase-only
+
+      - name: Render and compare publication benchmark
+        run: python examples/generate_publication_review.py
 
       - name: Benchmark PyVista at 10^2, 10^3, and 10^4 sites
         run: |
@@ -117,4 +126,5 @@ jobs:
             gallery/showcase/*.pdf
             gallery/showcase/metrics.json
             gallery/showcase/scale_*.json
+            gallery/publication_review/
             pyvista-smoke.log

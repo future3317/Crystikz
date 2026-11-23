@@ -36,7 +36,9 @@ def main() -> int:
         smoke.write_text(
             """import sys
 from pathlib import Path
-from crystalfig import CrystalFigure, FigureGrid, __version__
+from crystalfig import (
+    CrystalFigure, DisplayConfig, FigureConfig, FigureGrid, RenderConfig, __version__,
+)
 from crystalfig.examples.presets import rocksalt_structure
 from crystalfig.io.pymatgen_adapter import to_pymatgen
 
@@ -45,6 +47,12 @@ out.mkdir(parents=True, exist_ok=True)
 structure = rocksalt_structure(conventional=True)
 to_pymatgen(structure).to(filename=str(out / 'input.cif'))
 figure = CrystalFigure.from_structure(structure).publication()
+configured = CrystalFigure.from_structure(structure).configure(FigureConfig(
+    display=DisplayConfig(intent='network', region='cell'),
+    render=RenderConfig(backend='matplotlib', quality='preview', dpi=72),
+))
+assert configured.config.display.intent == 'network'
+assert configured.build_scene().metadata['selected_intent'] == 'network'
 figure.export(out / 'figure.pdf', width=89, dpi=300)
 figure.export(out / 'figure.svg', backend='svg', width=89)
 figure.export(out / 'figure.png', backend='matplotlib', width=89, dpi=300, transparent=True)

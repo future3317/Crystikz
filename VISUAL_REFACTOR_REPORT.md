@@ -1,5 +1,35 @@
 # Visual Quality Refactor Report
 
+## Publication benchmark
+
+The current [comparison sheet](gallery/publication_review/comparison_contact_sheet.png)
+shows the frozen v4 renders alongside `journal_clean` and `journal_vivid` for seven
+materials. The two additional experimental CIFs are the ground-truth structures
+used in [Mat2Seq Figure 4](https://proceedings.neurips.cc/paper_files/paper/2024/file/e23133d34964a0a09f6d076fc4b922a4-Paper-Conference.pdf).
+Run `python examples/generate_publication_review.py` with the PyVista extra and
+Poppler to reproduce the individual 89 mm, 600 DPI PNGs and the 183 × 54 mm
+[hybrid composition](gallery/publication_review/paper_four_panel.png).
+
+- Coordination figures show complete periodic ligand shells, physical edges and
+  center-to-ligand bonds. Linked tetrahedra are visible in quartz, and the
+  spinel and phosphate show contrasting environments in the same motif.
+- The layered view keeps the two S–Mo–S slabs distinct. The Si and NaCl
+  panels show connected networks with different bond and element encodings.
+- The four-panel figure uses the experimental Eu compound to demonstrate
+  an explicit Fe/Ge choice inside a single cell. Its title names the source
+  structure, and its element key describes the atoms shown.
+- The [backend comparison](gallery/publication_review/backend_comparison.png)
+  holds the geometry and camera fixed to show the difference in shading and
+  occlusion. The [metrics](gallery/publication_review/metrics.json) record
+  actual camera parameters, occupancy, shell counts and depth peeling.
+
+SSIM measures image change relative to the historical output. Inspection of
+spatial layering, shell integrity and figure composition determines visual
+acceptance. In the dense Ce–Cd–Te example, some atoms still overlap in projection
+and the default element colors are closer in hue than in the paper.
+
+## Historical refactor
+
 ## Scope
 
 This refactor targets the **visual output** of `crystalfig`: the same crystallographic

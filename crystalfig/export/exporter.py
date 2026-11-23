@@ -12,6 +12,7 @@ from crystalfig.export.latex import LatexCompiler
 from crystalfig.renderers.base import RenderOptions
 from crystalfig.renderers.matplotlib_3d_renderer import Matplotlib3DRenderer
 from crystalfig.renderers.matplotlib_renderer import MatplotlibRenderer
+from crystalfig.renderers.registry import get_renderer
 from crystalfig.renderers.svg_renderer import SvgRenderer
 from crystalfig.renderers.tikz_renderer import TikzRenderer
 from crystalfig.scene.camera import Camera
@@ -60,46 +61,43 @@ class Exporter:
 
         if backend is not None:
             backend = backend.lower()
+            try:
+                renderer, capabilities = get_renderer(backend, self.camera)
+            except ValueError as exc:
+                raise ExportError(str(exc)) from exc
             if backend == "pyvista":
-                if fmt != "png":
-                    raise ExportError("The pyvista backend supports PNG output only.")
-                from crystalfig.renderers.pyvista_renderer import PyVistaRenderer
-
-                pixels = PyVistaRenderer._window_size(options, self.scene, self.camera)
-                PyVistaRenderer(camera=self.camera).export(
-                    self.scene, str(path), theme, options, fmt=fmt
-                )
+                if fmt == "pdf":
+                    return self.export_hybrid_pdf(str(path), options, background_backend="pyvista")
+                if fmt not in capabilities.formats:
+                    raise ExportError("The pyvista backend supports PNG output and hybrid PDF.")
+                pixels = renderer._window_size(options, self.scene, self.camera)
+                renderer.export(self.scene, str(path), theme, options, fmt=fmt)
                 return ExportResult(str(path), fmt, "raster", {
                     "renderer": "pyvista",
                     "dpi": options.dpi,
                     "pixels": list(pixels),
+                    "depth_peeling_used": renderer.last_depth_peeling_used,
                 })
             if backend == "matplotlib3d":
-                if fmt not in ("pdf", "svg", "png", "tif", "tiff", "eps", "pgf"):
+                if fmt not in capabilities.formats:
                     raise ExportError(f"Unsupported matplotlib3d format: {fmt}")
-                return self.export_3d(str(path), options)
+                renderer.export(self.scene, str(path), theme, options, fmt=fmt)
+                vector_status = "hybrid" if fmt in capabilities.vector_formats else "raster"
+                return ExportResult(str(path), fmt, vector_status, {"renderer": "matplotlib3d"})
             if backend == "svg":
-                if fmt != "svg":
+                if fmt not in capabilities.formats:
                     raise ExportError("The svg backend supports SVG output only.")
-                SvgRenderer(camera=self.camera).export(self.scene, str(path), theme, options)
+                renderer.export(self.scene, str(path), theme, options)
                 return ExportResult(str(path), fmt, "pure", {"renderer": "svg"})
             if backend == "tikz":
-                if fmt in ("tex", "tikz"):
-                    TikzRenderer(camera=self.camera).export(
-                        self.scene, str(path), theme, options, standalone=True
-                    )
-                    return ExportResult(str(path), fmt, "pure", {"renderer": "tikz"})
-                raise ExportError("The tikz backend supports TEX/TIKZ output only.")
-            if backend != "matplotlib":
-                raise ExportError(
-                    f"Unknown renderer backend {backend!r}; use matplotlib, svg, tikz, matplotlib3d, or pyvista."
-                )
-            if fmt not in ("pdf", "png", "tif", "tiff", "eps", "pgf"):
+                if fmt not in capabilities.formats:
+                    raise ExportError("The tikz backend supports TEX/TIKZ output only.")
+                renderer.export(self.scene, str(path), theme, options, standalone=True)
+                return ExportResult(str(path), fmt, "pure", {"renderer": "tikz"})
+            if fmt not in capabilities.formats:
                 raise ExportError(f"Unsupported matplotlib format: {fmt}")
-            MatplotlibRenderer(camera=self.camera).export(
-                self.scene, str(path), theme, options, fmt=fmt
-            )
-            vector_status = "pure" if fmt in ("pdf", "eps", "pgf") else "raster"
+            renderer.export(self.scene, str(path), theme, options, fmt=fmt)
+            vector_status = "pure" if fmt in capabilities.vector_formats else "raster"
             return ExportResult(str(path), fmt, vector_status, {"renderer": "matplotlib", "dpi": options.dpi})
 
         if fmt in ("tex", "tikz"):
@@ -149,6 +147,8 @@ class Exporter:
         import matplotlib.pyplot as plt
         from PIL import Image
 
+        from crystalfig.scene.primitives import Text
+
         options = options or RenderOptions(
             width=self.theme.figure_width,
             height=self.theme.figure_height,
@@ -161,21 +161,29 @@ class Exporter:
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp:
             image_path = Path(temp.name)
         try:
-            self.export(str(image_path), fmt="png", options=options, backend=background_backend)
+            background_scene = self.scene.filter(
+                lambda primitive: not (
+                    isinstance(primitive, Text)
+                    and getattr(primitive, "layer", "geometry") == "annotation"
+                )
+            )
+            background_exporter = Exporter(background_scene, self.theme, self.camera)
+            background_result = background_exporter.export(
+                str(image_path), fmt="png", options=options, backend=background_backend
+            )
             width_in = options.width / 25.4
-            height_in = (options.height or options.width) / 25.4
             matplotlib.rcParams["pdf.fonttype"] = 42
             matplotlib.rcParams["ps.fonttype"] = 42
-            fig, ax = plt.subplots(figsize=(width_in, height_in), dpi=options.dpi)
             with Image.open(image_path) as image:
-                ax.imshow(np.asarray(image).copy(), extent=(0, 1, 0, 1), origin="lower", aspect="auto")
+                pixels = np.asarray(image).copy()
+                height_in = width_in * image.height / image.width
+            fig, ax = plt.subplots(figsize=(width_in, height_in), dpi=options.dpi)
+            ax.imshow(pixels, extent=(0, 1, 0, 1), origin="upper", aspect="auto")
             ax.set_xlim(0, 1)
             ax.set_ylim(0, 1)
             ax.set_position([0, 0, 1, 1])
             ax.set_aspect("auto")
             ax.axis("off")
-
-            from crystalfig.scene.primitives import Text
 
             annotations = [
                 primitive for primitive in self.scene.all_primitives()
@@ -183,19 +191,37 @@ class Exporter:
             ]
             camera = self.camera
             if camera.auto_fit:
-                camera.fit_to_scene(self.scene)
-            aspect = options.width / (options.height or options.width)
-            aspect_scale = min(1.0, aspect)
+                camera.fit_to_scene(background_scene)
 
             def annotation_position(position):
-                projected = camera.project(position)[0]
-                x = 0.5 + projected[0] * aspect_scale / (2.0 * aspect)
-                y = 0.5 + projected[1] * aspect_scale / 2.0
-                return x, y
+                camera_position = (np.asarray(position) - camera.target) @ camera.rotation_matrix().T
+                aspect = pixels.shape[1] / pixels.shape[0]
+                if camera.projection == "perspective":
+                    sphere = camera.scene_bounding_sphere(background_scene)
+                    radius = sphere[1] if sphere is not None else 1.0
+                    distance = max(
+                        camera.distance,
+                        radius / max(np.tan(np.radians(camera.fov / 2)), 1e-6) * 1.1 + radius,
+                    )
+                    depth = max(distance - camera_position[2], 1e-6)
+                    half_height = depth * np.tan(np.radians(camera.fov / 2))
+                    return (
+                        0.5 + camera_position[0] / (2 * half_height * aspect),
+                        0.5 + camera_position[1] / (2 * half_height),
+                    )
+                frame = camera.scene_frame(background_scene)
+                if frame is None:
+                    return 0.5, 0.5
+                half_height = max(frame.height / 2, frame.width / (2 * aspect)) / max(1 - camera.padding, 1e-6)
+                half_width = half_height * aspect
+                return (
+                    0.5 + camera_position[0] / (2 * half_width),
+                    0.5 + camera_position[1] / (2 * half_height),
+                )
 
             for annotation in annotations:
                 meta = annotation.metadata or {}
-                if meta.get("kind") == "site_label":
+                if meta.get("kind") == "site_label" or annotation.coordinate_space == "world":
                     x, y = annotation_position(annotation.position)
                     offset = meta.get("offset", (6, 2))
                     ax.annotate(
@@ -222,7 +248,12 @@ class Exporter:
             image_path.unlink(missing_ok=True)
         return ExportResult(
             str(path), "pdf", "hybrid",
-            {"renderer": background_backend, "dpi": options.dpi, "vector_annotations": len(annotations)},
+            {
+                "renderer": background_backend,
+                "dpi": options.dpi,
+                "vector_annotations": len(annotations),
+                "depth_peeling_used": background_result.metadata.get("depth_peeling_used"),
+            },
         )
 
     def export_3d(self, path: str, options: RenderOptions | None = None) -> ExportResult:
