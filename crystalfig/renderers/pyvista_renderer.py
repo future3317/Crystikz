@@ -115,10 +115,12 @@ class PyVistaRenderer:
                 # On EGL PyVista substitutes an SSAA pass for FXAA. That pass
                 # replaces the render path that performs depth peeling.
                 plotter.disable_anti_aliasing()
-                try:
-                    plotter.enable_depth_peeling(number_of_peels=16, occlusion_ratio=0.0)
-                except (AttributeError, RuntimeError) as exc:
-                    warnings.warn(f"VTK depth peeling unavailable: {exc}", RuntimeWarning, stacklevel=2)
+                # PyVista's helper opens a separate probe window, which can
+                # crash on EGL. Configure the active window and verify its render.
+                plotter.ren_win.SetAlphaBitPlanes(1)
+                plotter.renderer.SetUseDepthPeeling(True)
+                plotter.renderer.SetMaximumNumberOfPeels(16)
+                plotter.renderer.SetOcclusionRatio(0.0)
             else:
                 try:
                     plotter.enable_anti_aliasing(quality["aa"])
